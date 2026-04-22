@@ -210,6 +210,53 @@ Actualmente el backend ya implementa:
 - preferencias del inversionista
 - búsqueda de activos
 
-## Próximo paso
+## Autores
 
-Integrar el frontend Streamlit para consumir todos los endpoints del backend.
+- Edward Mora
+- [Nombre de tu compañera/o si aplica]
+
+## Activos seleccionados
+
+Activos base del proyecto:
+- BP (`BP.L`)
+- Carrefour (`CA.PA`)
+- Alimentation Couche-Tard (`ATD.TO`)
+- FEMSA (`FEMSAUBD.MX`)
+- Seven & i (`3382.T`)
+
+Justificación:
+Se eligieron activos de diferentes geografías y perfiles empresariales para favorecer la diversificación y permitir un análisis comparativo internacional del riesgo, rendimiento, volatilidad y comportamiento frente al benchmark.
+
+## Variables de entorno requeridas
+
+Ejemplo base en `.env.example`.
+
+Variables principales:
+- `APP_NAME`
+- `APP_VERSION`
+- `APP_ENV`
+- `DEBUG`
+- `API_V1_PREFIX`
+- `DEFAULT_START_DATE`
+- `DEFAULT_END_DATE`
+- `GLOBAL_BENCHMARK`
+- `DEFAULT_BASE_CURRENCY`
+- `RF_TICKER_USD`
+- `RF_TICKER_EUR`
+- `RF_TICKER_COP_PROXY`
+- `FRED_API_KEY`
+- `FRONTEND_BASE_URL`
+- `YAHOO_TIMEOUT_SECONDS`
+- `MACRO_TIMEOUT_SECONDS`
+- `INTERNAL_API_KEY`
+- `ALLOWED_ORIGINS`
+- `MIN_OBS_VAR`
+- `MIN_OBS_CAPM`
+- `MIN_OBS_PORTFOLIO`
+
+## Cómo ejecutar el frontend
+
+Cuando la rama `frontend` esté lista:
+
+```bash
+streamlit run frontend/app.py
