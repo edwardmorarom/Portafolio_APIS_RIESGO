@@ -17,6 +17,7 @@ from app.services.benchmark_service import BenchmarkService
 from app.services.help_service import HelpService
 from app.services.returns_stats_service import ReturnsStatsService
 from app.services.alerts_service import AlertsService
+from app.services.garch_service import GarchService
 
 def get_app_settings() -> Settings:
     return get_settings()
@@ -46,8 +47,11 @@ def get_portfolio_service(client: MarketClient = Depends(get_market_client)) -> 
     return PortfolioService(client=client)
 
 
-def get_macro_service(client: MacroClient = Depends(get_macro_client)) -> MacroService:
-    return MacroService(client=client)
+def get_macro_service(
+    client: MacroClient = Depends(get_macro_client),
+    market_client: MarketClient = Depends(get_market_client),
+) -> MacroService:
+    return MacroService(client=client, market_client=market_client)
 
 
 def get_capm_service(
@@ -94,3 +98,7 @@ def get_returns_stats_service(client: MarketClient = Depends(get_market_client))
 
 def get_alerts_service(client: MarketClient = Depends(get_market_client)) -> AlertsService:
     return AlertsService(client=client)
+
+
+def get_garch_service(client: MarketClient = Depends(get_market_client)) -> GarchService:
+    return GarchService(client=client)
