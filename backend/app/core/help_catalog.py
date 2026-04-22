@@ -51,4 +51,92 @@ HELP_CATALOG = {
         "general": "Es la rentabilidad anual que el usuario quisiera alcanzar.",
         "estadistico": "Objetivo de retorno usado para seleccionar el portafolio mas cercano dentro del universo simulado.",
     },
+    "normalized_prices": {
+        "general": "Permite comparar activos desde una misma base para ver cual ha rendido mejor.",
+        "estadistico": "Reescala las series de precios a una base comun, usualmente 100, para comparar rendimientos relativos.",
+    },
+    "moving_averages": {
+        "general": "Suavizan el precio para ayudar a ver la tendencia.",
+        "estadistico": "Las medias moviles reducen ruido y facilitan identificar direccion y cruces de tendencia.",
+    },
+    "histogram_normal": {
+        "general": "Compara la forma real de los rendimientos con una campana normal.",
+        "estadistico": "Histograma de rendimientos con referencia gaussiana para evaluar asimetria, curtosis y colas.",
+    },
+    "qq_plot": {
+        "general": "Sirve para ver si los rendimientos se parecen o no a una distribucion normal.",
+        "estadistico": "Grafica cuantiles muestrales frente a cuantiles teoricos normales; desviaciones de la diagonal indican no normalidad.",
+    },
+    "boxplot": {
+        "general": "Resume la dispersion, la mediana y los valores extremos.",
+        "estadistico": "Muestra cuartiles, rango intercuartil y outliers segun la regla de 1.5 IQR.",
+    },
+    "var_cvar_distribution": {
+        "general": "Ubica visualmente las perdidas de riesgo sobre la distribucion de retornos.",
+        "estadistico": "Superpone niveles de VaR y CVaR sobre la distribucion para identificar cola de perdidas.",
+    },
+    "efficient_frontier": {
+        "general": "Muestra las combinaciones de portafolio entre riesgo y retorno.",
+        "estadistico": "Conjunto eficiente de Markowitz: maximo retorno esperado para cada nivel de volatilidad.",
+    },
+    "correlation_heatmap": {
+        "general": "Ayuda a ver que activos se mueven parecido y cuales diversifican mejor.",
+        "estadistico": "Mapa de calor de la matriz de correlacion entre activos; valores bajos reducen concentracion de riesgo.",
+    },
+    "garch_forecast": {
+        "general": "Muestra como podria evolucionar la volatilidad en el corto plazo.",
+        "estadistico": "Pronostico de varianza o volatilidad condicional derivado del modelo ARCH/GARCH/EGARCH ajustado.",
+    },
+    "regression_scatter": {
+        "general": "Compara el comportamiento del activo frente al benchmark.",
+        "estadistico": "Diagrama de dispersion activo vs benchmark con pendiente asociada al beta del CAPM.",
+    },
+    "benchmark_comparison": {
+        "general": "Permite ver si el portafolio le gana o pierde al indice de referencia.",
+        "estadistico": "Comparacion de desempeno relativo usando retorno, drawdown, alpha, tracking error e information ratio.",
+    },
+    "jarque_bera": {
+        "general": "Prueba si la forma de la distribucion se aleja de la normal.",
+        "estadistico": "Contrasta normalidad usando asimetria y curtosis; p-value bajo sugiere rechazo de normalidad.",
+    },
+    "shapiro_wilk": {
+        "general": "Prueba si los datos se parecen a una distribucion normal.",
+        "estadistico": "Test de normalidad sensible a desviaciones respecto a la gaussiana, especialmente en muestras pequenas y medianas.",
+    },
+    "anderson_darling": {
+        "general": "Evalua si los datos se apartan de la normalidad, dando mas peso a las colas.",
+        "estadistico": "Prueba de ajuste que compara la distribucion empirica contra una normal, enfatizando discrepancias en extremos.",
+    },
+    "stochastic": {
+        "general": "Ayuda a detectar si el precio esta cerca de extremos recientes.",
+        "estadistico": "Oscilador basado en la posicion del cierre frente al rango maximo-minimo de una ventana.",
+    },
+    "moving_average_cross": {
+        "general": "Se activa cuando dos medias moviles se cruzan y puede sugerir cambio de tendencia.",
+        "estadistico": "Cruce entre medias de distinta sensibilidad usado como regla de señal alcista o bajista.",
+    },
+    "arch_model": {
+        "general": "Modelo para captar cambios en la volatilidad a partir de choques recientes.",
+        "estadistico": "ARCH modela la varianza condicional usando rezagos de errores al cuadrado.",
+    },
+    "garch_model": {
+        "general": "Modelo que describe como cambia la volatilidad con el tiempo.",
+        "estadistico": "GARCH modela la varianza condicional con rezagos de errores y de la propia varianza.",
+    },
+    "egarch_model": {
+        "general": "Modelo de volatilidad que puede capturar reacciones diferentes a noticias buenas y malas.",
+        "estadistico": "EGARCH modela el logaritmo de la varianza y permite asimetria o efecto apalancamiento.",
+    },
+    "aic_bic": {
+        "general": "Sirven para comparar modelos y elegir el mas conveniente.",
+        "estadistico": "Criterios de informacion que balancean ajuste y complejidad; menor valor suele indicar mejor modelo.",
+    },
+    "conditional_volatility": {
+        "general": "Es la volatilidad estimada para cada momento, no una unica volatilidad fija.",
+        "estadistico": "Serie temporal de la desviacion estandar condicional estimada por un modelo de heterocedasticidad.",
+    },
+    "residual_normality": {
+        "general": "Revisa si los residuos del modelo se comportan de forma razonable.",
+        "estadistico": "Diagnostico sobre residuos o residuos estandarizados para evaluar especificacion y colas remanentes.",
+    },
 }
