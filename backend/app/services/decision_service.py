@@ -1,0 +1,2 @@
+class DecisionService:
+    pass
