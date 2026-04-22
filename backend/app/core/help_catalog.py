@@ -139,4 +139,12 @@ HELP_CATALOG = {
         "general": "Revisa si los residuos del modelo se comportan de forma razonable.",
         "estadistico": "Diagnostico sobre residuos o residuos estandarizados para evaluar especificacion y colas remanentes.",
     },
+        "simple_return": {
+        "general": "Muestra el cambio porcentual de un periodo a otro.",
+        "estadistico": "Retorno simple = (P_t / P_{t-1}) - 1.",
+    },
+    "log_return": {
+        "general": "Es otra forma de medir el cambio del precio, muy usada en finanzas y modelos estadisticos.",
+        "estadistico": "Retorno logaritmico = ln(P_t / P_{t-1}); es aditivo en el tiempo y util en modelacion.",
+    },
 }
