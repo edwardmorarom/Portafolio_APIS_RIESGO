@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from app.api.v1 import alerts, assets, benchmark, capm, decision, help, investor, macro, market, portfolio, returns_stats, risk, technical
+from app.api.v1 import alerts, assets, benchmark, capm, decision, garch, help, investor, macro, market, portfolio, returns_stats, risk, technical
+
 
 api_router = APIRouter()
 
@@ -16,3 +17,4 @@ api_router.include_router(benchmark.router, prefix="/benchmark", tags=["Benchmar
 api_router.include_router(help.router, prefix="/help", tags=["Help"])
 api_router.include_router(returns_stats.router, prefix="/returns-stats", tags=["ReturnsStats"])
 api_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
+api_router.include_router(garch.router, prefix="/garch", tags=["GARCH"])
