@@ -4,6 +4,7 @@ from app.core.dependencies import get_capm_service
 from app.core.settings import get_settings
 from app.schemas.capm import CapmResponse, PortfolioCapmRequest, PortfolioCapmResponse
 from app.services.capm_service import CapmService
+from app.core.security import require_internal_api_key
 
 router = APIRouter()
 
@@ -38,6 +39,7 @@ async def get_capm(
 @router.post("/portfolio", summary="Calcular CAPM del portafolio", response_model=PortfolioCapmResponse)
 async def get_portfolio_capm(
     payload: PortfolioCapmRequest,
+    _: None = Depends(require_internal_api_key),
     service: CapmService = Depends(get_capm_service),
 ) -> PortfolioCapmResponse:
     try:

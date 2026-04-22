@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.dependencies import get_portfolio_service
 from app.schemas.portfolio import EfficientFrontierRequest, EfficientFrontierResponse
 from app.services.portfolio_service import PortfolioService
+from app.core.security import require_internal_api_key
 
 router = APIRouter()
 
@@ -14,6 +15,7 @@ router = APIRouter()
 )
 async def efficient_frontier(
     payload: EfficientFrontierRequest,
+    _: None = Depends(require_internal_api_key),
     service: PortfolioService = Depends(get_portfolio_service),
 ) -> EfficientFrontierResponse:
     try:
@@ -24,6 +26,8 @@ async def efficient_frontier(
             rf_annual=payload.rf_annual,
             n_portfolios=payload.n_portfolios,
             return_type=payload.return_type,
+            target_return_annual=payload.target_return_annual,
+            risk_profile=payload.risk_profile,
         )
         return EfficientFrontierResponse(**result)
     except ValueError as exc:

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.dependencies import get_risk_service
 from app.schemas.risk import PortfolioVarRequest, PortfolioVarResponse
 from app.services.risk_service import RiskService
+from app.core.security import require_internal_api_key
 
 router = APIRouter()
 
@@ -10,6 +11,7 @@ router = APIRouter()
 @router.post("/var", summary="Calcular VaR y CVaR del portafolio", response_model=PortfolioVarResponse)
 async def calculate_var(
     payload: PortfolioVarRequest,
+    _: None = Depends(require_internal_api_key),
     service: RiskService = Depends(get_risk_service),
 ) -> PortfolioVarResponse:
     try:

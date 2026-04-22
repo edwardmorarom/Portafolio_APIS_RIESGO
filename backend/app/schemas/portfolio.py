@@ -2,12 +2,22 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class EfficientFrontierRequest(BaseModel):
-    tickers: list[str] = Field(..., min_length=2, description="Tickers del portafolio")
+    tickers: list[str] = Field(..., min_length=2, max_length=15, description="Tickers del portafolio")
     start: str = Field(default="2021-01-01", description="Fecha inicial")
     end: str = Field(default="2026-12-31", description="Fecha final")
     rf_annual: float = Field(default=0.04, ge=0.0, le=1.0, description="Tasa libre de riesgo anual")
     n_portfolios: int = Field(default=5000, ge=1000, le=50000, description="Número de portafolios simulados")
     return_type: str = Field(default="log", description="Tipo de rendimiento: simple o log")
+    target_return_annual: float | None = Field(
+        default=None,
+        ge=-1.0,
+        le=5.0,
+        description="Rendimiento objetivo anual opcional",
+    )
+    risk_profile: str | None = Field(
+        default=None,
+        description="Perfil opcional: conservador, arriesgado, minimo_riesgo, maxima_utilidad",
+    )
 
     @field_validator("tickers")
     @classmethod
@@ -15,6 +25,8 @@ class EfficientFrontierRequest(BaseModel):
         cleaned = [item.strip().upper() for item in v if item.strip()]
         if len(cleaned) < 2:
             raise ValueError("Debe enviar al menos dos tickers válidos")
+        if len(cleaned) > 15:
+            raise ValueError("Se permite un máximo de 15 acciones")
         return cleaned
 
     @field_validator("return_type")
@@ -23,6 +35,17 @@ class EfficientFrontierRequest(BaseModel):
         value = v.strip().lower()
         if value not in {"simple", "log"}:
             raise ValueError("return_type debe ser 'simple' o 'log'")
+        return value
+
+    @field_validator("risk_profile")
+    @classmethod
+    def validate_risk_profile(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        value = v.strip().lower()
+        allowed = {"conservador", "arriesgado", "minimo_riesgo", "maxima_utilidad"}
+        if value not in allowed:
+            raise ValueError("risk_profile no válido")
         return value
 
 
@@ -51,3 +74,36 @@ class EfficientFrontierResponse(BaseModel):
     frontier: list[FrontierPoint] = Field(default_factory=list, description="Puntos de la frontera eficiente")
     min_variance: OptimalPortfolio = Field(..., description="Portafolio de mínima varianza")
     max_sharpe: OptimalPortfolio = Field(..., description="Portafolio de máximo Sharpe")
+
+
+class TargetReturnPortfolio(BaseModel):
+    target_return_annual: float = Field(..., description="Rendimiento objetivo anual")
+    achieved_return_annual: float = Field(..., description="Rendimiento anual alcanzado")
+    volatility_annual: float = Field(..., description="Volatilidad anual del portafolio objetivo")
+    weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Pesos del portafolio objetivo")
+
+
+class ProfileSuggestedPortfolio(BaseModel):
+    profile: str = Field(..., description="Perfil seleccionado")
+    return_: float = Field(..., alias="return", description="Retorno anualizado sugerido")
+    volatility: float = Field(..., description="Volatilidad anualizada sugerida")
+    sharpe: float = Field(..., description="Sharpe del portafolio sugerido")
+    weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Pesos sugeridos")
+
+
+class EfficientFrontierResponse(BaseModel):
+    tickers: list[str] = Field(..., description="Tickers analizados")
+    start: str = Field(..., description="Fecha inicial")
+    end: str = Field(..., description="Fecha final")
+    rf_annual: float = Field(..., description="Tasa libre de riesgo anual")
+    frontier: list[FrontierPoint] = Field(default_factory=list, description="Puntos de la frontera eficiente")
+    min_variance: OptimalPortfolio = Field(..., description="Portafolio de mínima varianza")
+    max_sharpe: OptimalPortfolio = Field(..., description="Portafolio de máximo Sharpe")
+    target_return_portfolio: TargetReturnPortfolio | None = Field(
+        default=None,
+        description="Portafolio asociado a rendimiento objetivo",
+    )
+    suggested_profile_portfolio: ProfileSuggestedPortfolio | None = Field(
+        default=None,
+        description="Portafolio sugerido según perfil",
+    )

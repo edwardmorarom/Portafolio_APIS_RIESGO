@@ -122,6 +122,8 @@ class PortfolioService:
         rf_annual: float,
         n_portfolios: int,
         return_type: str,
+        target_return_annual: float | None = None,
+        risk_profile: str | None = None,
     ) -> dict:
         returns_df = self._build_returns_matrix(tickers=tickers, start=start, end=end, return_type=return_type)
 
@@ -137,6 +139,11 @@ class PortfolioService:
             n_portfolios=n_portfolios,
         )
 
+        if len(returns_df) < self.client.settings.min_obs_portfolio:
+            raise ValueError(
+                f"Se requieren al menos {self.client.settings.min_obs_portfolio} observaciones para optimización."
+            )
+
         if sim_df.empty:
             raise ValueError("No fue posible simular portafolios.")
 
@@ -144,6 +151,9 @@ class PortfolioService:
 
         min_var = sim_df.loc[sim_df["volatility"].idxmin()]
         max_sharpe = sim_df.loc[sim_df["sharpe"].idxmax()]
+
+        target_return_portfolio = self._closest_target_return(sim_df, target_return_annual) if target_return_annual is not None else None
+        suggested_profile_portfolio = self._profile_suggestion(sim_df, risk_profile)
 
         return {
             "tickers": tickers,
@@ -163,4 +173,48 @@ class PortfolioService:
                 "sharpe": float(max_sharpe["sharpe"]),
                 "weights": self._extract_weights(max_sharpe),
             },
+            "target_return_portfolio": target_return_portfolio,
+            "suggested_profile_portfolio": suggested_profile_portfolio,
+        }
+
+    def _closest_target_return(self, sim_df: pd.DataFrame, target_return_annual: float) -> dict | None:
+        if sim_df.empty:
+            return None
+
+        df = sim_df.copy()
+        df["distance_to_target"] = (df["return"] - target_return_annual).abs()
+        row = df.loc[df["distance_to_target"].idxmin()]
+
+        return {
+            "target_return_annual": float(target_return_annual),
+            "achieved_return_annual": float(row["return"]),
+            "volatility_annual": float(row["volatility"]),
+            "weights": self._extract_weights(row),
+        }
+
+    def _profile_suggestion(self, sim_df: pd.DataFrame, profile: str | None) -> dict | None:
+        if sim_df.empty or profile is None:
+            return None
+
+        profile = profile.lower()
+
+        if profile == "minimo_riesgo":
+            row = sim_df.loc[sim_df["volatility"].idxmin()]
+        elif profile == "maxima_utilidad":
+            row = sim_df.loc[sim_df["return"].idxmax()]
+        elif profile == "conservador":
+            eligible = sim_df.sort_values(["volatility", "return"], ascending=[True, False]).head(200)
+            row = eligible.loc[eligible["sharpe"].idxmax()] if not eligible.empty else sim_df.loc[sim_df["volatility"].idxmin()]
+        elif profile == "arriesgado":
+            eligible = sim_df.sort_values("return", ascending=False).head(200)
+            row = eligible.loc[eligible["sharpe"].idxmax()] if not eligible.empty else sim_df.loc[sim_df["return"].idxmax()]
+        else:
+            return None
+
+        return {
+            "profile": profile,
+            "return": float(row["return"]),
+            "volatility": float(row["volatility"]),
+            "sharpe": float(row["sharpe"]),
+            "weights": self._extract_weights(row),
         }

@@ -58,7 +58,7 @@ class CapmService:
             raise ValueError(f"No se encontraron rendimientos para el benchmark {benchmark_ticker}.")
 
         joined = pd.concat([asset_ret, bench_ret], axis=1).dropna()
-        if joined.empty or joined.shape[0] < 30:
+        if joined.empty or joined.shape[0] < self.market_client.settings.min_obs_capm:
             raise ValueError("No hay suficientes observaciones comunes entre activo y benchmark.")
 
         asset_series = joined.iloc[:, 0]
@@ -116,7 +116,7 @@ class CapmService:
             raise ValueError(f"No se encontraron rendimientos para el benchmark {benchmark_ticker}.")
 
         joined = pd.concat([returns_df, bench_ret], axis=1).dropna()
-        if joined.empty or joined.shape[0] < 30:
+        if joined.empty or joined.shape[0] < self.market_client.settings.min_obs_capm:
             raise ValueError("No hay suficientes observaciones comunes entre portafolio y benchmark.")
 
         portfolio_returns = joined.iloc[:, :-1] @ np.asarray(weights, dtype=float)

@@ -108,8 +108,8 @@ class RiskService:
 
         portfolio_returns = self._portfolio_returns(returns_df, weights)
 
-        if portfolio_returns.empty:
-            raise ValueError("No fue posible calcular los rendimientos del portafolio.")
+        if len(returns_df) < self.client.settings.min_obs_var:
+            raise ValueError(f"Se requieren al menos {self.client.settings.min_obs_var} observaciones para VaR.")
 
         historical = self._historical_var_cvar(portfolio_returns, alpha=alpha)
         monte_carlo = self._monte_carlo_var_cvar(
