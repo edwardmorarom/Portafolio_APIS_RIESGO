@@ -43,9 +43,10 @@ class VarMethodResult(BaseModel):
 
 class PortfolioVarResponse(BaseModel):
     tickers: list[str] = Field(..., description="Tickers del portafolio")
-    weights: list[float] = Field(..., description="Pesos usados")
+    weights: list[float] = Field(..., description="Pesos del portafolio")
     alpha: float = Field(..., description="Nivel de confianza")
     start: str = Field(..., description="Fecha inicial")
     end: str = Field(..., description="Fecha final")
-    historical: VarMethodResult = Field(..., description="Resultado histórico")
-    monte_carlo: VarMethodResult = Field(..., description="Resultado Monte Carlo")
+    parametric: VarMethodResult = Field(..., description="VaR y CVaR paramétricos")
+    historical: VarMethodResult = Field(..., description="VaR y CVaR históricos")
+    monte_carlo: VarMethodResult = Field(..., description="VaR y CVaR por simulación Monte Carlo")

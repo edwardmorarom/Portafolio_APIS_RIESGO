@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 
 from app.clients.market_client import MarketClient
 
@@ -118,6 +119,10 @@ class RiskService:
             alpha=alpha,
             n_sim=n_sim,
         )
+        parametric = self._parametric_var_cvar(
+            portfolio_returns=portfolio_returns,
+            alpha=alpha,
+        )
 
         return {
             "tickers": [t.upper() for t in tickers],
@@ -125,6 +130,31 @@ class RiskService:
             "alpha": alpha,
             "start": start,
             "end": end,
+            "parametric": parametric,
             "historical": historical,
             "monte_carlo": monte_carlo,
+        }
+
+    def _parametric_var_cvar(self, portfolio_returns: pd.Series, alpha: float) -> dict:
+        mu = float(portfolio_returns.mean())
+        sigma = float(portfolio_returns.std(ddof=1))
+
+        if np.isclose(sigma, 0.0):
+            var_daily = max(0.0, -mu)
+            cvar_daily = var_daily
+        else:
+            z = float(norm.ppf(1 - alpha))
+            pdf_z = float(norm.pdf(z))
+
+            var_daily = float(-(mu + sigma * z))
+            cvar_daily = float(-(mu - sigma * (pdf_z / (1 - alpha))))
+
+            var_daily = max(0.0, var_daily)
+            cvar_daily = max(var_daily, cvar_daily)
+
+        return {
+            "var_daily": var_daily,
+            "cvar_daily": cvar_daily,
+            "var_annualized": float(var_daily * np.sqrt(252)),
+            "cvar_annualized": float(cvar_daily * np.sqrt(252)),
         }
