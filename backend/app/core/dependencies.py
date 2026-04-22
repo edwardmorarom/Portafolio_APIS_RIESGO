@@ -11,7 +11,8 @@ from app.services.risk_service import RiskService
 from app.services.technical_service import TechnicalService
 from app.services.capm_service import CapmService
 from app.services.decision_service import DecisionService
-
+from app.services.investor_service import InvestorService
+from app.services.assets_service import AssetsService
 
 def get_app_settings() -> Settings:
     return get_settings()
@@ -62,3 +63,11 @@ def get_decision_service(
         portfolio_service=portfolio_service,
         capm_service=capm_service,
     )
+
+
+def get_investor_service() -> InvestorService:
+    return InvestorService()
+
+
+def get_assets_service() -> AssetsService:
+    return AssetsService()

@@ -25,6 +25,15 @@ class Settings(BaseSettings):
     yahoo_timeout_seconds: int = Field(default=20, ge=1, le=120, description="Timeout para datos de mercado")
     macro_timeout_seconds: int = Field(default=20, ge=1, le=120, description="Timeout para datos macro")
 
+    internal_api_key: str | None = Field(default=None, description="API key interna simple para endpoints sensibles")
+    allowed_origins: str = Field(
+        default="http://localhost:8501,http://127.0.0.1:8501",
+        description="Orígenes permitidos separados por coma",
+    )
+    min_obs_var: int = Field(default=60, ge=30, le=5000, description="Observaciones mínimas para VaR")
+    min_obs_capm: int = Field(default=60, ge=30, le=5000, description="Observaciones mínimas para CAPM")
+    min_obs_portfolio: int = Field(default=60, ge=30, le=5000, description="Observaciones mínimas para optimización")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
