@@ -35,3 +35,23 @@ class ReturnTypeMixin(BaseModel):
         if value not in allowed:
             raise ValueError("return_type debe ser 'simple' o 'log'")
         return value
+
+
+class AssetUniverseItem(BaseModel):
+    name: str = Field(..., description="Nombre del activo")
+    ticker: str = Field(..., description="Ticker")
+    country: str = Field(..., description="País")
+    default: bool = Field(..., description="Activo predeterminado")
+
+
+class AssetUniverseResponse(BaseModel):
+    max_assets_allowed: int = Field(..., description="Máximo de activos permitidos")
+    benchmark_ticker: str = Field(..., description="Benchmark global por defecto")
+    base_currencies: list[str] = Field(..., description="Monedas base soportadas")
+    assets: list[AssetUniverseItem] = Field(default_factory=list, description="Universo de activos")
+
+
+class AssetSearchResponse(BaseModel):
+    query: str = Field(..., description="Texto buscado por el usuario")
+    total_matches: int = Field(..., description="Cantidad de coincidencias")
+    assets: list[AssetUniverseItem] = Field(default_factory=list, description="Resultados de búsqueda")

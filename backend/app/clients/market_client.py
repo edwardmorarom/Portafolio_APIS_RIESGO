@@ -3,6 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import yfinance as yf
 
+from app.core.decorators import log_execution_time
+from app.core.market_utils import normalize_end_date_to_available_data, validate_not_future
 from app.core.settings import Settings
 
 
@@ -10,7 +12,10 @@ class MarketClient:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
 
+    @log_execution_time
     def get_prices(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        validate_not_future(start=start, end=end)
+
         df = yf.download(
             ticker,
             start=start,
@@ -35,9 +40,7 @@ class MarketClient:
             else:
                 out.columns = [str(col[0]) for col in out.columns]
 
-        out.index = pd.to_datetime(out.index)
-        out = out.sort_index()
-        out = out[~out.index.duplicated(keep="last")]
+        out = normalize_end_date_to_available_data(out)
 
         keep_cols = [c for c in ["Open", "High", "Low", "Close", "Adj Close", "Volume"] if c in out.columns]
         return out[keep_cols].copy()
