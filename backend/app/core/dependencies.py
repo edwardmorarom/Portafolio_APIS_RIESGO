@@ -14,6 +14,7 @@ from app.services.decision_service import DecisionService
 from app.services.investor_service import InvestorService
 from app.services.assets_service import AssetsService
 from app.services.benchmark_service import BenchmarkService
+from app.services.help_service import HelpService
 
 def get_app_settings() -> Settings:
     return get_settings()
@@ -79,3 +80,7 @@ def get_benchmark_service(
     macro_service: MacroService = Depends(get_macro_service),
 ) -> BenchmarkService:
     return BenchmarkService(market_client=market_client, macro_service=macro_service)
+
+
+def get_help_service() -> HelpService:
+    return HelpService()

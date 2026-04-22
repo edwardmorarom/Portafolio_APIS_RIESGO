@@ -34,6 +34,8 @@ async def app_base_exception_handler(request: Request, exc: AppBaseException) ->
             "detail": {
                 "error_code": exc.error_code,
                 "message": exc.message,
+                "hint": exc.hint,
+                "where": exc.where,
                 "extra": exc.extra,
             }
         },

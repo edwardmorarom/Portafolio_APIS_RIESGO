@@ -13,6 +13,8 @@ class AppBaseException(Exception):
         self.status_code = payload["status_code"]
         self.error_code = payload["error_code"]
         self.message = payload["message"]
+        self.hint = payload.get("hint")
+        self.where = payload.get("where")
         self.extra = extra or {}
         super().__init__(self.message)
 
