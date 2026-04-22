@@ -16,6 +16,7 @@ from app.services.assets_service import AssetsService
 from app.services.benchmark_service import BenchmarkService
 from app.services.help_service import HelpService
 from app.services.returns_stats_service import ReturnsStatsService
+from app.services.alerts_service import AlertsService
 
 def get_app_settings() -> Settings:
     return get_settings()
@@ -89,3 +90,7 @@ def get_help_service() -> HelpService:
 
 def get_returns_stats_service(client: MarketClient = Depends(get_market_client)) -> ReturnsStatsService:
     return ReturnsStatsService(client=client)
+
+
+def get_alerts_service(client: MarketClient = Depends(get_market_client)) -> AlertsService:
+    return AlertsService(client=client)
