@@ -23,6 +23,7 @@ class PortfolioCapmRequest(BaseModel):
     base_currency: str = Field(default="USD", description="Moneda base")
     start: str = Field(default="2021-01-01", description="Fecha inicial")
     end: str = Field(default="2026-12-31", description="Fecha final")
+    return_type: str = Field(default="log", description="Tipo de rendimiento: simple o log")
 
     @field_validator("tickers")
     @classmethod
@@ -49,6 +50,13 @@ class PortfolioCapmRequest(BaseModel):
             raise ValueError("base_currency debe ser USD, EUR o COP")
         return value
 
+    @field_validator("return_type")
+    @classmethod
+    def validate_return_type(cls, v: str) -> str:
+        value = v.strip().lower()
+        if value not in {"simple", "log"}:
+            raise ValueError("return_type debe ser 'simple' o 'log'")
+        return value
 
 class PortfolioCapmResponse(BaseModel):
     tickers: list[str] = Field(..., description="Tickers del portafolio")

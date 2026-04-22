@@ -16,6 +16,7 @@ async def get_capm(
     base_currency: str = Query(default="USD"),
     benchmark_ticker: str | None = Query(default=None),
     service: CapmService = Depends(get_capm_service),
+    return_type: str = Query(default="log"),
 ) -> CapmResponse:
     settings = get_settings()
     benchmark = benchmark_ticker or settings.global_benchmark
@@ -27,6 +28,7 @@ async def get_capm(
             base_currency=base_currency,
             start=start,
             end=end,
+            return_type=return_type,
         )
         return CapmResponse(**result)
     except ValueError as exc:
@@ -46,6 +48,7 @@ async def get_portfolio_capm(
             base_currency=payload.base_currency,
             start=payload.start,
             end=payload.end,
+            return_type=payload.return_type,
         )
         return PortfolioCapmResponse(**result)
     except ValueError as exc:

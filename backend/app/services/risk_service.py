@@ -10,7 +10,7 @@ class RiskService:
     def __init__(self, client: MarketClient) -> None:
         self.client = client
 
-    def _build_returns_matrix(self, tickers: list[str], start: str, end: str) -> pd.DataFrame:
+    def _build_returns_matrix(self, tickers: list[str], start: str, end: str, return_type: str) -> pd.DataFrame:
         series_list: list[pd.Series] = []
 
         for ticker in tickers:
@@ -19,7 +19,12 @@ class RiskService:
                 continue
 
             close = pd.to_numeric(df["Close"], errors="coerce").dropna()
-            ret = close.pct_change().dropna()
+
+            if return_type == "log":
+                ret = np.log(close / close.shift(1)).dropna()
+            else:
+                ret = close.pct_change().dropna()
+
             ret.name = ticker.upper()
             series_list.append(ret)
 
@@ -87,8 +92,13 @@ class RiskService:
         end: str,
         alpha: float,
         n_sim: int,
+        return_type: str,
     ) -> dict:
-        returns_df = self._build_returns_matrix(tickers=tickers, start=start, end=end)
+        returns_df = self._build_returns_matrix(tickers=tickers, 
+                                                start=start, 
+                                                end=end,
+                                                return_type=return_type,
+                                                )
 
         if returns_df.empty:
             raise ValueError("No fue posible construir la matriz de rendimientos.")

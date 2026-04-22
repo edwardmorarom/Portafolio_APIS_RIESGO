@@ -1,10 +1,30 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
 
-from app.schemas.decision import DecisionRouterResponse
+from app.core.dependencies import get_decision_service
+from app.schemas.decision import DecisionPanelRequest, DecisionPanelResponse
+from app.services.decision_service import DecisionService
 
 router = APIRouter()
 
 
-@router.get("/", summary="Router decision base", response_model=DecisionRouterResponse)
-async def decision_root() -> DecisionRouterResponse:
-    return DecisionRouterResponse(message="Decision router active")
+@router.post("/panel", summary="Panel integrador de decisión", response_model=DecisionPanelResponse)
+async def decision_panel(
+    payload: DecisionPanelRequest,
+    service: DecisionService = Depends(get_decision_service),
+) -> DecisionPanelResponse:
+    try:
+        result = service.build_panel(
+            tickers=payload.tickers,
+            weights=payload.weights,
+            benchmark_ticker=payload.benchmark_ticker,
+            base_currency=payload.base_currency,
+            start=payload.start,
+            end=payload.end,
+            alpha=payload.alpha,
+            n_sim=payload.n_sim,
+            n_portfolios=payload.n_portfolios,
+            return_type=payload.return_type,
+        )
+        return DecisionPanelResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

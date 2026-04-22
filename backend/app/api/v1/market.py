@@ -71,6 +71,6 @@ async def get_returns(
         ticker=ticker.upper(),
         start=start,
         end=end,
-        message="Rendimientos calculados correctamente",
+        message="Rendimientos simples y logarítmicos calculados correctamente",
         data=records,
     )

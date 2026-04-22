@@ -22,3 +22,16 @@ class MacroQueryParams(BaseModel):
         if value not in allowed:
             raise ValueError("base_currency debe ser USD, EUR o COP")
         return value
+
+
+class ReturnTypeMixin(BaseModel):
+    return_type: str = Field(default="log", description="Tipo de rendimiento: simple o log")
+
+    @field_validator("return_type")
+    @classmethod
+    def validate_return_type(cls, v: str) -> str:
+        allowed = {"simple", "log"}
+        value = v.strip().lower()
+        if value not in allowed:
+            raise ValueError("return_type debe ser 'simple' o 'log'")
+        return value

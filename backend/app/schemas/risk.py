@@ -8,6 +8,7 @@ class PortfolioVarRequest(BaseModel):
     end: str = Field(default="2026-12-31", description="Fecha final")
     alpha: float = Field(default=0.95, ge=0.80, le=0.999, description="Nivel de confianza")
     n_sim: int = Field(default=10000, ge=1000, le=200000, description="Número de simulaciones Monte Carlo")
+    return_type: str = Field(default="log", description="Tipo de rendimiento: simple o log")
 
     @field_validator("weights")
     @classmethod
@@ -23,6 +24,14 @@ class PortfolioVarRequest(BaseModel):
         if not v:
             raise ValueError("Debe enviar al menos un ticker")
         return [item.strip().upper() for item in v]
+
+    @field_validator("return_type")
+    @classmethod
+    def validate_return_type(cls, v: str) -> str:
+        value = v.strip().lower()
+        if value not in {"simple", "log"}:
+            raise ValueError("return_type debe ser 'simple' o 'log'")
+        return value
 
 
 class VarMethodResult(BaseModel):

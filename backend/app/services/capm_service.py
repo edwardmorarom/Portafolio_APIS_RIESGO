@@ -12,21 +12,26 @@ class CapmService:
         self.market_client = market_client
         self.macro_service = macro_service
 
-    def _returns(self, ticker: str, start: str, end: str) -> pd.Series:
+    def _returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:
         df = self.market_client.get_prices(ticker=ticker, start=start, end=end)
         if df.empty or "Close" not in df.columns:
             return pd.Series(dtype=float)
 
         close = pd.to_numeric(df["Close"], errors="coerce").dropna()
-        ret = close.pct_change().dropna()
+
+        if return_type == "log":
+            ret = np.log(close / close.shift(1)).dropna()
+        else:
+            ret = close.pct_change().dropna()
+
         ret.name = ticker.upper()
         return ret
 
-    def _returns_matrix(self, tickers: list[str], start: str, end: str) -> pd.DataFrame:
+    def _returns_matrix(self, tickers: list[str], start: str, end: str, return_type: str) -> pd.DataFrame:
         series_list: list[pd.Series] = []
 
         for ticker in tickers:
-            s = self._returns(ticker=ticker, start=start, end=end)
+            s = self._returns(ticker=ticker, start=start, end=end, return_type=return_type)
             if not s.empty:
                 series_list.append(s)
 
@@ -42,9 +47,10 @@ class CapmService:
         base_currency: str,
         start: str,
         end: str,
+        return_type: str,
     ) -> dict:
-        asset_ret = self._returns(ticker=ticker, start=start, end=end)
-        bench_ret = self._returns(ticker=benchmark_ticker, start=start, end=end)
+        asset_ret = self._returns(ticker=ticker, start=start, end=end, return_type=return_type)
+        bench_ret = self._returns(ticker=benchmark_ticker, start=start, end=end, return_type=return_type)
 
         if asset_ret.empty:
             raise ValueError(f"No se encontraron rendimientos para el activo {ticker}.")
@@ -97,9 +103,10 @@ class CapmService:
         base_currency: str,
         start: str,
         end: str,
+        return_type: str,
     ) -> dict:
-        returns_df = self._returns_matrix(tickers=tickers, start=start, end=end)
-        bench_ret = self._returns(ticker=benchmark_ticker, start=start, end=end)
+        returns_df = self._returns_matrix(tickers=tickers, start=start, end=end, return_type=return_type)
+        bench_ret = self._returns(ticker=benchmark_ticker, start=start, end=end, return_type=return_type)
 
         if returns_df.empty:
             raise ValueError("No fue posible construir la matriz de rendimientos del portafolio.")

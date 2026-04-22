@@ -23,6 +23,7 @@ async def efficient_frontier(
             end=payload.end,
             rf_annual=payload.rf_annual,
             n_portfolios=payload.n_portfolios,
+            return_type=payload.return_type,
         )
         return EfficientFrontierResponse(**result)
     except ValueError as exc:

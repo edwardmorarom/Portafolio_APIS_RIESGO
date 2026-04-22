@@ -10,6 +10,7 @@ from app.services.portfolio_service import PortfolioService
 from app.services.risk_service import RiskService
 from app.services.technical_service import TechnicalService
 from app.services.capm_service import CapmService
+from app.services.decision_service import DecisionService
 
 
 def get_app_settings() -> Settings:
@@ -44,12 +45,20 @@ def get_macro_service(client: MacroClient = Depends(get_macro_client)) -> MacroS
     return MacroService(client=client)
 
 
-def get_decision_service() -> DecisionService:
-    return DecisionService()
-
-
 def get_capm_service(
     market_client: MarketClient = Depends(get_market_client),
     macro_service: MacroService = Depends(get_macro_service),
 ) -> CapmService:
     return CapmService(market_client=market_client, macro_service=macro_service)
+
+
+def get_decision_service(
+    risk_service: RiskService = Depends(get_risk_service),
+    portfolio_service: PortfolioService = Depends(get_portfolio_service),
+    capm_service: CapmService = Depends(get_capm_service),
+) -> DecisionService:
+    return DecisionService(
+        risk_service=risk_service,
+        portfolio_service=portfolio_service,
+        capm_service=capm_service,
+    )
