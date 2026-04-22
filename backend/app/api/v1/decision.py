@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.dependencies import get_decision_service
 from app.schemas.decision import DecisionPanelRequest, DecisionPanelResponse
 from app.services.decision_service import DecisionService
+from app.core.security import require_internal_api_key
 
 router = APIRouter()
 
@@ -10,6 +11,7 @@ router = APIRouter()
 @router.post("/panel", summary="Panel integrador de decisión", response_model=DecisionPanelResponse)
 async def decision_panel(
     payload: DecisionPanelRequest,
+    _: None = Depends(require_internal_api_key),
     service: DecisionService = Depends(get_decision_service),
 ) -> DecisionPanelResponse:
     try:
