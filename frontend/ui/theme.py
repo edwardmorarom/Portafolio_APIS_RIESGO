@@ -301,6 +301,30 @@ def build_global_css(modo: str = "General") -> str:
         border: 1px solid #d6dbe3 !important;
     }
 
+    [data-testid="stSidebar"] .stNumberInput input,
+    [data-testid="stSidebar"] .stTextInput input,
+    [data-testid="stSidebar"] .stDateInput input {
+        background: #ffffff !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        caret-color: #0F172A !important;
+        font-weight: 600 !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stSidebar"] .stNumberInput button,
+    [data-testid="stSidebar"] .stDateInput button,
+    [data-testid="stSidebar"] .stSelectbox button {
+        color: #8A1538 !important;
+        background: transparent !important;
+    }
+
+    [data-testid="stSidebar"] .stNumberInput button svg,
+    [data-testid="stSidebar"] .stDateInput button svg,
+    [data-testid="stSidebar"] .stSelectbox button svg {
+        fill: #8A1538 !important;
+    }
+
     .stButton > button {
         background: linear-gradient(135deg, var(--accent-main), var(--accent-second));
         color: white;

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-import numpy as np
 
 from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_info_card, render_meta_row
@@ -22,23 +22,13 @@ from ui.plot_style import style_plotly_figure
 BENCHMARK_DEFAULT = "ACWI"
 BASE_CURRENCY_DEFAULT = "USD"
 
-
-def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:
-    client = get_api_client()
-
-    try:
-        assets_payload = client.get_assets()
-        assets = assets_payload.get("assets", [])
-    except ApiClientError as exc:
-        return [], {}, f"No fue posible cargar activos desde backend: {exc.message}"
-
-    try:
-        help_payload = client.get_help_catalog()
-        help_map = {item["key"]: item for item in help_payload.get("items", [])}
-    except ApiClientError:
-        help_map = {}
-
-    return assets, help_map, None
+PORTFOLIO_ASSETS = [
+    {"name": "Seven & i Holdings", "ticker": "3382.T", "country": "JP"},
+    {"name": "Alimentation Couche-Tard", "ticker": "ATD.TO", "country": "CA"},
+    {"name": "FEMSA", "ticker": "FEMSAUBD.MX", "country": "MX"},
+    {"name": "BP", "ticker": "BP.L", "country": "UK"},
+    {"name": "Carrefour", "ticker": "CA.PA", "country": "FR"},
+]
 
 
 def _resolve_dates(
@@ -70,34 +60,6 @@ def _resolve_dates(
     return pd.Timestamp(start_date).normalize(), pd.Timestamp(end_date).normalize()
 
 
-def _fetch_capm(
-    ticker: str,
-    start: str,
-    end: str,
-    benchmark_ticker: str,
-    base_currency: str,
-    mode: str,
-    return_type: str = "log",
-) -> tuple[dict, str | None]:
-    client = get_api_client()
-
-    try:
-        payload = client.get_capm(
-            ticker=ticker,
-            start=start,
-            end=end,
-            benchmark_ticker=benchmark_ticker,
-            base_currency=base_currency,
-            return_type=return_type,
-            mode=mode,
-        )
-        return payload, None
-    except ApiClientError as exc:
-        return {}, exc.message
-    except Exception as exc:
-        return {}, f"Error inesperado consultando CAPM: {exc}"
-
-
 def _pick_value(payload: dict | None, *keys):
     if not isinstance(payload, dict):
         return None
@@ -107,16 +69,104 @@ def _pick_value(payload: dict | None, *keys):
     return None
 
 
+def _asset_options() -> tuple[list[str], dict[str, dict]]:
+    labels = []
+    asset_map: dict[str, dict] = {}
+    for asset in PORTFOLIO_ASSETS:
+        label = f"{asset['name']} · {asset['ticker']} · {asset['country']}"
+        labels.append(label)
+        asset_map[label] = asset
+    return labels, asset_map
+
+
+def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:
+    with sidebar_container:
+        st.markdown("**Pesos del portafolio (%)**")
+        weights_pct: list[float] = []
+        for asset in PORTFOLIO_ASSETS:
+            value = st.number_input(
+                asset["ticker"],
+                min_value=0.0,
+                max_value=100.0,
+                value=20.0,
+                step=1.0,
+                key=f"{key_prefix}_{asset['ticker']}",
+                format="%.2f",
+            )
+            weights_pct.append(float(value))
+
+        total_pct = float(sum(weights_pct))
+        st.caption(f"Total asignado: {total_pct:.2f}%")
+
+        if total_pct > 100.0 + 1e-6:
+            st.error("Los pesos no pueden superar 100%.")
+        elif abs(total_pct - 100.0) > 1e-6:
+            st.warning("Para calcular el CAPM del portafolio, los pesos deben sumar exactamente 100%.")
+
+    return [w / 100.0 for w in weights_pct], total_pct
+
+
+def _fetch_capm(
+    ticker: str,
+    start: str,
+    end: str,
+    benchmark_ticker: str,
+    base_currency: str,
+    return_type: str = "log",
+) -> tuple[dict, str | None]:
+    client = get_api_client()
+    try:
+        payload = client.get_capm(
+            ticker=ticker,
+            start=start,
+            end=end,
+            benchmark_ticker=benchmark_ticker,
+            base_currency=base_currency,
+            return_type=return_type,
+            mode="general",
+        )
+        return payload, None
+    except ApiClientError as exc:
+        return {}, exc.message
+    except Exception as exc:
+        return {}, f"Error inesperado consultando CAPM: {exc}"
+
+
+def _fetch_portfolio_capm(
+    tickers: list[str],
+    weights: list[float],
+    benchmark_ticker: str,
+    base_currency: str,
+    start: str,
+    end: str,
+    return_type: str = "log",
+) -> tuple[dict, str | None]:
+    client = get_api_client()
+    payload = {
+        "tickers": tickers,
+        "weights": weights,
+        "benchmark_ticker": benchmark_ticker,
+        "base_currency": base_currency,
+        "start": start,
+        "end": end,
+        "return_type": return_type,
+    }
+
+    try:
+        response = client.get_portfolio_capm(payload)
+        if response is None:
+            return {}, "El endpoint CAPM de portafolio respondió vacío."
+        if not isinstance(response, dict):
+            return {}, f"Respuesta CAPM portafolio no válida: {type(response).__name__}"
+        return response, None
+    except ApiClientError as exc:
+        return {}, exc.message
+    except Exception as exc:
+        return {}, f"Error inesperado consultando CAPM del portafolio: {exc}"
+
+
 def _coerce_series_frame(payload: dict) -> pd.DataFrame:
-    for key in [
-        "regression_points",
-        "scatter",
-        "points",
-        "data",
-        "returns_data",
-        "observations_data",
-        "regression_data",
-    ]:
+    for key in ["regression_points", "scatter", "points", "data", "regression_data"]:
         val = payload.get(key)
         if isinstance(val, list) and val:
             df = pd.DataFrame(val)
@@ -128,23 +178,8 @@ def _coerce_series_frame(payload: dict) -> pd.DataFrame:
                         return lowered[n]
                 return None
 
-            x_col = pick(
-                "benchmark_excess",
-                "x",
-                "benchmark",
-                "benchmark_return",
-                "market_excess",
-                "market_return",
-                "benchmark_excess_return",
-            )
-            y_col = pick(
-                "asset_excess",
-                "y",
-                "asset",
-                "asset_return",
-                "asset_excess_return",
-                "security_excess",
-            )
+            x_col = pick("benchmark_excess", "x", "benchmark", "market_excess")
+            y_col = pick("asset_excess", "y", "asset", "security_excess")
 
             if x_col and y_col:
                 out = pd.DataFrame(
@@ -153,7 +188,6 @@ def _coerce_series_frame(payload: dict) -> pd.DataFrame:
                         "asset_excess": pd.to_numeric(df[y_col], errors="coerce"),
                     }
                 ).dropna()
-
                 if not out.empty:
                     return out
 
@@ -162,8 +196,6 @@ def _coerce_series_frame(payload: dict) -> pd.DataFrame:
 
 def _build_regression_figure(
     points_df: pd.DataFrame,
-    beta: float | None,
-    alpha: float | None,
     modo: str,
     show_points: bool,
     show_line: bool,
@@ -181,13 +213,12 @@ def _build_regression_figure(
                 y=points_df["asset_excess"],
                 mode="markers",
                 name="Observaciones",
-                marker=dict(size=7, opacity=0.72),
+                marker=dict(size=7, opacity=0.72, color="#4F73FF"),
             )
         )
 
         if len(x_vals) >= 2 and len(y_vals) >= 2:
             slope, intercept = np.polyfit(x_vals, y_vals, 1)
-
             x_line = pd.Series([float(x_vals.min()), float(x_vals.max())])
             y_line = intercept + slope * x_line
 
@@ -217,23 +248,22 @@ def _build_regression_figure(
         show_xgrid=not clean_view,
         show_ygrid=not clean_view,
     )
+    fig.update_layout(margin=dict(l=24, r=24, t=55, b=24))
     return fig
+
 
 def _format_capm_table(payload: dict) -> pd.DataFrame:
     rows = [
-        {"metric": "alpha_diaria", "value": _pick_value(payload, "alpha_daily", "alpha", "alpha_diaria", "alpha_simple")},
-        {"metric": "r_squared", "value": _pick_value(payload, "r_squared", "r2", "r2_score")},
+        {"metric": "beta", "value": _pick_value(payload, "beta")},
+        {"metric": "alpha_simple", "value": _pick_value(payload, "alpha_simple", "alpha_daily", "alpha")},
+        {"metric": "r_squared", "value": _pick_value(payload, "r_squared", "r2")},
+        {"metric": "p_value_beta", "value": _pick_value(payload, "p_value_beta", "beta_p_value")},
         {
-            "metric": "expected_return_capm_annual",
-            "value": _pick_value(
-                payload,
-                "expected_return_annual",
-                "expected_return_capm_annual",
-                "expected_return",
-                "capm_expected_return",
-            ),
+            "metric": "capm_expected_return",
+            "value": _pick_value(payload, "capm_expected_return", "expected_return_annual", "expected_return"),
         },
-        {"metric": "rf_anual", "value": _pick_value(payload, "risk_free_rate_annual", "rf_annual", "risk_free_rate", "rf_rate_pct")},
+        {"metric": "classification", "value": _pick_value(payload, "classification")},
+        {"metric": "rf_rate_pct", "value": _pick_value(payload, "rf_rate_pct", "rf_annual")},
     ]
     df = pd.DataFrame(rows)
 
@@ -260,41 +290,11 @@ def _classify_beta(beta: float | None) -> str:
     if beta < 0.8:
         return "Defensivo"
     if beta <= 1.2:
-        return "Cercano al mercado"
+        return "Neutro"
     return "Agresivo"
 
 
-def _beta_interpretation(beta: float | None) -> str:
-    if beta is None:
-        return "No fue posible estimar beta."
-    if beta < 0.8:
-        return "Más defensivo que el mercado"
-    if beta <= 1.2:
-        return "Sensibilidad cercana al benchmark"
-    return "Más agresivo que el mercado"
-
-
-def _alpha_interpretation(alpha: float | None) -> str:
-    if alpha is None:
-        return "Alpha no disponible"
-    if alpha > 0:
-        return "Alpha positiva"
-    if alpha < 0:
-        return "Alpha negativa"
-    return "Alpha neutra"
-
-
-def _r2_interpretation(r2: float | None) -> str:
-    if r2 is None:
-        return "Ajuste no disponible"
-    if r2 < 0.2:
-        return "Ajuste bajo"
-    if r2 < 0.5:
-        return "Ajuste moderado"
-    return "Ajuste alto"
-
-
-def _expected_return_text(v: float | None) -> str:
+def _expected_return_text(v) -> str:
     if v is None:
         return "N/D"
     try:
@@ -305,27 +305,33 @@ def _expected_return_text(v: float | None) -> str:
     return f"{float(v):.2%}"
 
 
+def _format_num(x, ndigits: int = 4) -> str:
+    if x is None:
+        return "N/D"
+    try:
+        return f"{float(x):.{ndigits}f}"
+    except Exception:
+        return str(x)
+
+
 def _capm_reading(payload: dict) -> str:
     beta = _pick_value(payload, "beta")
-    alpha = _pick_value(payload, "alpha_daily", "alpha", "alpha_diaria", "alpha_simple")
-    r2 = _pick_value(payload, "r_squared", "r2", "r2_score")
-    exp_ret = _pick_value(payload, "expected_return_annual", "expected_return_capm_annual", "expected_return", "capm_expected_return")
-    rf = _pick_value(payload, "risk_free_rate_annual", "rf_annual", "risk_free_rate", "rf_rate_pct")
+    alpha = _pick_value(payload, "alpha_simple", "alpha_daily", "alpha")
+    r2 = _pick_value(payload, "r_squared", "r2")
+    exp_ret = _pick_value(payload, "capm_expected_return", "expected_return_annual", "expected_return")
+    rf = _pick_value(payload, "rf_rate_pct", "rf_annual")
 
     beta_text = f"{float(beta):.4f}" if beta is not None else "N/D"
     alpha_text = f"{float(alpha):.6f}" if alpha is not None else "N/D"
     r2_text = f"{float(r2):.4f}" if r2 is not None else "N/D"
-    rf_text = f"{float(rf):.2%}" if rf is not None else "N/D"
+    rf_text = f"{float(rf) / 100:.2%}" if rf is not None else "N/D"
 
     return (
-        f"La beta de {beta_text} indica un perfil {_beta_interpretation(beta).lower()}, "
-        f"el alpha diario estimado es {alpha_text}, y el R² del ajuste es {r2_text}. "
-        f"Bajo CAPM, el retorno esperado anual es {_expected_return_text(exp_ret)}, "
-        f"frente a una tasa libre de riesgo de {rf_text}."
+        f"La beta de {beta_text} resume la sensibilidad del activo frente al benchmark, "
+        f"el alpha simple es {alpha_text}, el R² del ajuste es {r2_text} "
+        f"y el retorno esperado por CAPM es {_expected_return_text(exp_ret)} con tasa libre de riesgo de {rf_text}."
     )
 
-
-assets, help_map, load_error = _fetch_assets_and_help()
 
 modo, filtros_sidebar = setup_dashboard_page(
     title="Dashboard Riesgo",
@@ -335,25 +341,14 @@ modo, filtros_sidebar = setup_dashboard_page(
     filtros_expanded=False,
 )
 
-if load_error:
-    st.error(load_error)
-    st.stop()
-
-asset_labels = []
-asset_map: dict[str, dict] = {}
-for asset in assets:
-    label = f"{asset['name']} · {asset['ticker']} · {asset['country']}"
-    asset_labels.append(label)
-    asset_map[label] = asset
-
 today = pd.Timestamp.today().normalize()
+asset_labels, asset_map = _asset_options()
 
 with filtros_sidebar:
     selected_label = st.selectbox(
         "Activo",
         options=asset_labels,
         key="capm_asset_backend",
-        help="Selecciona el activo para estimar beta, alpha y retorno esperado bajo CAPM.",
     )
 
     horizonte = st.selectbox(
@@ -382,19 +377,10 @@ with filtros_sidebar:
                 key="capm_custom_end",
             )
 
-    benchmark_ticker = st.text_input(
-        "Benchmark",
-        value=BENCHMARK_DEFAULT,
-        key="capm_benchmark",
-        help="Benchmark principal del proyecto: ACWI.",
-    )
+    benchmark_ticker = st.text_input("Benchmark", value=BENCHMARK_DEFAULT, key="capm_benchmark")
+    base_currency = st.selectbox("Moneda base", ["USD", "EUR", "COP"], index=0, key="capm_base_currency")
 
-    base_currency = st.selectbox(
-        "Moneda base",
-        ["USD", "EUR", "COP"],
-        index=0,
-        key="capm_base_currency",
-    )
+    weights_decimals, total_pct = _weights_editor(filtros_sidebar, "capm_weight")
 
 selected_asset = asset_map[selected_label]
 ticker = selected_asset["ticker"]
@@ -417,109 +403,113 @@ payload, capm_error = _fetch_capm(
     end=end_date.strftime("%Y-%m-%d"),
     benchmark_ticker=benchmark_ticker.strip() or BENCHMARK_DEFAULT,
     base_currency=base_currency,
-    mode=modo.lower(),
 )
 
+portfolio_payload = {}
+portfolio_capm_error = None
+if abs(total_pct - 100.0) <= 1e-6:
+    portfolio_payload, portfolio_capm_error = _fetch_portfolio_capm(
+        tickers=[a["ticker"] for a in PORTFOLIO_ASSETS],
+        weights=weights_decimals,
+        benchmark_ticker=benchmark_ticker.strip() or BENCHMARK_DEFAULT,
+        base_currency=base_currency,
+        start=start_date.strftime("%Y-%m-%d"),
+        end=end_date.strftime("%Y-%m-%d"),
+    )
+
 header_dashboard(
-    "Módulo 4 - CAPM y Beta",
-    "Evalúa sensibilidad al mercado, rendimiento esperado y riesgo sistemático del activo",
+    "Mód. 4: CAPM y Beta",
+    "Cuantifica el riesgo sistemático y estima el rendimiento esperado según CAPM.",
     modo=modo,
 )
 
 if modo == "General":
     nota(
-        "Este módulo muestra qué tan sensible es el activo frente al benchmark y cómo se estima su retorno esperado bajo CAPM."
+        "Incluye beta del activo, dispersión activo versus benchmark, CAPM con tasa libre de riesgo y beta del portafolio ponderado por el usuario."
     )
 else:
     nota(
-        "En modo estadístico se enfatiza la regresión activo-mercado, la significancia de beta y la lectura técnica de alpha, R² y retorno esperado."
+        "En modo estadístico se enfatizan la regresión CAPM, la clasificación del activo y la comparación entre beta individual y beta del portafolio."
     )
 
 if capm_error:
     st.error(capm_error)
     st.stop()
 
+if portfolio_capm_error:
+    st.warning(f"No fue posible cargar beta del portafolio: {portfolio_capm_error}")
+
 beta = _pick_value(payload, "beta")
-alpha_daily = _pick_value(payload, "alpha_daily", "alpha", "alpha_diaria", "alpha_simple")
-r_squared = _pick_value(payload, "r_squared", "r2", "r2_score")
-expected_return_annual = _pick_value(
-    payload,
-    "expected_return_annual",
-    "expected_return_capm_annual",
-    "expected_return",
-    "capm_expected_return",
-)
-classification = _pick_value(payload, "classification", "clasificacion") or _classify_beta(beta)
+alpha_simple = _pick_value(payload, "alpha_simple", "alpha_daily", "alpha")
+r_squared = _pick_value(payload, "r_squared", "r2")
+expected_return_annual = _pick_value(payload, "capm_expected_return", "expected_return_annual", "expected_return")
+classification = _pick_value(payload, "classification") or _classify_beta(beta)
 points_df = _coerce_series_frame(payload)
 table_df = _format_capm_table(payload)
+
+portfolio_beta = _pick_value(portfolio_payload, "portfolio_beta", "beta")
+portfolio_return_annual = _pick_value(portfolio_payload, "portfolio_return_annual", "expected_return_annual")
+portfolio_capm_expected = _pick_value(portfolio_payload, "capm_expected_return", "expected_return")
+portfolio_alpha = _pick_value(portfolio_payload, "alpha_simple", "alpha")
 
 render_meta_row(
     [
         ("Activo", asset_name),
         ("Ticker", ticker),
         ("Benchmark", benchmark_ticker.strip() or BENCHMARK_DEFAULT),
-        ("Base", base_currency),
+        ("Moneda", base_currency),
         ("Horizonte", horizonte),
     ]
 )
 
 seccion("KPIs CAPM")
 
+if portfolio_beta is not None:
+    p1, p2, p3, p4 = st.columns(4)
+    with p1:
+        tarjeta_kpi("Beta del portafolio", _format_num(portfolio_beta, 4), subtexto="Sensibilidad conjunta de la cartera.")
+    with p2:
+        tarjeta_kpi("Retorno anual portafolio", _expected_return_text(portfolio_return_annual), subtexto="Rentabilidad anualizada de la cartera.")
+    with p3:
+        tarjeta_kpi("Retorno CAPM portafolio", _expected_return_text(portfolio_capm_expected), subtexto="Retorno esperado bajo CAPM.")
+    with p4:
+        tarjeta_kpi("Alpha portafolio", _format_num(portfolio_alpha, 6), subtexto="Desviación frente al retorno esperado.")
+
+    render_info_card(
+        "Lectura del portafolio",
+        (
+            f"La beta del portafolio es {_format_num(portfolio_beta, 4)}. "
+            "Esta medida resume la sensibilidad total de la cartera frente al benchmark y complementa la beta individual del activo."
+        ),
+    )
+
 c1, c2, c3, c4 = st.columns(4)
-
 with c1:
-    tarjeta_kpi(
-        "Beta",
-        f"{float(beta):.4f}" if beta is not None else "N/D",
-        subtexto="Sensibilidad sistemática frente al mercado.",
-        help_text=_beta_interpretation(beta),
-    )
-
+    tarjeta_kpi("Beta", _format_num(beta, 4), subtexto="Sensibilidad sistemática frente al mercado.")
 with c2:
-    tarjeta_kpi(
-        "Alpha diaria",
-        f"{float(alpha_daily):.6f}" if alpha_daily is not None else "N/D",
-        subtexto="Exceso de retorno no explicado por la beta.",
-        help_text=_alpha_interpretation(alpha_daily),
-    )
-
+    tarjeta_kpi("Alpha simple", _format_num(alpha_simple, 6), subtexto="Exceso de retorno no explicado por la beta.")
 with c3:
-    tarjeta_kpi(
-        "R²",
-        f"{float(r_squared):.4f}" if r_squared is not None else "N/D",
-        subtexto="Capacidad explicativa del ajuste lineal.",
-        help_text=_r2_interpretation(r_squared),
-    )
-
+    tarjeta_kpi("R²", _format_num(r_squared, 4), subtexto="Capacidad explicativa del ajuste lineal.")
 with c4:
-    tarjeta_kpi(
-        "Retorno esperado anual",
-        _expected_return_text(expected_return_annual),
-        subtexto="Retorno teórico compatible con el riesgo sistemático.",
-        help_text="Estimación anual bajo CAPM.",
-    )
+    tarjeta_kpi("Retorno esperado anual", _expected_return_text(expected_return_annual), subtexto="Retorno teórico compatible con el riesgo sistemático.")
 
 plot_card_footer(_capm_reading(payload))
 
-# ---- SECCION CLASIFICACION DEL ACTIVO (con tabla integrada) ----
 seccion("Clasificación del activo")
 
 render_info_card(
     "Clasificación obtenida",
     f"La clasificación obtenida es: {classification}. Esta etiqueta resume si el activo se comporta de forma más agresiva, defensiva o cercana al mercado.",
 )
-
-st.markdown("<div style='height:0.35rem;'></div>", unsafe_allow_html=True)
 st.dataframe(table_df, use_container_width=True, hide_index=True)
-# ---- FIN SECCION CLASIFICACION ----
 
 seccion("Regresión CAPM")
 
 plot_card_header(
     "Relación activo-mercado",
-    "Visualiza la nube de puntos entre el exceso de retorno del benchmark y el exceso del activo.",
+    "Usa los filtros para limpiar la lectura o enfatizar la recta de regresión.",
     modo=modo,
-    caption="Usa los filtros para limpiar la lectura o enfatizar la recta de regresión.",
+    caption="Los puntos representan excesos de retorno del activo frente al benchmark.",
 )
 
 r1, r2, r3 = st.columns(3)
@@ -532,8 +522,6 @@ with r3:
 
 fig_reg = _build_regression_figure(
     points_df=points_df,
-    beta=beta,
-    alpha=alpha_daily,
     modo=modo,
     show_points=show_points,
     show_line=show_line,
@@ -547,9 +535,7 @@ if points_df.empty:
         "La API no devolvió observaciones utilizables para construir la nube de puntos de la regresión CAPM. "
         "Por eso la gráfica aparece vacía aunque sí exista beta."
     )
-    with st.expander("Ver payload CAPM recibido", expanded=False):
-        st.json(payload)
 else:
     plot_card_footer(
-        "La nube de puntos muestra cómo se relacionan los excesos de retorno del activo y del benchmark. La pendiente de la recta resume la beta, mientras que la dispersión alrededor refleja riesgo idiosincrático."
+        "La nube de puntos muestra cómo se relacionan los excesos de retorno del activo y del benchmark. La pendiente resume la beta."
     )

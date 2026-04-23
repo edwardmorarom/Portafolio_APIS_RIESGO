@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from services.api_client import ApiClientError, get_api_client
-from ui.cards import render_info_card, render_meta_row
+from ui.cards import render_info_card
 from ui.dashboard_ui import (
     header_dashboard,
     nota,
@@ -25,16 +25,6 @@ BASE_PORTFOLIO = [
     {"name": "BP", "ticker": "BP.L", "country": "UK"},
     {"name": "Carrefour", "ticker": "CA.PA", "country": "FR"},
 ]
-
-
-def _fetch_help() -> tuple[dict[str, dict], str | None]:
-    client = get_api_client()
-    try:
-        help_payload = client.get_help_catalog()
-        help_map = {item["key"]: item for item in help_payload.get("items", [])}
-        return help_map, None
-    except ApiClientError:
-        return {}, None
 
 
 def _resolve_dates(
@@ -75,11 +65,31 @@ def _pick_value(payload: dict | None, *keys):
     return None
 
 
-def _normalize_weights(raw_weights: list[float]) -> list[float]:
-    total = sum(raw_weights)
-    if total <= 0:
-        return [1 / len(raw_weights)] * len(raw_weights)
-    return [w / total for w in raw_weights]
+def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:
+    with sidebar_container:
+        st.markdown("**Pesos de referencia del portafolio (%)**")
+        weights_pct: list[float] = []
+        for asset in BASE_PORTFOLIO:
+            value = st.number_input(
+                asset["ticker"],
+                min_value=0.0,
+                max_value=100.0,
+                value=20.0,
+                step=1.0,
+                key=f"{key_prefix}_{asset['ticker']}",
+                format="%.2f",
+            )
+            weights_pct.append(float(value))
+
+        total_pct = float(sum(weights_pct))
+        st.caption(f"Total asignado: {total_pct:.2f}%")
+
+        if total_pct > 100.0 + 1e-6:
+            st.error("Los pesos no pueden superar 100%.")
+        elif abs(total_pct - 100.0) > 1e-6:
+            st.warning("Estos pesos son de referencia visual. La optimización de Markowitz sigue calculándose sobre el universo seleccionado.")
+
+    return [w / 100.0 for w in weights_pct], total_pct
 
 
 def _build_frontier_payload(
@@ -89,6 +99,7 @@ def _build_frontier_payload(
     n_portfolios: int,
     target_return: float | None,
     risk_profile: str | None,
+    reference_weights: list[float],
 ) -> dict:
     return {
         "tickers": [a["ticker"] for a in BASE_PORTFOLIO],
@@ -99,6 +110,7 @@ def _build_frontier_payload(
         "target_return_annual": target_return,
         "risk_profile": risk_profile,
         "return_type": "log",
+        "weights": reference_weights,
     }
 
 
@@ -118,13 +130,7 @@ def _fetch_frontier(payload: dict) -> tuple[dict, str | None]:
 
 
 def _extract_frontier_df(payload: dict) -> pd.DataFrame:
-    for key in [
-        "frontier",
-        "frontier_points",
-        "efficient_frontier",
-        "points",
-        "data",
-    ]:
+    for key in ["frontier", "frontier_points", "efficient_frontier", "points"]:
         val = payload.get(key)
         if isinstance(val, list) and val:
             df = pd.DataFrame(val)
@@ -149,9 +155,7 @@ def _extract_frontier_df(payload: dict) -> pd.DataFrame:
                 )
                 if sharpe_col:
                     out["sharpe"] = pd.to_numeric(df[sharpe_col], errors="coerce")
-                out = out.dropna(subset=["volatility", "return"])
-                if not out.empty:
-                    return out
+                return out.dropna(subset=["volatility", "return"]).reset_index(drop=True)
 
     return pd.DataFrame(columns=["volatility", "return", "sharpe"])
 
@@ -185,6 +189,30 @@ def _extract_simulated_df(payload: dict) -> pd.DataFrame:
                 return out.dropna(subset=["volatility", "return"]).reset_index(drop=True)
 
     return pd.DataFrame(columns=["volatility", "return", "sharpe"])
+
+
+def _extract_named_block(payload: dict, *keys) -> dict:
+    for key in keys:
+        val = payload.get(key)
+        if isinstance(val, dict):
+            return val
+    return {}
+
+
+def _extract_min_var(payload: dict) -> dict:
+    return _extract_named_block(payload, "min_variance", "minimum_variance", "min_variance_portfolio")
+
+
+def _extract_max_sharpe(payload: dict) -> dict:
+    return _extract_named_block(payload, "max_sharpe", "maximum_sharpe", "max_sharpe_portfolio")
+
+
+def _extract_target(payload: dict) -> dict:
+    return _extract_named_block(payload, "target_return_portfolio", "target_portfolio")
+
+
+def _extract_profile_suggestion(payload: dict) -> dict:
+    return _extract_named_block(payload, "suggested_profile_portfolio", "profile_portfolio")
 
 
 def _extract_weights_df(obj: dict | None) -> pd.DataFrame:
@@ -222,40 +250,17 @@ def _extract_weights_df(obj: dict | None) -> pd.DataFrame:
     return pd.DataFrame(columns=["Activo", "Peso", "Participación"])
 
 
-def _extract_named_block(payload: dict, *keys) -> dict:
-    for key in keys:
-        val = payload.get(key)
-        if isinstance(val, dict):
-            return val
-    return {}
-
-
-def _extract_min_var(payload: dict) -> dict:
-    return _extract_named_block(
-        payload,
-        "min_variance",
-        "minimum_variance",
-        "min_variance_portfolio",
-        "portfolio_min_variance",
-    )
-
-
-def _extract_max_sharpe(payload: dict) -> dict:
-    return _extract_named_block(
-        payload,
-        "max_sharpe",
-        "maximum_sharpe",
-        "max_sharpe_portfolio",
-        "portfolio_max_sharpe",
-    )
-
-
-def _extract_target(payload: dict) -> dict:
-    return _extract_named_block(payload, "target_return_portfolio", "target_portfolio", "objective_portfolio")
-
-
-def _extract_profile_suggestion(payload: dict) -> dict:
-    return _extract_named_block(payload, "suggested_profile_portfolio", "profile_portfolio", "suggested_portfolio")
+def _extract_reference_weights_df(weights: list[float]) -> pd.DataFrame:
+    rows = []
+    for asset, weight in zip(BASE_PORTFOLIO, weights):
+        rows.append(
+            {
+                "Activo": asset["ticker"],
+                "Peso": float(weight),
+                "Participación": f"{float(weight):.2%}",
+            }
+        )
+    return pd.DataFrame(rows).sort_values("Peso", ascending=False).reset_index(drop=True)
 
 
 def _extract_corr_df(payload: dict) -> pd.DataFrame:
@@ -307,9 +312,9 @@ def _build_corr_heatmap(corr_df: pd.DataFrame, modo: str, clean_view: bool) -> g
                 texttemplate="%{text}",
                 textfont={"size": 10},
                 colorscale=[
-                    [0.0, "#2166AC"],
-                    [0.5, "#F7F7F7"],
-                    [1.0, "#B2182B"],
+                    [0.0, "#1D4ED8"],
+                    [0.5, "#F8FAFC"],
+                    [1.0, "#8A1538"],
                 ],
                 colorbar={"title": "Correlación"},
             )
@@ -318,7 +323,7 @@ def _build_corr_heatmap(corr_df: pd.DataFrame, modo: str, clean_view: bool) -> g
     fig = style_plotly_figure(
         fig,
         modo=modo,
-        title=None,
+        title="",
         xaxis_title="",
         yaxis_title="",
         show_xgrid=not clean_view,
@@ -347,17 +352,19 @@ def _build_frontier_figure(
 
     if not simulated_df.empty and show_cloud:
         marker_kwargs = {
-            "size": 6,
-            "opacity": 0.34,
-            "color": "rgba(59,130,246,0.55)",
+            "size": 5,
+            "opacity": 0.42,
+            "color": "rgba(59,130,246,0.40)",
+            "line": {"width": 0},
         }
         if "sharpe" in simulated_df.columns and simulated_df["sharpe"].notna().any():
             marker_kwargs = {
-                "size": 6,
-                "opacity": 0.48,
+                "size": 5,
+                "opacity": 0.52,
                 "color": simulated_df["sharpe"],
                 "colorscale": "Plasma",
                 "colorbar": {"title": "Sharpe"},
+                "line": {"width": 0},
             }
 
         fig.add_trace(
@@ -383,9 +390,9 @@ def _build_frontier_figure(
         )
 
     if show_optimal:
-        mv_ret = _metric_from_block(min_var, "expected_return", "return", "retorno")
+        mv_ret = _metric_from_block(min_var, "return", "expected_return", "retorno")
         mv_vol = _metric_from_block(min_var, "volatility", "risk", "std")
-        ms_ret = _metric_from_block(max_sharpe, "expected_return", "return", "retorno")
+        ms_ret = _metric_from_block(max_sharpe, "return", "expected_return", "retorno")
         ms_vol = _metric_from_block(max_sharpe, "volatility", "risk", "std")
 
         if mv_ret is not None and mv_vol is not None:
@@ -413,21 +420,21 @@ def _build_frontier_figure(
     fig = style_plotly_figure(
         fig,
         modo=modo,
-        title=None,
+        title="",
         xaxis_title="Volatilidad",
         yaxis_title="Retorno",
         show_xgrid=not clean_view,
         show_ygrid=not clean_view,
     )
     fig.update_layout(
-        margin=dict(l=24, r=24, t=42, b=24),
+        margin=dict(l=24, r=24, t=26, b=24),
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.08,
+            y=1.12,
             xanchor="left",
             x=0.0,
-            bgcolor="rgba(255,255,255,0.78)",
+            bgcolor="rgba(255,255,255,0.82)",
             bordercolor="rgba(148,163,184,0.22)",
             borderwidth=1,
             font=dict(size=10),
@@ -445,20 +452,18 @@ def _module_reading(
     n_portfolios: int,
     risk_free_rate: float,
 ) -> str:
-    mv_ret = _metric_from_block(min_var, "expected_return", "return", "retorno")
+    mv_ret = _metric_from_block(min_var, "return", "expected_return", "retorno")
     mv_vol = _metric_from_block(min_var, "volatility", "risk", "std")
-    ms_ret = _metric_from_block(max_sharpe, "expected_return", "return", "retorno")
+    ms_ret = _metric_from_block(max_sharpe, "return", "expected_return", "retorno")
     ms_sharpe = _metric_from_block(max_sharpe, "sharpe", "sharpe_ratio")
 
     return (
         f"Se analizaron {n_assets} activos con {observations} observaciones alineadas y se simularon {n_portfolios:,} "
-        f"portafolios usando una tasa libre de riesgo de {_format_pct(risk_free_rate)}."
-        f" El portafolio de mínima varianza ofrece un retorno esperado de {_format_pct(mv_ret)} con volatilidad de {_format_pct(mv_vol)}, "
+        f"portafolios usando una tasa libre de riesgo de {_format_pct(risk_free_rate)}. "
+        f"El portafolio de mínima varianza ofrece un retorno esperado de {_format_pct(mv_ret)} con volatilidad de {_format_pct(mv_vol)}, "
         f"mientras que el portafolio de máximo Sharpe alcanza un retorno esperado de {_format_pct(ms_ret)} con Sharpe de {_format_num(ms_sharpe, 3)}."
     )
 
-
-help_map, _ = _fetch_help()
 
 modo, filtros_sidebar = setup_dashboard_page(
     title="Dashboard Riesgo",
@@ -531,6 +536,8 @@ with filtros_sidebar:
         key="markowitz_investor_profile",
     )
 
+    reference_weights, total_pct = _weights_editor(filtros_sidebar, "markowitz_weight")
+
 risk_profile_map = {
     "Sin perfil": None,
     "Conservador": "conservador",
@@ -558,6 +565,7 @@ request_payload = _build_frontier_payload(
     n_portfolios=n_portfolios,
     target_return=target_return_pct,
     risk_profile=risk_profile,
+    reference_weights=reference_weights,
 )
 
 payload, frontier_error = _fetch_frontier(request_payload)
@@ -574,7 +582,7 @@ if modo == "General":
     )
 else:
     nota(
-        "En modo estadístico se enfatizan la matriz de correlación, la frontera eficiente, la composición de portafolios óptimos y los indicadores de eficiencia."
+        "En modo estadístico se enfatizan la matriz de correlación, la frontera eficiente, la composición de portafolios óptimos y el perfil de inversor."
     )
 
 if frontier_error:
@@ -597,55 +605,30 @@ min_var_df = _extract_weights_df(min_var)
 max_sharpe_df = _extract_weights_df(max_sharpe)
 target_df = _extract_weights_df(target_port)
 profile_df = _extract_weights_df(profile_suggestion)
+reference_df = _extract_reference_weights_df(reference_weights)
 
 observations = _pick_value(payload, "observations", "n_observations", "sample_size")
 n_assets = _pick_value(payload, "n_assets", "num_assets") or len(BASE_PORTFOLIO)
 
-tab1, tab2, tab3 = st.tabs(
-    ["Portafolios destacados", "Gráficas", "Composición óptima"]
-)
+tab1, tab2, tab3 = st.tabs(["Portafolios destacados", "Gráficas", "Composición óptima"])
 
 with tab1:
     seccion("Portafolios destacados")
 
-    mv_ret = _metric_from_block(min_var, "expected_return", "return", "retorno")
+    mv_ret = _metric_from_block(min_var, "return", "expected_return", "retorno")
     mv_vol = _metric_from_block(min_var, "volatility", "risk", "std")
-    ms_ret = _metric_from_block(max_sharpe, "expected_return", "return", "retorno")
+    ms_ret = _metric_from_block(max_sharpe, "return", "expected_return", "retorno")
     ms_sharpe = _metric_from_block(max_sharpe, "sharpe", "sharpe_ratio")
 
     c1, c2, c3, c4 = st.columns(4)
-
     with c1:
-        tarjeta_kpi(
-            "Retorno mín. varianza",
-            _format_pct(mv_ret),
-            subtexto="Rentabilidad asociada a la cartera de menor volatilidad.",
-            help_text="Retorno esperado del portafolio de mínima varianza.",
-        )
-
+        tarjeta_kpi("Retorno mín. varianza", _format_pct(mv_ret), subtexto="Rentabilidad asociada a la cartera de menor volatilidad.")
     with c2:
-        tarjeta_kpi(
-            "Volatilidad mín. varianza",
-            _format_pct(mv_vol),
-            subtexto="Menor riesgo disponible.",
-            help_text="Nivel mínimo de riesgo dentro del conjunto simulado.",
-        )
-
+        tarjeta_kpi("Volatilidad mín. varianza", _format_pct(mv_vol), subtexto="Menor riesgo disponible.")
     with c3:
-        tarjeta_kpi(
-            "Retorno máx. Sharpe",
-            _format_pct(ms_ret),
-            subtexto="Rentabilidad esperada del mejor balance riesgo-retorno.",
-            help_text="Retorno esperado del portafolio con máximo Sharpe.",
-        )
-
+        tarjeta_kpi("Retorno máx. Sharpe", _format_pct(ms_ret), subtexto="Rentabilidad esperada del mejor balance riesgo-retorno.")
     with c4:
-        tarjeta_kpi(
-            "Sharpe máximo",
-            _format_num(ms_sharpe, 3),
-            subtexto="Mejor eficiencia riesgo-retorno.",
-            help_text="Exceso de retorno por unidad de volatilidad.",
-        )
+        tarjeta_kpi("Sharpe máximo", _format_num(ms_sharpe, 3), subtexto="Mejor eficiencia riesgo-retorno.")
 
     plot_card_footer(
         _module_reading(
@@ -659,7 +642,6 @@ with tab1:
     )
 
     seccion("KPIs del módulo")
-
     k1, k2, k3, k4 = st.columns(4)
     with k1:
         tarjeta_kpi("Activos analizados", str(int(n_assets)), subtexto="Universo usado para construir combinaciones factibles.")
@@ -693,9 +675,9 @@ with tab2:
     with g1:
         plot_card_header(
             "Matriz de correlación",
-            "Muestra qué tan relacionados están los activos entre sí y ayuda a juzgar el potencial de diversificación.",
+            "Activo o desactiva detalles para simplificar la lectura visual de la matriz.",
             modo=modo,
-            caption="Usa una escala azul-rojo para distinguir mejor correlaciones negativas y positivas.",
+            caption="Usa una escala azul-vinotinto para distinguir mejor correlaciones negativas y positivas.",
         )
 
         o1, o2 = st.columns(2)
@@ -716,9 +698,9 @@ with tab2:
     with g2:
         plot_card_header(
             "Frontera eficiente",
-            "Resume la nube simulada, la curva eficiente y los portafolios óptimos.",
+            "Mejoré leyenda, ejes y contraste para una lectura más clara.",
             modo=modo,
-            caption="Se separó la leyenda del área del gráfico para que no invada la visualización.",
+            caption="La nube simulada, la frontera y los óptimos se muestran separados visualmente para evitar interferencias con el título.",
         )
 
         p1, p2, p3, p4 = st.columns(4)
@@ -744,7 +726,7 @@ with tab2:
         )
         st.plotly_chart(fig_frontier, use_container_width=True)
         plot_card_footer(
-            "La frontera eficiente resume las mejores combinaciones riesgo-retorno encontradas. La nube muestra el espacio completo de portafolios simulados y los puntos óptimos marcan soluciones de referencia."
+            "La frontera eficiente resume las mejores combinaciones riesgo-retorno encontradas. Los portafolios destacados permiten comparar estabilidad, eficiencia y metas de rentabilidad."
         )
 
     seccion("KPIs del módulo")
@@ -768,11 +750,10 @@ with tab3:
     seccion("Composición de portafolios óptimos")
 
     c1, c2 = st.columns(2, gap="large")
-
     with c1:
         plot_card_header(
             "Portafolio de mínima varianza",
-            "Composición del portafolio con menor riesgo dentro del conjunto estimado.",
+            "Diseñado de mayor a menor participación.",
             modo=modo,
             caption="Ordenado de mayor a menor participación.",
         )
@@ -781,7 +762,7 @@ with tab3:
     with c2:
         plot_card_header(
             "Portafolio de máximo Sharpe",
-            "Composición del portafolio con mejor relación retorno-riesgo.",
+            "Diseñado de mayor a menor participación.",
             modo=modo,
             caption="Ordenado de mayor a menor participación.",
         )
@@ -789,26 +770,14 @@ with tab3:
 
     seccion("Optimización con retorno objetivo")
 
-    target_ret = _metric_from_block(
-        target_port,
-        "achieved_return_annual",
-        "expected_return",
-        "return",
-        "retorno",
-    )
-    target_vol = _metric_from_block(
-        target_port,
-        "volatility_annual",
-        "volatility",
-        "risk",
-        "std",
-    )
+    target_ret = _metric_from_block(target_port, "achieved_return_annual", "expected_return", "return", "retorno")
+    target_vol = _metric_from_block(target_port, "volatility_annual", "volatility", "risk", "std")
 
     t1, t2 = st.columns([1.05, 1.2], gap="large")
     with t1:
         plot_card_header(
             "Solución condicionada",
-            "Cartera asociada al retorno objetivo configurado en el panel lateral.",
+            "Retorno objetivo configurado actualmente",
             modo=modo,
             caption=f"Retorno objetivo configurado actualmente: {_format_pct(target_return_pct)}",
         )
@@ -822,18 +791,17 @@ with tab3:
         seccion("Portafolio sugerido por perfil")
         s1, s2 = st.columns([1.0, 1.25], gap="large")
         with s1:
-            tarjeta_kpi(
-                "Perfil",
-                str(_pick_value(profile_suggestion, "profile") or "N/D").replace("_", " ").title(),
-                subtexto="Preferencia seleccionada en el panel lateral.",
-            )
-            tarjeta_kpi(
-                "Sharpe",
-                _format_num(_metric_from_block(profile_suggestion, "sharpe", "sharpe_ratio"), 3),
-                subtexto="Eficiencia de la cartera sugerida.",
-            )
+            tarjeta_kpi("Perfil", str(_pick_value(profile_suggestion, "profile") or "N/D").replace("_", " ").title(), subtexto="Preferencia seleccionada en el panel lateral.")
+            tarjeta_kpi("Sharpe", _format_num(_metric_from_block(profile_suggestion, "sharpe", "sharpe_ratio"), 3), subtexto="Eficiencia de la cartera sugerida.")
         with s2:
             st.dataframe(profile_df, use_container_width=True, hide_index=True)
+
+    seccion("Pesos de referencia del usuario")
+    render_info_card(
+        "Referencia visual",
+        "Estos pesos son la asignación manual del usuario en el panel lateral. Sirven como referencia para comparar la cartera actual frente a las soluciones óptimas de Markowitz.",
+    )
+    st.dataframe(reference_df, use_container_width=True, hide_index=True)
 
     seccion("KPIs del módulo")
     k1, k2, k3, k4 = st.columns(4)
@@ -849,5 +817,5 @@ with tab3:
     seccion("Interpretación")
     render_info_card(
         "Lectura composicional",
-        "La composición óptima muestra cómo cambia el peso relativo de cada activo según el criterio elegido. Mínima varianza privilegia estabilidad, máximo Sharpe eficiencia, y retorno objetivo una meta explícita de rentabilidad.",
+        "La composición óptima muestra cómo cambia el peso relativo de cada activo según el criterio elegido. Mínima varianza privilegia estabilidad, máximo Sharpe eficiencia y retorno objetivo una meta explícita de rentabilidad.",
     )
