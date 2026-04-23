@@ -243,7 +243,7 @@ def _plot_rsi(df: pd.DataFrame, modo: str, rsi_window: int, show_levels: bool) -
             y=df[f"rsi_{rsi_window}"],
             mode="lines",
             name="Línea RSI",
-            line=dict(width=2.3),
+            line=dict(width=2.3, color="#1E3A8A"),
         )
     )
 
@@ -275,10 +275,42 @@ def _plot_bollinger(
 ) -> go.Figure:
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(x=df["date"], y=df["close"], mode="lines", name="Precio", line=dict(width=2.5)))
-    fig.add_trace(go.Scatter(x=df["date"], y=df[f"bb_mid_{boll_window}"], mode="lines", name="Media", line=dict(width=1.9)))
-    fig.add_trace(go.Scatter(x=df["date"], y=df[f"bb_up_{boll_window}"], mode="lines", name="Banda sup.", line=dict(width=2.0, dash="dot")))
-    fig.add_trace(go.Scatter(x=df["date"], y=df[f"bb_low_{boll_window}"], mode="lines", name="Banda inf.", line=dict(width=2.0, dash="dot")))
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["close"],
+            mode="lines",
+            name="Precio",
+            line=dict(width=2.5, color="#1E3A8A"),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df[f"bb_mid_{boll_window}"],
+            mode="lines",
+            name="Media",
+            line=dict(width=1.9, color="#8B5CF6"),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df[f"bb_up_{boll_window}"],
+            mode="lines",
+            name="Banda sup.",
+            line=dict(width=2.0, dash="dot", color="#10B981"),
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df[f"bb_low_{boll_window}"],
+            mode="lines",
+            name="Banda inf.",
+            line=dict(width=2.0, dash="dot", color="#EF4444"),
+        )
+    )
 
     for trace in fig.data:
         name = str(getattr(trace, "name", "")).lower()
