@@ -138,35 +138,29 @@ def tarjeta_kpi(
     elif str(delta).startswith("-"):
         delta_class = "neg"
 
-    titulo_safe = escape(safe_text(titulo))
-    valor_safe = escape(safe_text(valor))
-    delta_safe = escape(safe_text(delta))
-    help_safe = escape(safe_text(help_text))
-    subtexto_safe = escape(safe_text(subtexto))
+    titulo_safe = safe_text(titulo)
+    valor_safe = safe_text(valor)
+    delta_safe = safe_text(delta)
+    help_safe = safe_text(help_text)
+    subtexto_safe = safe_text(subtexto)
 
-    parts = [
-        '<div class="ui-kpi-card">',
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.65rem;">',
-        f'<div class="ui-kpi-title">{titulo_safe}</div>',
-    ]
+    help_html = f'<span class="ui-help" title="{help_safe}">?</span>' if help_safe else ""
+    delta_html = f'<div class="ui-kpi-delta {delta_class}">{delta_safe}</div>' if delta_safe else ""
+    subtexto_html = f'<div class="ui-kpi-sub">{subtexto_safe}</div>' if subtexto_safe else ""
 
-    if help_safe:
-        parts.append(f'<span class="ui-help" title="{help_safe}">?</span>')
+    card_html = (
+        '<div class="ui-kpi-card">'
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.55rem;">'
+        f'<div class="ui-kpi-title">{titulo_safe}</div>'
+        f'{help_html}'
+        '</div>'
+        f'<div class="ui-kpi-value">{valor_safe}</div>'
+        f'{delta_html}'
+        f'{subtexto_html}'
+        '</div>'
+    )
 
-    parts.extend([
-        '</div>',
-        f'<div class="ui-kpi-value">{valor_safe}</div>',
-    ])
-
-    if delta_safe:
-        parts.append(f'<div class="ui-kpi-delta {delta_class}">{delta_safe}</div>')
-
-    if subtexto_safe:
-        parts.append(f'<div class="ui-kpi-sub">{subtexto_safe}</div>')
-
-    parts.append('</div>')
-
-    st.markdown("".join(parts), unsafe_allow_html=True)
+    st.markdown(card_html, unsafe_allow_html=True)
 
 
 def plot_card_header(titulo: str, help_text: str, modo: str = "General", caption: str = ""):

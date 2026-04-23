@@ -20,50 +20,50 @@ def image_to_base64(image_path: str) -> str:
 def get_theme_tokens(modo: str = "General") -> dict[str, str]:
     if modo == "Estadístico":
         return {
-            "APP_BG_START": "#FFFFFF",
-            "APP_BG_END": "#FFF8FA",
-            "TEXT_MAIN": "#0F172A",
-            "TEXT_SOFT": "#334155",
-            "TEXT_MUTED": "#64748B",
+            "APP_BG_START": "#FCF4F8",
+            "APP_BG_END": "#F7EDF2",
+            "TEXT_MAIN": "#22111A",
+            "TEXT_SOFT": "#4B5563",
+            "TEXT_MUTED": "#6B7280",
             "TEXT_INVERSE": "#F8FAFC",
-            "ACCENT_MAIN": "#7A1633",
-            "ACCENT_SECOND": "#A61E46",
-            "ACCENT_SOFT": "rgba(166, 30, 70, 0.10)",
-            "ACCENT_BORDER": "rgba(166, 30, 70, 0.22)",
+            "ACCENT_MAIN": "#8A1538",
+            "ACCENT_SECOND": "#5A1026",
+            "ACCENT_SOFT": "rgba(138, 21, 56, 0.10)",
+            "ACCENT_BORDER": "rgba(138, 21, 56, 0.18)",
             "CARD_BG": "#FFFFFF",
             "PANEL_BG": "#FFFFFF",
-            "PANEL_BG_2": "#FFF7F9",
-            "SIDEBAR_BG": "#0B3A8C",
-            "SIDEBAR_BG_2": "#082C6C",
-            "SIDEBAR_TEXT": "#EFF6FF",
+            "PANEL_BG_2": "#FFF7FA",
+            "SIDEBAR_BG": "#7A1633",
+            "SIDEBAR_BG_2": "#4F0D20",
+            "SIDEBAR_TEXT": "#FFF7FA",
             "SIDEBAR_BORDER": "rgba(255, 255, 255, 0.10)",
             "SUCCESS": "#16A34A",
             "DANGER": "#DC2626",
             "WARNING": "#D97706",
-            "INFO": "#2563EB",
+            "INFO": "#8A1538",
             "PLOT_GRID": "rgba(148, 163, 184, 0.18)",
             "BORDER_SOFT": "rgba(148, 163, 184, 0.20)",
-            "SHADOW": "0 10px 28px rgba(15, 23, 42, 0.08)",
-            "ACTIVE_NAV_TEXT": "#7A1633",
-            "CHIP_BG": "#FDF2F8",
-            "CHIP_TEXT": "#831843",
+            "SHADOW": "0 14px 34px rgba(58, 12, 26, 0.12)",
+            "ACTIVE_NAV_TEXT": "#8A1538",
+            "CHIP_BG": "#FBE7EF",
+            "CHIP_TEXT": "#7A1633",
             "CHIP_BORDER": "rgba(131, 24, 67, 0.16)",
         }
 
     return {
         "APP_BG_START": "#FFFFFF",
         "APP_BG_END": "#F8FBFF",
-        "TEXT_MAIN": "#0F172A",
-        "TEXT_SOFT": "#334155",
-        "TEXT_MUTED": "#64748B",
+        "TEXT_MAIN": "#0B132B",
+        "TEXT_SOFT": "#243B53",
+        "TEXT_MUTED": "#52667A",
         "TEXT_INVERSE": "#F8FAFC",
         "ACCENT_MAIN": "#1D4ED8",
         "ACCENT_SECOND": "#2563EB",
         "ACCENT_SOFT": "rgba(37, 99, 235, 0.10)",
-        "ACCENT_BORDER": "rgba(37, 99, 235, 0.20)",
+        "ACCENT_BORDER": "rgba(37, 99, 235, 0.18)",
         "CARD_BG": "#FFFFFF",
         "PANEL_BG": "#FFFFFF",
-        "PANEL_BG_2": "#F8FBFF",
+        "PANEL_BG_2": "#F4F8FF",
         "SIDEBAR_BG": "#0B3A8C",
         "SIDEBAR_BG_2": "#082C6C",
         "SIDEBAR_TEXT": "#EFF6FF",
@@ -74,7 +74,7 @@ def get_theme_tokens(modo: str = "General") -> dict[str, str]:
         "INFO": "#2563EB",
         "PLOT_GRID": "rgba(148, 163, 184, 0.18)",
         "BORDER_SOFT": "rgba(148, 163, 184, 0.20)",
-        "SHADOW": "0 10px 28px rgba(15, 23, 42, 0.08)",
+        "SHADOW": "0 12px 30px rgba(15, 23, 42, 0.10)",
         "ACTIVE_NAV_TEXT": "#1D4ED8",
         "CHIP_BG": "#EFF6FF",
         "CHIP_TEXT": "#1E3A8A",
@@ -140,22 +140,22 @@ def build_global_css(modo: str = "General") -> str:
         color: var(--text-main) !important;
     }
 
-    h1 { font-size: 2.1rem; font-weight: 800; margin-bottom: 0.2rem; }
-    h2 { font-size: 1.18rem; font-weight: 800; margin-top: 1.3rem; margin-bottom: 0.4rem; }
-    h3 { font-size: 1rem; font-weight: 700; }
+    h1 { font-size: 2.25rem; font-weight: 900; margin-bottom: 0.2rem; letter-spacing: -0.02em; }
+    h2 { font-size: 1.28rem; font-weight: 900; margin-top: 1.3rem; margin-bottom: 0.4rem; letter-spacing: -0.01em; }
+    h3 { font-size: 1.04rem; font-weight: 800; }
 
     .stMarkdown, .stMarkdown p, .stMarkdown li, p, label {
         color: var(--text-soft) !important;
+        font-weight: 500 !important;
     }
 
-    /* SIDEBAR */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+        background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%) !important;
         border-right: 1px solid var(--sidebar-border);
     }
 
     [data-testid="stSidebar"] > div:first-child {
-        background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
+        background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%) !important;
     }
 
     [data-testid="stSidebar"] * {
@@ -250,13 +250,25 @@ def build_global_css(modo: str = "General") -> str:
     }
 
     [data-testid="stSidebar"] details > div {
-        background: rgba(255, 255, 255, 0.98);
-        border: 1px solid rgba(255, 255, 255, 0.70);
-        border-top: none;
-        border-bottom-left-radius: 20px;
-        border-bottom-right-radius: 20px;
+        background: linear-gradient(180deg, #EAF2FF 0%, #DCEBFF 100%) !important;
+        border: 1px solid rgba(37, 99, 235, 0.18) !important;
+        border-top: none !important;
+        border-bottom-left-radius: 20px !important;
+        border-bottom-right-radius: 20px !important;
         padding: 0.95rem 0.9rem 0.85rem 0.9rem !important;
         color: #0F172A !important;
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.08) !important;
+    }
+
+    [data-testid="stSidebar"] details summary {
+        background: #ffffff !important;
+        border: 1px solid rgba(37, 99, 235, 0.18) !important;
+        border-radius: 20px !important;
+    }
+
+    [data-testid="stSidebar"] details[open] summary {
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
     }
 
     [data-testid="stSidebar"] details > div *,
@@ -289,7 +301,6 @@ def build_global_css(modo: str = "General") -> str:
         border: 1px solid #d6dbe3 !important;
     }
 
-    /* CONTENIDO */
     .stButton > button {
         background: linear-gradient(135deg, var(--accent-main), var(--accent-second));
         color: white;
@@ -360,24 +371,25 @@ def build_global_css(modo: str = "General") -> str:
 
     .ui-note {
         background: linear-gradient(180deg, #ffffff 0%, var(--panel-bg-2) 100%);
-        padding: 0.95rem 1rem;
+        padding: 1rem 1.05rem;
         border-left: 4px solid var(--accent-main);
         border-radius: 16px;
         margin-bottom: 1rem;
         border: 1px solid var(--border-soft);
         box-shadow: var(--shadow-main);
         color: var(--text-soft) !important;
+        font-weight: 600;
     }
 
     .ui-hero {
         background: linear-gradient(
             135deg,
-            color-mix(in srgb, var(--accent-main) 10%, white),
-            color-mix(in srgb, var(--accent-second) 6%, white)
+            color-mix(in srgb, var(--accent-main) 11%, white),
+            color-mix(in srgb, var(--accent-second) 8%, white)
         );
-        padding: 1.55rem;
-        border-radius: 20px;
-        margin-bottom: 0.95rem;
+        padding: 1.6rem;
+        border-radius: 22px;
+        margin-bottom: 1rem;
         border: 1px solid var(--accent-border);
         box-shadow: var(--shadow-main);
     }
@@ -410,13 +422,16 @@ def build_global_css(modo: str = "General") -> str:
     .ui-kpi-card {
         background: linear-gradient(180deg, #ffffff 0%, var(--panel-bg-2) 100%);
         border: 1px solid rgba(148, 163, 184, 0.20);
-        border-radius: 18px;
-        padding: 0.95rem 1rem;
-        min-height: 124px;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        border-radius: 20px;
+        padding: 1.05rem 1.1rem;
+        min-height: 142px;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
         transition: all 0.18s ease;
         position: relative;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .ui-kpi-card::before {
@@ -430,28 +445,32 @@ def build_global_css(modo: str = "General") -> str:
     }
 
     .ui-kpi-title {
-        font-size: 0.78rem;
+        font-size: 0.82rem;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
         font-weight: 900;
         color: var(--text-muted) !important;
         line-height: 1.2;
+        text-align: left;
+        margin-bottom: 0.35rem;
     }
 
     .ui-kpi-value {
-        font-size: 1.9rem;
+        font-size: 2.15rem;
         font-weight: 900;
         color: var(--text-main) !important;
-        line-height: 1.05;
-        margin-bottom: 0.28rem;
-        letter-spacing: -0.02em;
+        line-height: 1.02;
+        margin-bottom: 0.35rem;
+        letter-spacing: -0.03em;
+        text-align: center;
     }
 
     .ui-kpi-delta {
-        font-size: 0.84rem;
+        font-size: 0.92rem;
         font-weight: 800;
         line-height: 1.3;
-        margin-bottom: 0.22rem;
+        margin-bottom: 0.24rem;
+        text-align: center;
     }
 
     .ui-kpi-delta.pos { color: var(--success) !important; }
@@ -459,10 +478,72 @@ def build_global_css(modo: str = "General") -> str:
     .ui-kpi-delta.neu { color: var(--text-soft) !important; }
 
     .ui-kpi-sub {
-        font-size: 0.88rem;
+        font-size: 0.96rem;
         color: var(--text-soft) !important;
+        line-height: 1.5;
+        margin-top: 0.18rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .ui-test-card {
+        background: linear-gradient(180deg, #ffffff 0%, var(--panel-bg-2) 100%);
+        border: 1px solid var(--border-soft);
+        border-radius: 20px;
+        padding: 1.1rem 1.15rem;
+        min-height: 160px;
+        box-shadow: var(--shadow-main);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ui-test-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--accent-main), var(--accent-second));
+    }
+
+    .ui-test-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.6rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .ui-test-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--text-main) !important;
+    }
+
+    .ui-test-value {
+        font-size: 1.18rem;
+        font-weight: 900;
+        color: var(--text-main) !important;
+        text-align: center;
+        margin-bottom: 0.55rem;
+    }
+
+    .ui-test-conclusion {
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: var(--text-soft) !important;
+        text-align: center;
         line-height: 1.45;
-        margin-top: 0.12rem;
+    }
+
+    .ui-test-note {
+        margin-top: 0.55rem;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--text-muted) !important;
+        text-align: center;
+        line-height: 1.4;
     }
 
     .ui-plot-head {
