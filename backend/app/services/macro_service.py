@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import date
+
 from app.clients.macro_client import MacroClient
 from app.clients.market_client import MarketClient
-from datetime import date
 
 
 class MacroService:
@@ -11,7 +12,33 @@ class MacroService:
         self.market_client = market_client
 
     def get_macro_snapshot(self, base_currency: str) -> dict:
-        return self.client.get_macro_snapshot(base_currency=base_currency)
+        base_currency = base_currency.strip().upper()
+
+        snapshot = self.client.get_macro_snapshot(base_currency=base_currency)
+        if not isinstance(snapshot, dict):
+            raise ValueError("La respuesta macro no tiene formato válido.")
+
+        risk_free_rate_pct = snapshot.get("risk_free_rate_pct")
+        inflation_yoy = snapshot.get("inflation_yoy")
+        cop_per_usd = snapshot.get("cop_per_usd")
+        usdcop_market = snapshot.get("usdcop_market")
+
+        fx_spot = None
+        if base_currency == "USD":
+            fx_spot = usdcop_market if usdcop_market is not None else cop_per_usd
+        elif base_currency == "COP":
+            if usdcop_market not in (None, 0):
+                fx_spot = 1.0 / float(usdcop_market)
+            elif cop_per_usd not in (None, 0):
+                fx_spot = 1.0 / float(cop_per_usd)
+        elif base_currency == "EUR":
+            fx_spot = snapshot.get("eurcop_market") or snapshot.get("eur_per_cop")
+
+        snapshot["rf_rate_pct"] = risk_free_rate_pct
+        snapshot["inflation_pct"] = inflation_yoy
+        snapshot["fx_spot"] = fx_spot
+
+        return snapshot
 
     def resolve_rf_inputs(self, base_currency: str) -> tuple[str, float]:
         snapshot = self.get_macro_snapshot(base_currency=base_currency)
