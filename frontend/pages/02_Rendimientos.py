@@ -233,6 +233,13 @@ def _render_test_card(title: str, metric_label: str, metric_value, conclusion: s
         unsafe_allow_html=True,
     )
 
+def _help_badge(text: str):
+    st.markdown(
+        f"""
+        <span class="ui-help" title="{text}">?</span>
+        """,
+        unsafe_allow_html=True,
+    )
 
 assets, help_map, load_error = _fetch_assets_and_help()
 
@@ -446,8 +453,25 @@ with c8:
 
 seccion("Últimos rendimientos")
 
+c_help_1, c_help_2 = st.columns([12, 1])
+with c_help_1:
+    st.markdown("**Tabla de retornos recientes**")
+with c_help_2:
+    _help_badge(
+        "Retorno simple: variación porcentual entre un periodo y el siguiente. "
+        "Log-retorno: logaritmo natural de (P_t / P_{t-1}); se usa mucho en finanzas "
+        "porque facilita agregación temporal y análisis estadístico."
+    )
+
 recent_df = returns_df[["date", "simple_return", "log_return"]].copy().tail(10).sort_values("date", ascending=False)
 recent_df["date"] = recent_df["date"].dt.strftime("%Y-%m-%d")
+recent_df = recent_df.rename(
+    columns={
+        "date": "Fecha",
+        "simple_return": "Retorno simple",
+        "log_return": "Log-retorno",
+    }
+)
 st.dataframe(recent_df, width="stretch")
 
 seccion("Pruebas de normalidad")
@@ -472,11 +496,16 @@ with n2:
     )
 
 with n3:
+    ad_note = ""
+    if observations is not None and observations > 500:
+        ad_note = "Cuando la muestra es mayor a 500 observaciones, esta prueba no es la más recomendable como referencia principal."
+
     _render_test_card(
         "Anderson-Darling",
         "estadístico",
         ad.get("statistic"),
         ad.get("conclusion", "Sin conclusión disponible."),
+        note=ad_note,
     )
 
 seccion("Visualizaciones")
