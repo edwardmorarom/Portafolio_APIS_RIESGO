@@ -135,78 +135,77 @@ def _format_diagnostics_table(payload: dict) -> pd.DataFrame:
     return df
 
 
-def _render_pretty_diagnostics_table(df: pd.DataFrame):
-    if df.empty:
-        st.warning("No hay diagnóstico disponible.")
-        return
-
-    rows_html = "".join(
-        [
-            f"""
-            <tr>
-                <td style="padding:0.82rem 0.9rem;border-bottom:1px solid rgba(148,163,184,0.14);font-weight:700;color:var(--text-main);">
-                    {row["Métrica"]}
-                </td>
-                <td style="padding:0.82rem 0.9rem;border-bottom:1px solid rgba(148,163,184,0.14);color:var(--text-soft);font-weight:600;">
-                    {row["Valor"]}
-                </td>
-            </tr>
-            """
-            for _, row in df.iterrows()
-        ]
-    )
-
-    st.markdown(
-        f"""
-        <div style="
-            background:linear-gradient(180deg,#ffffff 0%, var(--panel-bg-2) 100%);
-            border:1px solid var(--border-soft);
-            border-radius:20px;
-            overflow:hidden;
-            box-shadow:var(--shadow-main);
-            margin-top:0.35rem;
-        ">
-            <div style="
-                display:grid;
-                grid-template-columns: 1.15fr 1fr;
-                background:rgba(15,23,42,0.96);
-                color:#F8FAFC;
-                font-weight:800;
-                letter-spacing:0.04em;
-                text-transform:uppercase;
-                font-size:0.80rem;
-            ">
-                <div style="padding:0.9rem 0.9rem;">Métrica</div>
-                <div style="padding:0.9rem 0.9rem;">Valor</div>
-            </div>
-            <table style="width:100%;border-collapse:collapse;">
-                <tbody>
-                    {rows_html}
-                </tbody>
-            </table>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def _build_conditional_volatility_figure(payload: dict, modo: str) -> go.Figure:
+def _extract_best_model_series(payload: dict) -> pd.DataFrame:
     cond_vol = payload.get("conditional_volatility", []) or []
+    if not cond_vol:
+        return pd.DataFrame(columns=["x", "y", "model"])
+
+    df = pd.DataFrame(
+        {
+            "x": list(range(1, len(cond_vol) + 1)),
+            "y": pd.to_numeric(cond_vol, errors="coerce"),
+            "model": str(payload.get("best_model", "Mejor modelo")),
+        }
+    ).dropna()
+
+    return df
+
+
+def _extract_multi_model_series(payload: dict) -> pd.DataFrame:
+    """
+    Intenta encontrar trayectorias por modelo en distintos formatos posibles.
+    Si el backend no las devuelve, retorna vacío y el frontend cae al mejor modelo.
+    """
+    possible_keys = [
+        "conditional_volatility_by_model",
+        "candidate_model_volatility",
+        "model_conditional_volatility",
+        "volatility_by_model",
+        "series_by_model",
+    ]
+
+    for key in possible_keys:
+        block = payload.get(key)
+        if isinstance(block, dict) and block:
+            rows: list[dict] = []
+            for model_name, values in block.items():
+                if isinstance(values, list) and values:
+                    for i, value in enumerate(values, start=1):
+                        try:
+                            y = float(value)
+                        except Exception:
+                            continue
+                        rows.append({"x": i, "y": y, "model": str(model_name)})
+            df = pd.DataFrame(rows)
+            if not df.empty:
+                return df
+
+    return pd.DataFrame(columns=["x", "y", "model"])
+
+
+def _build_conditional_volatility_figure(payload: dict, modo: str) -> tuple[go.Figure, bool]:
+    series_df = _extract_multi_model_series(payload)
+    has_multiple_models = not series_df.empty and series_df["model"].nunique() > 1
+
+    if series_df.empty:
+        series_df = _extract_best_model_series(payload)
+
     fig = go.Figure()
 
-    if cond_vol:
-        x = list(range(1, len(cond_vol) + 1))
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=cond_vol,
-                mode="lines",
-                name=str(payload.get("best_model", "Volatilidad")),
-                line=dict(width=2.4),
+    if not series_df.empty:
+        for model_name in series_df["model"].dropna().unique():
+            part = series_df[series_df["model"] == model_name]
+            fig.add_trace(
+                go.Scatter(
+                    x=part["x"],
+                    y=part["y"],
+                    mode="lines",
+                    name=str(model_name),
+                    line=dict(width=2.4),
+                )
             )
-        )
 
-    return style_plotly_figure(
+    fig = style_plotly_figure(
         fig,
         modo=modo,
         title="Volatilidad condicional estimada",
@@ -216,27 +215,89 @@ def _build_conditional_volatility_figure(payload: dict, modo: str) -> go.Figure:
         show_ygrid=True,
     )
 
+    return fig, has_multiple_models
+
+
+def _extract_forecast_df(payload: dict) -> pd.DataFrame:
+    forecast = payload.get("forecast", []) or []
+    if not forecast:
+        return pd.DataFrame(columns=["step", "volatility"])
+
+    df = pd.DataFrame(forecast)
+
+    if "step" not in df.columns:
+        df["step"] = range(1, len(df) + 1)
+
+    if "volatility" not in df.columns:
+        return pd.DataFrame(columns=["step", "volatility"])
+
+    df["step"] = pd.to_numeric(df["step"], errors="coerce")
+    df["volatility"] = pd.to_numeric(df["volatility"], errors="coerce")
+    df = df.dropna(subset=["step", "volatility"]).reset_index(drop=True)
+    return df
+
 
 def _build_forecast_figure(payload: dict, modo: str) -> go.Figure:
-    forecast = payload.get("forecast", []) or []
+    forecast_df = _extract_forecast_df(payload)
     fig = go.Figure()
 
-    if forecast:
-        forecast_df = pd.DataFrame(forecast)
+    if forecast_df.empty:
+        return style_plotly_figure(
+            fig,
+            modo=modo,
+            title="Pronóstico de volatilidad",
+            xaxis_title="Horizonte",
+            yaxis_title="Volatilidad",
+            show_xgrid=True,
+            show_ygrid=True,
+        )
 
-        if "step" not in forecast_df.columns:
-            forecast_df["step"] = range(1, len(forecast_df) + 1)
+    if len(forecast_df) == 1:
+        x_val = float(forecast_df.iloc[0]["step"])
+        y_val = float(forecast_df.iloc[0]["volatility"])
 
-        if "volatility" in forecast_df.columns:
-            fig.add_trace(
-                go.Scatter(
-                    x=forecast_df["step"],
-                    y=forecast_df["volatility"],
-                    mode="lines+markers",
-                    name="Pronóstico",
-                    line=dict(width=2.4),
-                )
+        spread = max(abs(y_val) * 0.10, 0.12)
+
+        fig.add_trace(
+            go.Scatter(
+                x=[x_val],
+                y=[y_val],
+                mode="markers",
+                name="Pronóstico puntual",
+                marker=dict(size=16, color="#1E3A8A"),
             )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=[x_val - 0.45, x_val + 0.45],
+                y=[y_val, y_val],
+                mode="lines",
+                name="Nivel forecast",
+                line=dict(width=2.2, dash="dot", color="#8A1538"),
+            )
+        )
+
+        fig.update_xaxes(
+            range=[x_val - 0.8, x_val + 0.8],
+            tickmode="array",
+            tickvals=[x_val],
+            ticktext=[str(int(x_val))],
+        )
+        fig.update_yaxes(
+            range=[y_val - spread, y_val + spread],
+        )
+    else:
+        fig.add_trace(
+            go.Scatter(
+                x=forecast_df["step"],
+                y=forecast_df["volatility"],
+                mode="lines+markers",
+                name="Pronóstico",
+                line=dict(width=2.6),
+                marker=dict(size=8),
+            )
+        )
 
     return style_plotly_figure(
         fig,
@@ -250,29 +311,26 @@ def _build_forecast_figure(payload: dict, modo: str) -> go.Figure:
 
 
 def _forecast_message(payload: dict) -> str:
-    forecast = payload.get("forecast", []) or []
+    forecast_df = _extract_forecast_df(payload)
     eff_h = payload.get("effective_forecast_horizon")
 
-    if not forecast:
+    if forecast_df.empty:
         return "El backend no devolvió una trayectoria de forecast utilizable."
 
-    if len(forecast) == 1 or eff_h == 1:
-        point = forecast[0].get("volatility")
-        point_text = f"{float(point):.4f}" if point is not None else "N/D"
+    if len(forecast_df) == 1 or eff_h == 1:
+        point = float(forecast_df.iloc[0]["volatility"])
         return (
             f"El backend entregó un forecast efectivo de un solo paso. "
             f"Por eso el gráfico muestra un nivel puntual y no una trayectoria completa. "
-            f"La volatilidad esperada inmediata es {point_text}."
+            f"La volatilidad esperada inmediata es {point:.4f}."
         )
 
-    first_v = forecast[0].get("volatility")
-    last_v = forecast[-1].get("volatility")
-    first_t = f"{float(first_v):.4f}" if first_v is not None else "N/D"
-    last_t = f"{float(last_v):.4f}" if last_v is not None else "N/D"
+    first_v = float(forecast_df.iloc[0]["volatility"])
+    last_v = float(forecast_df.iloc[-1]["volatility"])
 
     return (
-        f"El pronóstico cubre {len(forecast)} pasos. "
-        f"Parte desde {first_t} y termina en {last_t}. "
+        f"El pronóstico cubre {len(forecast_df)} pasos. "
+        f"Parte desde {first_v:.4f} y termina en {last_v:.4f}. "
         f"Úsalo para evaluar si la volatilidad tendería a subir, bajar o estabilizarse."
     )
 
@@ -429,8 +487,8 @@ if garch_error:
 
 comparison_df = _format_comparison_table(payload.get("candidate_models", []))
 diagnostics_df = _format_diagnostics_table(payload)
-forecast_list = payload.get("forecast", []) or []
-forecast_final = forecast_list[-1]["volatility"] if forecast_list and "volatility" in forecast_list[-1] else None
+forecast_df = _extract_forecast_df(payload)
+forecast_final = float(forecast_df.iloc[-1]["volatility"]) if not forecast_df.empty else None
 
 render_meta_row(
     [
@@ -473,7 +531,7 @@ with c3:
 with c4:
     tarjeta_kpi(
         "Forecast final",
-        f"{float(forecast_final):.4f}" if forecast_final is not None else "N/D",
+        f"{forecast_final:.4f}" if forecast_final is not None else "N/D",
         subtexto="Nivel esperado al final del horizonte forecast.",
         help_text="Último valor del pronóstico de volatilidad.",
     )
@@ -502,36 +560,42 @@ seccion("Comparación de modelos")
 
 if modo == "General":
     with st.expander("Ver comparación completa de modelos", expanded=False):
-        st.dataframe(comparison_df, width="stretch")
+        st.dataframe(comparison_df, use_container_width=True, hide_index=True)
 else:
-    st.dataframe(comparison_df, width="stretch")
+    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
 
 seccion("Volatilidad y pronóstico")
 
 g1, g2 = st.columns(2, gap="large")
 
 with g1:
+    fig_vol, has_multiple_models = _build_conditional_volatility_figure(payload, modo=modo)
+
     plot_card_header(
         "Volatilidad condicional estimada",
-        "El backend actual devuelve la serie del mejor modelo seleccionado, no las tres trayectorias por separado.",
+        "Si el backend devuelve series por modelo, aquí se comparan ARCH, GARCH y EGARCH. Si no, solo se muestra el mejor modelo.",
         modo=modo,
-        caption="Aquí se observa la volatilidad condicional del modelo ganador. Para comparar trayectorias ARCH, GARCH y EGARCH en una sola gráfica habría que ampliar el endpoint.",
+        caption="El frontend quedó preparado para múltiples trayectorias, pero depende de que el backend entregue esa información.",
     )
-    fig_vol = _build_conditional_volatility_figure(payload, modo=modo)
-    st.plotly_chart(fig_vol, width="stretch")
-    plot_card_footer(
-        "Esta vista corresponde únicamente al mejor modelo devuelto por backend. No es una comparación simultánea entre modelos."
-    )
+    st.plotly_chart(fig_vol, use_container_width=True)
 
+    if has_multiple_models:
+        plot_card_footer(
+            "Se comparan ARCH(1), GARCH(1,1) y EGARCH(1,1). ARCH suele reaccionar con picos más bruscos ante shocks puntuales, mientras GARCH y EGARCH tienden a ofrecer trayectorias más estables para lectura comparativa."
+        )
+    else:
+        plot_card_footer(
+            "El backend no devolvió trayectorias separadas para ARCH, GARCH y EGARCH; por eso solo se muestra la serie del mejor modelo."
+        )
 with g2:
     plot_card_header(
         "Forecast de volatilidad",
         "Pronóstico devuelto por el modelo seleccionado por backend.",
         modo=modo,
-        caption="Si el backend retorna un horizonte efectivo de un paso, el gráfico mostrará un único punto.",
+        caption="Cuando el horizonte efectivo es de un solo paso, el punto se amplía visualmente para que sí pueda verse.",
     )
     fig_forecast = _build_forecast_figure(payload, modo=modo)
-    st.plotly_chart(fig_forecast, width="stretch")
+    st.plotly_chart(fig_forecast, use_container_width=True)
     plot_card_footer(_forecast_message(payload))
 
 if mostrar_diagnostico:
@@ -541,10 +605,10 @@ if mostrar_diagnostico:
         "Diagnóstico del modelo",
         "Medidas clave del mejor ajuste, útiles para interpretación y sustentación técnica.",
         modo=modo,
-        caption="La tabla resume el ajuste y la caja inferior te dice cómo defenderlo metodológicamente.",
+        caption="La tabla resume el ajuste y la caja inferior te ayuda a defenderlo metodológicamente.",
     )
 
-    _render_pretty_diagnostics_table(diagnostics_df)
+    st.dataframe(diagnostics_df, use_container_width=True, hide_index=True)
 
     st.markdown("")
     render_info_card(
