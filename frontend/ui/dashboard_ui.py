@@ -1,4 +1,5 @@
 from __future__ import annotations
+from html import escape
 
 import streamlit as st
 
@@ -12,7 +13,7 @@ def aplicar_estilos_globales(modo: str = "General"):
 def render_sidebar_brand(
     title: str = "Dashboard Riesgo",
     subtitle: str = "Universidad Santo Tomás",
-    logo_path: str = "assets/escudo_santo_tomas.png",
+    logo_path: str = "frontend/assets/escudo_santo_tomas.png",
 ):
     logo_b64 = image_to_base64(logo_path)
 
@@ -62,6 +63,7 @@ def render_sidebar_panel(
             index=0 if modo_default == "General" else 1,
             key="sidebar_modo_visualizacion",
             label_visibility="collapsed",
+            help="General resume e interpreta. Estadístico profundiza más en lectura técnica y detalle analítico.",
         )
 
         inner_expander = st.expander(filtros_label, expanded=filtros_expanded)
@@ -136,24 +138,35 @@ def tarjeta_kpi(
     elif str(delta).startswith("-"):
         delta_class = "neg"
 
-    help_html = f'<span class="ui-help" title="{safe_text(help_text)}">?</span>' if help_text else ""
-    delta_html = f'<div class="ui-kpi-delta {delta_class}">{safe_text(delta)}</div>' if delta else ""
-    subtexto_html = f'<div class="ui-kpi-sub">{safe_text(subtexto)}</div>' if subtexto else ""
+    titulo_safe = escape(safe_text(titulo))
+    valor_safe = escape(safe_text(valor))
+    delta_safe = escape(safe_text(delta))
+    help_safe = escape(safe_text(help_text))
+    subtexto_safe = escape(safe_text(subtexto))
 
-    st.markdown(
-        f"""
-        <div class="ui-kpi-card">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.65rem;">
-                <div class="ui-kpi-title">{safe_text(titulo)}</div>
-                {help_html}
-            </div>
-            <div class="ui-kpi-value">{safe_text(valor)}</div>
-            {delta_html}
-            {subtexto_html}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    parts = [
+        '<div class="ui-kpi-card">',
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.65rem;">',
+        f'<div class="ui-kpi-title">{titulo_safe}</div>',
+    ]
+
+    if help_safe:
+        parts.append(f'<span class="ui-help" title="{help_safe}">?</span>')
+
+    parts.extend([
+        '</div>',
+        f'<div class="ui-kpi-value">{valor_safe}</div>',
+    ])
+
+    if delta_safe:
+        parts.append(f'<div class="ui-kpi-delta {delta_class}">{delta_safe}</div>')
+
+    if subtexto_safe:
+        parts.append(f'<div class="ui-kpi-sub">{subtexto_safe}</div>')
+
+    parts.append('</div>')
+
+    st.markdown("".join(parts), unsafe_allow_html=True)
 
 
 def plot_card_header(titulo: str, help_text: str, modo: str = "General", caption: str = ""):
