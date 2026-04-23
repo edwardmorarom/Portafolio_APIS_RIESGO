@@ -10,7 +10,7 @@ from ui.dashboard_ui import (
 def setup_dashboard_page(
     title: str = "Dashboard Riesgo",
     subtitle: str = "Universidad Santo Tomás",
-    logo_path: str = "assets/escudo_santo_tomas.png",
+    logo_path: str = "frontend/assets/escudo_santo_tomas.png",
     modo_default: str = "General",
     filtros_label: str = "Parámetros Del Módulo",
     filtros_expanded: bool = False,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -17,27 +18,6 @@ from ui.dashboard_ui import (
 )
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import add_reference_line, style_plotly_figure
-
-
-def _resolve_dates(horizonte: str, default_end: pd.Timestamp) -> tuple[pd.Timestamp, pd.Timestamp]:
-    end_date = default_end.normalize()
-
-    if horizonte == "1 mes":
-        start_date = end_date - pd.DateOffset(months=1)
-    elif horizonte == "Trimestre":
-        start_date = end_date - pd.DateOffset(months=3)
-    elif horizonte == "Semestre":
-        start_date = end_date - pd.DateOffset(months=6)
-    elif horizonte == "1 año":
-        start_date = end_date - pd.DateOffset(years=1)
-    elif horizonte == "3 años":
-        start_date = end_date - pd.DateOffset(years=3)
-    elif horizonte == "5 años":
-        start_date = end_date - pd.DateOffset(years=5)
-    else:
-        start_date = end_date - pd.DateOffset(years=1)
-
-    return pd.Timestamp(start_date).normalize(), end_date
 
 
 def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:
@@ -58,44 +38,106 @@ def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:
     return assets, help_map, None
 
 
-def _fetch_technical_data(ticker: str, start: str, end: str) -> tuple[pd.DataFrame, str | None]:
+def _resolve_dates(
+    horizonte: str,
+    default_end: pd.Timestamp,
+    custom_start: pd.Timestamp | None = None,
+    custom_end: pd.Timestamp | None = None,
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    end_date = default_end.normalize()
+
+    if horizonte == "1 mes":
+        start_date = end_date - pd.DateOffset(months=1)
+    elif horizonte == "Trimestre":
+        start_date = end_date - pd.DateOffset(months=3)
+    elif horizonte == "Semestre":
+        start_date = end_date - pd.DateOffset(months=6)
+    elif horizonte == "1 año":
+        start_date = end_date - pd.DateOffset(years=1)
+    elif horizonte == "3 años":
+        start_date = end_date - pd.DateOffset(years=3)
+    elif horizonte == "5 años":
+        start_date = end_date - pd.DateOffset(years=5)
+    elif horizonte == "Personalizado" and custom_start is not None and custom_end is not None:
+        start_date = pd.Timestamp(custom_start).normalize()
+        end_date = pd.Timestamp(custom_end).normalize()
+    else:
+        start_date = end_date - pd.DateOffset(years=1)
+
+    return pd.Timestamp(start_date).normalize(), pd.Timestamp(end_date).normalize()
+
+
+def _fetch_prices(ticker: str, start: str, end: str) -> tuple[pd.DataFrame, str | None]:
     client = get_api_client()
 
     try:
-        payload = client.get_technical_indicators(ticker=ticker, start=start, end=end)
+        payload = client.get_prices(ticker=ticker, start=start, end=end)
     except ApiClientError as exc:
         return pd.DataFrame(), exc.message
 
     rows = payload.get("data", [])
     if not rows:
-        return pd.DataFrame(), "La API no devolvió datos técnicos para el activo seleccionado."
+        return pd.DataFrame(), "La API no devolvió precios para el activo seleccionado."
 
     df = pd.DataFrame(rows)
     if df.empty:
-        return pd.DataFrame(), "La respuesta técnica llegó vacía."
+        return pd.DataFrame(), "La respuesta de precios llegó vacía."
 
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date").reset_index(drop=True)
 
-    numeric_cols = [
-        "close",
-        "sma_20",
-        "ema_20",
-        "rsi_14",
-        "macd",
-        "macd_signal",
-        "macd_hist",
-        "bb_mid",
-        "bb_up",
-        "bb_low",
-        "stoch_k",
-        "stoch_d",
-    ]
+    numeric_cols = ["open", "high", "low", "close", "adj_close", "volume"]
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
     return df, None
+
+
+def _build_technical_view(
+    prices_df: pd.DataFrame,
+    sma_window: int,
+    ema_window: int,
+    rsi_window: int,
+    boll_window: int,
+    stoch_window: int,
+) -> pd.DataFrame:
+    df = prices_df.copy()
+
+    close = pd.to_numeric(df["close"], errors="coerce")
+    high = pd.to_numeric(df["high"], errors="coerce")
+    low = pd.to_numeric(df["low"], errors="coerce")
+
+    df[f"sma_{sma_window}"] = close.rolling(sma_window).mean()
+    df[f"ema_{ema_window}"] = close.ewm(span=ema_window, adjust=False).mean()
+
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1 / rsi_window, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / rsi_window, adjust=False).mean()
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    df[f"rsi_{rsi_window}"] = 100 - (100 / (1 + rs))
+
+    bb_mid = close.rolling(boll_window).mean()
+    bb_std = close.rolling(boll_window).std(ddof=1)
+    df[f"bb_mid_{boll_window}"] = bb_mid
+    df[f"bb_up_{boll_window}"] = bb_mid + 2.0 * bb_std
+    df[f"bb_low_{boll_window}"] = bb_mid - 2.0 * bb_std
+
+    low_n = low.rolling(stoch_window).min()
+    high_n = high.rolling(stoch_window).max()
+    denom = (high_n - low_n).replace(0, np.nan)
+    df[f"stoch_k_{stoch_window}"] = 100 * (close - low_n) / denom
+    df[f"stoch_d_{stoch_window}"] = df[f"stoch_k_{stoch_window}"].rolling(3).mean()
+
+    ema_fast = close.ewm(span=12, adjust=False).mean()
+    ema_slow = close.ewm(span=26, adjust=False).mean()
+    df["macd"] = ema_fast - ema_slow
+    df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
+    df["macd_hist"] = df["macd"] - df["macd_signal"]
+
+    return df.replace([np.inf, -np.inf], np.nan)
 
 
 def _latest_valid(series: pd.Series) -> float | None:
@@ -113,10 +155,7 @@ def _previous_valid(series: pd.Series) -> float | None:
 
 
 def _format_delta(current: float | None, previous: float | None, as_pct: bool = True) -> str:
-    if current is None or previous is None:
-        return ""
-
-    if previous == 0:
+    if current is None or previous is None or previous == 0:
         return ""
 
     delta = (current / previous) - 1.0
@@ -141,21 +180,20 @@ def _interpret_rsi(rsi_now: float | None) -> str:
         return f"RSI en {rsi_now:.2f}: zona de sobrecompra relativa."
     if rsi_now <= 30:
         return f"RSI en {rsi_now:.2f}: zona de sobreventa relativa."
-    return f"RSI en {rsi_now:.2f}: momentum intermedio sin señal extrema."
+    return f"RSI en {rsi_now:.2f}: el momentum es intermedio y no muestra una señal extrema."
 
 
 def _interpret_bollinger(close_now: float | None, bb_low: float | None, bb_up: float | None) -> str:
     if close_now is None or bb_low is None or bb_up is None:
-        return "Observa la posición del precio frente a las bandas para identificar dispersión y posibles extremos."
-
+        return "Observa la posición del precio frente a las bandas para identificar episodios de alta o baja dispersión."
     if close_now >= bb_up:
-        return "El precio está tocando o superando la banda superior, señal de presión alcista o posible agotamiento."
+        return "El precio está tocando o superando la banda superior, lo que puede asociarse con presión alcista o agotamiento."
     if close_now <= bb_low:
-        return "El precio está tocando o perforando la banda inferior, señal de presión bajista o posible rebote técnico."
-    return "El precio se mantiene dentro del canal de Bollinger, sin ruptura extrema reciente."
+        return "El precio está tocando o perforando la banda inferior, lo que puede asociarse con presión bajista o posible rebote."
+    return "Observa la posición del precio frente a las bandas para identificar episodios de alta o baja dispersión."
 
 
-def _plot_price_ma(df: pd.DataFrame, modo: str) -> go.Figure:
+def _plot_price_ma(df: pd.DataFrame, modo: str, sma_window: int, ema_window: int) -> go.Figure:
     fig = go.Figure()
 
     fig.add_trace(
@@ -170,18 +208,18 @@ def _plot_price_ma(df: pd.DataFrame, modo: str) -> go.Figure:
     fig.add_trace(
         go.Scatter(
             x=df["date"],
-            y=df["sma_20"],
+            y=df[f"sma_{sma_window}"],
             mode="lines",
-            name="SMA 20",
+            name=f"SMA {sma_window}",
             line=dict(width=2.1),
         )
     )
     fig.add_trace(
         go.Scatter(
             x=df["date"],
-            y=df["ema_20"],
+            y=df[f"ema_{ema_window}"],
             mode="lines",
-            name="EMA 20",
+            name=f"EMA {ema_window}",
             line=dict(width=2.1),
         )
     )
@@ -189,7 +227,7 @@ def _plot_price_ma(df: pd.DataFrame, modo: str) -> go.Figure:
     return style_plotly_figure(
         fig,
         modo=modo,
-        title="Precio con medias móviles",
+        title="Precio y medias móviles",
         xaxis_title="Fecha",
         yaxis_title="Precio",
         show_xgrid=False,
@@ -197,30 +235,22 @@ def _plot_price_ma(df: pd.DataFrame, modo: str) -> go.Figure:
     )
 
 
-def _plot_bollinger(df: pd.DataFrame, modo: str) -> go.Figure:
+def _plot_rsi(df: pd.DataFrame, modo: str, rsi_window: int, show_levels: bool) -> go.Figure:
     fig = go.Figure()
-
-    fig.add_trace(go.Scatter(x=df["date"], y=df["close"], mode="lines", name="Precio", line=dict(width=2.7)))
-    fig.add_trace(go.Scatter(x=df["date"], y=df["bb_mid"], mode="lines", name="Banda media", line=dict(width=1.9)))
-    fig.add_trace(go.Scatter(x=df["date"], y=df["bb_up"], mode="lines", name="Banda superior", line=dict(width=2.0, dash="dot")))
-    fig.add_trace(go.Scatter(x=df["date"], y=df["bb_low"], mode="lines", name="Banda inferior", line=dict(width=2.0, dash="dot")))
-
-    return style_plotly_figure(
-        fig,
-        modo=modo,
-        title="Bandas de Bollinger",
-        xaxis_title="Fecha",
-        yaxis_title="Precio",
-        show_xgrid=False,
-        show_ygrid=True,
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df[f"rsi_{rsi_window}"],
+            mode="lines",
+            name="Línea RSI",
+            line=dict(width=2.3),
+        )
     )
 
+    if show_levels:
+        add_reference_line(fig, 70)
+        add_reference_line(fig, 30)
 
-def _plot_rsi(df: pd.DataFrame, modo: str) -> go.Figure:
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df["date"], y=df["rsi_14"], mode="lines", name="RSI 14", line=dict(width=2.4)))
-    add_reference_line(fig, 70)
-    add_reference_line(fig, 30)
     fig.update_yaxes(range=[0, 100])
 
     return style_plotly_figure(
@@ -234,39 +264,39 @@ def _plot_rsi(df: pd.DataFrame, modo: str) -> go.Figure:
     )
 
 
-def _plot_macd(df: pd.DataFrame, modo: str) -> go.Figure:
+def _plot_bollinger(
+    df: pd.DataFrame,
+    modo: str,
+    boll_window: int,
+    show_price: bool,
+    show_mid: bool,
+    show_up: bool,
+    show_low: bool,
+) -> go.Figure:
     fig = go.Figure()
 
-    fig.add_trace(go.Scatter(x=df["date"], y=df["macd"], mode="lines", name="MACD", line=dict(width=2.3)))
-    fig.add_trace(go.Scatter(x=df["date"], y=df["macd_signal"], mode="lines", name="Señal MACD", line=dict(width=2.1)))
-    fig.add_trace(go.Bar(x=df["date"], y=df["macd_hist"], name="Histograma", opacity=0.78))
+    fig.add_trace(go.Scatter(x=df["date"], y=df["close"], mode="lines", name="Precio", line=dict(width=2.5)))
+    fig.add_trace(go.Scatter(x=df["date"], y=df[f"bb_mid_{boll_window}"], mode="lines", name="Media", line=dict(width=1.9)))
+    fig.add_trace(go.Scatter(x=df["date"], y=df[f"bb_up_{boll_window}"], mode="lines", name="Banda sup.", line=dict(width=2.0, dash="dot")))
+    fig.add_trace(go.Scatter(x=df["date"], y=df[f"bb_low_{boll_window}"], mode="lines", name="Banda inf.", line=dict(width=2.0, dash="dot")))
+
+    for trace in fig.data:
+        name = str(getattr(trace, "name", "")).lower()
+        if "precio" in name:
+            trace.visible = True if show_price else "legendonly"
+        elif "media" in name:
+            trace.visible = True if show_mid else "legendonly"
+        elif "sup" in name:
+            trace.visible = True if show_up else "legendonly"
+        elif "inf" in name:
+            trace.visible = True if show_low else "legendonly"
 
     return style_plotly_figure(
         fig,
         modo=modo,
-        title="MACD",
+        title="Bandas de Bollinger",
         xaxis_title="Fecha",
-        yaxis_title="Valor",
-        show_xgrid=False,
-        show_ygrid=True,
-    )
-
-
-def _plot_stochastic(df: pd.DataFrame, modo: str) -> go.Figure:
-    fig = go.Figure()
-
-    fig.add_trace(go.Scatter(x=df["date"], y=df["stoch_k"], mode="lines", name="%K", line=dict(width=2.3)))
-    fig.add_trace(go.Scatter(x=df["date"], y=df["stoch_d"], mode="lines", name="%D", line=dict(width=2.1)))
-    add_reference_line(fig, 80)
-    add_reference_line(fig, 20)
-    fig.update_yaxes(range=[0, 100])
-
-    return style_plotly_figure(
-        fig,
-        modo=modo,
-        title="Oscilador estocástico",
-        xaxis_title="Fecha",
-        yaxis_title="Nivel",
+        yaxis_title="Precio",
         show_xgrid=False,
         show_ygrid=True,
     )
@@ -278,7 +308,7 @@ modo, filtros_sidebar = setup_dashboard_page(
     title="Dashboard Riesgo",
     subtitle="Universidad Santo Tomás",
     modo_default="General",
-    filtros_label="Parámetros Técnicos",
+    filtros_label="Parámetros Técnicos Avanzados",
     filtros_expanded=False,
 )
 
@@ -293,36 +323,109 @@ for asset in assets:
     asset_labels.append(label)
     asset_map[label] = asset
 
+today = pd.Timestamp.today().normalize()
+
 with filtros_sidebar:
     selected_label = st.selectbox(
         "Activo",
         options=asset_labels,
         key="tec_asset_backend",
+        help="Selecciona el activo que quieres analizar técnicamente.",
     )
 
     horizonte = st.selectbox(
-        "Horizonte",
-        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años"],
+        "Horizonte de análisis",
+        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"],
         index=3,
         key="tec_horizonte_backend",
+        help="Define la ventana histórica a consultar desde backend.",
     )
 
-    show_price = st.checkbox("Mostrar precio", value=True, key="tec_show_price")
-    show_sma = st.checkbox("Mostrar SMA 20", value=True, key="tec_show_sma")
-    show_ema = st.checkbox("Mostrar EMA 20", value=True, key="tec_show_ema")
-    show_bbands = st.checkbox("Mostrar Bollinger", value=True, key="tec_show_bbands")
-    show_rsi = st.checkbox("Mostrar RSI", value=True, key="tec_show_rsi")
-    show_macd = st.checkbox("Mostrar MACD", value=True, key="tec_show_macd")
-    show_stoch = st.checkbox("Mostrar estocástico", value=True, key="tec_show_stoch")
+    custom_start = None
+    custom_end = None
+    if horizonte == "Personalizado":
+        c1, c2 = st.columns(2)
+        with c1:
+            custom_start = st.date_input(
+                "Fecha inicial",
+                value=(today - pd.DateOffset(years=1)).date(),
+                max_value=today.date(),
+                key="tec_custom_start",
+            )
+        with c2:
+            custom_end = st.date_input(
+                "Fecha final",
+                value=today.date(),
+                max_value=today.date(),
+                key="tec_custom_end",
+            )
+
+    sma_window = st.slider(
+        "Ventana SMA",
+        min_value=5,
+        max_value=60,
+        value=20,
+        step=1,
+        key="tec_sma_window",
+        help="La SMA suaviza el precio con un promedio simple. Ventanas más grandes reducen ruido, pero reaccionan más lento.",
+    )
+
+    ema_window = st.slider(
+        "Ventana EMA",
+        min_value=5,
+        max_value=60,
+        value=20,
+        step=1,
+        key="tec_ema_window",
+        help="La EMA da más peso a datos recientes. Reacciona más rápido que la SMA.",
+    )
+
+    rsi_window = st.slider(
+        "Ventana RSI",
+        min_value=5,
+        max_value=30,
+        value=14,
+        step=1,
+        key="tec_rsi_window",
+        help="Controla la sensibilidad del RSI.",
+    )
+
+    boll_window = st.slider(
+        "Bollinger",
+        min_value=10,
+        max_value=60,
+        value=20,
+        step=1,
+        key="tec_boll_window",
+        help="Ventana de media y desviación usada para las bandas.",
+    )
+
+    stoch_window = st.slider(
+        "Estocástico",
+        min_value=5,
+        max_value=30,
+        value=14,
+        step=1,
+        key="tec_stoch_window",
+        help="Ventana usada para ubicar el cierre en su rango reciente.",
+    )
 
 selected_asset = asset_map[selected_label]
 ticker = selected_asset["ticker"]
 asset_name = selected_asset["name"]
 
-default_end = pd.Timestamp.today().normalize()
-start_date, end_date = _resolve_dates(horizonte, default_end)
+start_date, end_date = _resolve_dates(
+    horizonte=horizonte,
+    default_end=today,
+    custom_start=pd.Timestamp(custom_start) if custom_start is not None else None,
+    custom_end=pd.Timestamp(custom_end) if custom_end is not None else None,
+)
 
-df, technical_error = _fetch_technical_data(
+if start_date >= end_date:
+    st.error("La fecha inicial debe ser menor que la fecha final.")
+    st.stop()
+
+prices_df, technical_error = _fetch_prices(
     ticker=ticker,
     start=start_date.strftime("%Y-%m-%d"),
     end=end_date.strftime("%Y-%m-%d"),
@@ -330,33 +433,40 @@ df, technical_error = _fetch_technical_data(
 
 header_dashboard(
     "Módulo 1 - Análisis técnico",
-    "Explora tendencia, momentum y señales técnicas del activo seleccionado usando el backend FastAPI como fuente de indicadores",
+    "Explora tendencia, momentum y señales técnicas del activo seleccionado usando precios del backend FastAPI",
     modo=modo,
 )
 
 if modo == "General":
     nota(
-        "Este módulo presenta una lectura ejecutiva del comportamiento técnico del activo seleccionado usando indicadores calculados desde backend."
+        "Este módulo presenta una lectura ejecutiva del comportamiento técnico del activo seleccionado."
     )
 else:
     nota(
-        "En modo estadístico se enfatiza la interpretación de tendencia, momentum y dispersión con base en indicadores técnicos calculados por la API."
+        "En modo estadístico se enfatiza una lectura más técnica: sensibilidad de ventanas, momentum, dispersión y apoyo visual para analizar el activo."
     )
 
 if technical_error:
     st.error(technical_error)
     st.stop()
 
+df = _build_technical_view(
+    prices_df=prices_df,
+    sma_window=sma_window,
+    ema_window=ema_window,
+    rsi_window=rsi_window,
+    boll_window=boll_window,
+    stoch_window=stoch_window,
+)
+
 close_now = _latest_valid(df["close"])
 close_prev = _previous_valid(df["close"])
-sma_now = _latest_valid(df["sma_20"])
-ema_now = _latest_valid(df["ema_20"])
-rsi_now = _latest_valid(df["rsi_14"])
-macd_now = _latest_valid(df["macd"])
-macd_signal_now = _latest_valid(df["macd_signal"])
-bb_up_now = _latest_valid(df["bb_up"])
-bb_low_now = _latest_valid(df["bb_low"])
-stoch_k_now = _latest_valid(df["stoch_k"])
+sma_now = _latest_valid(df[f"sma_{sma_window}"])
+ema_now = _latest_valid(df[f"ema_{ema_window}"])
+rsi_now = _latest_valid(df[f"rsi_{rsi_window}"])
+bb_up_now = _latest_valid(df[f"bb_up_{boll_window}"])
+bb_low_now = _latest_valid(df[f"bb_low_{boll_window}"])
+stoch_k_now = _latest_valid(df[f"stoch_k_{stoch_window}"])
 
 render_meta_row(
     [
@@ -364,6 +474,8 @@ render_meta_row(
         ("Ticker", ticker),
         ("País", selected_asset["country"]),
         ("Horizonte", horizonte),
+        ("SMA", str(sma_window)),
+        ("EMA", str(ema_window)),
     ]
 )
 
@@ -371,7 +483,6 @@ seccion("Resumen del módulo")
 
 moving_averages_help = help_map.get("moving_averages", {})
 rsi_help = help_map.get("rsi", {})
-macd_help = help_map.get("macd", {})
 boll_help = help_map.get("bollinger_bands", {})
 stochastic_help = help_map.get("stochastic", {})
 
@@ -383,7 +494,6 @@ render_info_card(
         f"{_interpret_bollinger(close_now, bb_low_now, bb_up_now)} "
         f"Medias móviles: {moving_averages_help.get(modo.lower(), 'Ayuda no disponible')} "
         f"RSI: {rsi_help.get(modo.lower(), 'Ayuda no disponible')} "
-        f"MACD: {macd_help.get(modo.lower(), 'Ayuda no disponible')} "
         f"Bollinger: {boll_help.get(modo.lower(), 'Ayuda no disponible')} "
         f"Estocástico: {stochastic_help.get(modo.lower(), 'Ayuda no disponible')}"
     ),
@@ -398,13 +508,13 @@ with c1:
         "Precio",
         f"{close_now:,.2f}" if close_now is not None else "N/D",
         delta=_format_delta(close_now, close_prev, as_pct=True),
-        subtexto="Último precio disponible retornado por la API técnica.",
-        help_text="Campo close entregado en el endpoint de indicadores técnicos.",
+        subtexto="Último precio disponible retornado por la API de mercado.",
+        help_text="Precio de cierre más reciente del activo en el rango consultado.",
     )
 
 with c2:
     tarjeta_kpi(
-        "RSI 14",
+        f"RSI {rsi_window}",
         f"{rsi_now:.2f}" if rsi_now is not None else "N/D",
         subtexto="Momentum relativo del activo.",
         help_text=rsi_help.get(modo.lower(), "Oscilador técnico RSI."),
@@ -412,101 +522,128 @@ with c2:
 
 with c3:
     tarjeta_kpi(
-        "MACD neto",
-        f"{(macd_now - macd_signal_now):.4f}" if macd_now is not None and macd_signal_now is not None else "N/D",
-        subtexto="Diferencia entre MACD y línea de señal.",
-        help_text=macd_help.get(modo.lower(), "Lectura de MACD."),
+        f"SMA {sma_window}",
+        f"{sma_now:.2f}" if sma_now is not None else "N/D",
+        subtexto=f"Media móvil simple de {sma_window} periodos.",
+        help_text=moving_averages_help.get(modo.lower(), "Media móvil simple."),
     )
 
 with c4:
     tarjeta_kpi(
-        "Stoch %K",
+        f"Stoch %K {stoch_window}",
         f"{stoch_k_now:.2f}" if stoch_k_now is not None else "N/D",
-        subtexto="Posición del cierre dentro del rango reciente.",
+        subtexto=f"Posición del cierre en rango de {stoch_window} periodos.",
         help_text=stochastic_help.get(modo.lower(), "Lectura del estocástico."),
     )
 
 plot_card_footer(
-    f"Se cargaron {len(df)} observaciones técnicas para {asset_name} ({ticker}) entre {start_date.date()} y {end_date.date()}."
+    f"Se cargaron {len(df)} observaciones para {asset_name} ({ticker}) entre {start_date.date()} y {end_date.date()}."
 )
 
 seccion("Visualizaciones técnicas")
 
-if show_price:
-    plot_card_header(
-        "Precio y medias móviles",
-        moving_averages_help.get(modo.lower(), "Precio, SMA 20 y EMA 20."),
-        modo=modo,
-        caption="Comparación entre precio de cierre y medias móviles calculadas por backend.",
-    )
+plot_card_header(
+    "Precio y medias móviles",
+    moving_averages_help.get(modo.lower(), "Comparación entre precio, SMA y EMA."),
+    modo=modo,
+    caption="Compara la dirección del precio con las medias configuradas desde el panel lateral.",
+)
 
-    toolbar_label("Series activas")
-    render_chip_row(
-        [
-            "Precio" if show_price else "",
-            "SMA 20" if show_sma else "",
-            "EMA 20" if show_ema else "",
-        ]
-    )
+toolbar_label("Capas del gráfico")
+render_chip_row(
+    [
+        "Precio",
+        f"SMA {sma_window}",
+        f"EMA {ema_window}",
+    ]
+)
 
-    fig_price = _plot_price_ma(df, modo=modo)
-
-    for trace in fig_price.data:
-        name = str(getattr(trace, "name", "")).lower()
-        if "precio" in name:
-            trace.visible = True if show_price else "legendonly"
-        elif "sma" in name:
-            trace.visible = True if show_sma else "legendonly"
-        elif "ema" in name:
-            trace.visible = True if show_ema else "legendonly"
-
-    st.plotly_chart(fig_price, use_container_width=True)
-    plot_card_footer(_interpret_trend(close_now, sma_now, ema_now))
-
-if show_bbands:
-    plot_card_header(
-        "Bandas de Bollinger",
-        boll_help.get(modo.lower(), "Lectura de bandas de Bollinger."),
-        modo=modo,
-        caption="Dispersión del precio frente a la media móvil y bandas de desviación estándar.",
-    )
-    fig_boll = _plot_bollinger(df, modo=modo)
-    st.plotly_chart(fig_boll, use_container_width=True)
-    plot_card_footer(_interpret_bollinger(close_now, bb_low_now, bb_up_now))
+fig_price = _plot_price_ma(df, modo=modo, sma_window=sma_window, ema_window=ema_window)
+st.plotly_chart(fig_price, use_container_width=True)
+plot_card_footer(_interpret_trend(close_now, sma_now, ema_now))
 
 g1, g2 = st.columns(2, gap="large")
 
 with g1:
-    if show_rsi:
-        plot_card_header(
-            "RSI",
-            rsi_help.get(modo.lower(), "Lectura de RSI."),
-            modo=modo,
-            caption="Señal de momentum con líneas de referencia en 30 y 70.",
-        )
-        fig_rsi = _plot_rsi(df, modo=modo)
-        st.plotly_chart(fig_rsi, use_container_width=True)
-        plot_card_footer(_interpret_rsi(rsi_now))
+    plot_card_header(
+        "RSI",
+        rsi_help.get(modo.lower(), "Lectura de RSI."),
+        modo=modo,
+        caption="Controla si deseas una lectura más limpia del oscilador o conservar referencias visuales.",
+    )
+
+    toolbar_label("Capas del gráfico")
+    r1, r2 = st.columns(2)
+    with r1:
+        rsi_line = st.checkbox("Línea RSI", value=True, key="tec_rsi_line")
+    with r2:
+        rsi_levels = st.checkbox("Niveles 30/70", value=True, key="tec_rsi_levels")
+
+    fig_rsi = _plot_rsi(df, modo=modo, rsi_window=rsi_window, show_levels=rsi_levels)
+    if not rsi_line:
+        for trace in fig_rsi.data:
+            trace.visible = "legendonly"
+
+    st.plotly_chart(fig_rsi, use_container_width=True)
+    plot_card_footer(_interpret_rsi(rsi_now))
 
 with g2:
-    if show_macd:
-        plot_card_header(
-            "MACD",
-            macd_help.get(modo.lower(), "Lectura de MACD."),
-            modo=modo,
-            caption="Comparación entre línea MACD, línea de señal e histograma.",
-        )
-        fig_macd = _plot_macd(df, modo=modo)
-        st.plotly_chart(fig_macd, use_container_width=True)
-        plot_card_footer("Observa cruces y cambios en el histograma para evaluar aceleración o pérdida de momentum.")
-
-if show_stoch:
     plot_card_header(
-        "Oscilador estocástico",
-        stochastic_help.get(modo.lower(), "Lectura del oscilador estocástico."),
+        "Bandas de Bollinger",
+        boll_help.get(modo.lower(), "Lectura de bandas de Bollinger."),
         modo=modo,
-        caption="Posiciona el cierre reciente dentro del rango móvil del activo.",
+        caption="Puedes decidir si observar solo el precio o comparar contra la media y las bandas.",
     )
-    fig_stoch = _plot_stochastic(df, modo=modo)
-    st.plotly_chart(fig_stoch, use_container_width=True)
-    plot_card_footer("Usa %K y %D para identificar zonas extremas y posibles cambios de dirección de corto plazo.")
+
+    toolbar_label("Capas del gráfico")
+    b1, b2, b3, b4 = st.columns(4)
+    with b1:
+        show_boll_price = st.checkbox("Precio", value=True, key="tec_boll_price")
+    with b2:
+        show_boll_mid = st.checkbox("Media", value=True, key="tec_boll_mid")
+    with b3:
+        show_boll_up = st.checkbox("Banda sup.", value=True, key="tec_boll_up")
+    with b4:
+        show_boll_low = st.checkbox("Banda inf.", value=True, key="tec_boll_low")
+
+    fig_boll = _plot_bollinger(
+        df=df,
+        modo=modo,
+        boll_window=boll_window,
+        show_price=show_boll_price,
+        show_mid=show_boll_mid,
+        show_up=show_boll_up,
+        show_low=show_boll_low,
+    )
+    st.plotly_chart(fig_boll, use_container_width=True)
+    plot_card_footer(_interpret_bollinger(close_now, bb_low_now, bb_up_now))
+
+if modo == "Estadístico":
+    seccion("Datos recientes")
+
+    recent_cols = [
+        "date",
+        "open",
+        "high",
+        "low",
+        "close",
+        "adj_close",
+        "volume",
+        f"sma_{sma_window}",
+        f"ema_{ema_window}",
+        f"rsi_{rsi_window}",
+        "macd",
+        "macd_signal",
+        "macd_hist",
+        f"bb_mid_{boll_window}",
+        f"bb_up_{boll_window}",
+        f"bb_low_{boll_window}",
+        f"stoch_k_{stoch_window}",
+        f"stoch_d_{stoch_window}",
+    ]
+
+    recent_df = df[recent_cols].copy().tail(10).sort_values("date", ascending=False)
+    recent_df["date"] = recent_df["date"].dt.strftime("%Y-%m-%d")
+
+    with st.expander("Ver tabla", expanded=False):
+        st.dataframe(recent_df, use_container_width=True)

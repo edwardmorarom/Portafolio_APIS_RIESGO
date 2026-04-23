@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 from ui.page_setup import setup_dashboard_page
@@ -14,10 +16,25 @@ from ui.cards import render_chip_row, render_info_card, render_meta_row
 from services.api_client import get_api_client, ApiClientError
 
 
+LOGO_BY_TICKER = {
+    "BP.L": "frontend/assets/logos/bp.png",
+    "CA.PA": "frontend/assets/logos/carrefour.png",
+    "ATD.TO": "frontend/assets/logos/couche_tard.png",
+    "FEMSAUBD.MX": "frontend/assets/logos/femsa.png",
+    "3382.T": "frontend/assets/logos/seven_i.png",
+}
+
+
+def _get_logo_path(ticker: str) -> str | None:
+    path = LOGO_BY_TICKER.get((ticker or "").upper())
+    if not path:
+        return None
+    return path if Path(path).exists() else None
+
+
 def _build_asset_role(name: str, ticker: str, country: str, is_default: bool) -> dict[str, str]:
     ticker_u = (ticker or "").upper()
     name_l = (name or "").lower()
-    country_l = (country or "").lower()
 
     if "bp" in name_l or "shel" in ticker_u or "xom" in ticker_u:
         return {
@@ -45,13 +62,6 @@ def _build_asset_role(name: str, ticker: str, country: str, is_default: bool) ->
             "rol": "Crecimiento global",
             "aporte": "Exposición a compañías de gran escala con sesgo de crecimiento.",
             "tesis": "Aumenta potencial de retorno esperado con mayor sensibilidad al mercado.",
-        }
-
-    if "toyota" in name_l or "nestle" in name_l or "santander" in name_l:
-        return {
-            "rol": "Diversificación internacional",
-            "aporte": "Amplía exposición geográfica y sectorial del portafolio.",
-            "tesis": "Reduce concentración por región o industria.",
         }
 
     if is_default:
@@ -120,21 +130,9 @@ with filtros_sidebar:
             key="ctx_asset_select",
         )
 
-    show_general_read = st.checkbox(
-        "Mostrar lectura general del portafolio",
-        value=True,
-        key="ctx_show_general_read",
-    )
-    show_connection = st.checkbox(
-        "Mostrar conexión con módulos",
-        value=True,
-        key="ctx_show_connection",
-    )
-    show_default_only = st.checkbox(
-        "Mostrar solo activos base",
-        value=False,
-        key="ctx_show_default_only",
-    )
+    show_general_read = True
+    show_connection = True
+    show_default_only = False
 
 header_dashboard(
     "Módulo 0 - Contextualización del portafolio",
@@ -160,7 +158,6 @@ seccion("Resumen del universo")
 default_assets = [a for a in assets if a.get("default") is True]
 extra_assets = [a for a in assets if a.get("default") is not True]
 countries = sorted({a.get("country", "N/D") for a in assets})
-tickers = [a.get("ticker", "") for a in assets]
 
 c1, c2, c3, c4 = st.columns(4)
 
@@ -256,7 +253,12 @@ for asset in filtered_assets:
         ]
     )
 
-    col_left, col_right = st.columns([1.2, 1.8], gap="large")
+    col_logo, col_left, col_right = st.columns([0.55, 1.1, 1.75], gap="large")
+
+    with col_logo:
+        logo_path = _get_logo_path(asset.get("ticker", ""))
+        if logo_path:
+            st.image(logo_path, width=90)
 
     with col_left:
         tarjeta_kpi(
@@ -274,35 +276,3 @@ for asset in filtered_assets:
 
     st.markdown("")
 
-seccion("Conexión con módulos del dashboard")
-
-if show_connection:
-    render_chip_row(
-        [
-            "01 Técnico",
-            "02 Rendimientos",
-            "03 GARCH",
-            "04 CAPM",
-            "05 VaR / CVaR",
-            "06 Markowitz",
-            "07 Alertas",
-            "08 Macro / Benchmark",
-            "09 Panel de decisión",
-        ]
-    )
-
-    benchmark_help = help_map.get("benchmark_comparison", {})
-    var_help = help_map.get("var", {})
-    capm_help = help_map.get("beta", {})
-
-    render_info_card(
-        "Cómo se conecta esta vista con el resto del proyecto",
-        (
-            "Desde aquí se define qué activos forman parte del análisis. "
-            f"Benchmark: {benchmark_help.get(modo.lower(), 'Ayuda no disponible')} "
-            f"VaR: {var_help.get(modo.lower(), 'Ayuda no disponible')} "
-            f"Beta: {capm_help.get(modo.lower(), 'Ayuda no disponible')}"
-        ),
-    )
-else:
-    nota("La conexión con módulos quedó oculta desde el panel lateral.")
