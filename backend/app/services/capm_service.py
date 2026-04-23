@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 from app.clients.market_client import MarketClient
 from app.services.macro_service import MacroService
@@ -40,6 +41,14 @@ class CapmService:
 
         return pd.concat(series_list, axis=1).dropna()
 
+    @staticmethod
+    def _classify_beta(beta: float) -> str:
+        if beta < 0.8:
+            return "Defensivo"
+        if beta <= 1.2:
+            return "Neutro"
+        return "Agresivo"
+
     def calculate_capm(
         self,
         ticker: str,
@@ -76,9 +85,25 @@ class CapmService:
 
         rf_ticker, rf_pct = self.macro_service.resolve_rf_inputs(base_currency=base_currency)
         rf_decimal = rf_pct / 100.0
+        rf_periodic = rf_decimal / 252.0
+
+        benchmark_excess = bench_series - rf_periodic
+        asset_excess = asset_series - rf_periodic
+
+        slope, intercept, r_value, p_value, _ = stats.linregress(benchmark_excess, asset_excess)
 
         capm_expected_return = rf_decimal + beta * (benchmark_return_annual - rf_decimal)
         alpha_simple = asset_return_annual - capm_expected_return
+        classification = self._classify_beta(float(beta))
+
+        regression_points = [
+            {
+                "benchmark_excess": float(x),
+                "asset_excess": float(y),
+            }
+            for x, y in zip(benchmark_excess.tolist(), asset_excess.tolist())
+            if np.isfinite(x) and np.isfinite(y)
+        ]
 
         return {
             "ticker": ticker.upper(),
@@ -91,6 +116,10 @@ class CapmService:
             "benchmark_return_annual": benchmark_return_annual,
             "capm_expected_return": float(capm_expected_return),
             "alpha_simple": float(alpha_simple),
+            "r_squared": float(r_value ** 2),
+            "p_value_beta": float(p_value),
+            "classification": classification,
+            "regression_points": regression_points,
             "start": start,
             "end": end,
         }

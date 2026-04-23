@@ -1,4 +1,11 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, Field, field_validator
+
+
+class CapmRegressionPoint(BaseModel):
+    benchmark_excess: float = Field(..., description="Exceso de retorno del benchmark")
+    asset_excess: float = Field(..., description="Exceso de retorno del activo")
 
 
 class CapmResponse(BaseModel):
@@ -7,11 +14,22 @@ class CapmResponse(BaseModel):
     base_currency: str = Field(..., description="Moneda base")
     rf_ticker: str = Field(..., description="Ticker de la tasa libre de riesgo")
     rf_rate_pct: float | None = Field(default=None, description="Tasa libre de riesgo en porcentaje")
+
     beta: float = Field(..., description="Beta del activo frente al benchmark")
     asset_return_annual: float = Field(..., description="Retorno anualizado del activo")
     benchmark_return_annual: float = Field(..., description="Retorno anualizado del benchmark")
     capm_expected_return: float = Field(..., description="Retorno esperado por CAPM")
     alpha_simple: float = Field(..., description="Alpha simple frente a CAPM")
+
+    r_squared: float | None = Field(default=None, description="Coeficiente de determinación")
+    p_value_beta: float | None = Field(default=None, description="P-value asociado a beta")
+    classification: str = Field(..., description="Clasificación del activo: agresivo, defensivo o neutro")
+
+    regression_points: list[CapmRegressionPoint] = Field(
+        default_factory=list,
+        description="Puntos de dispersión para la regresión CAPM",
+    )
+
     start: str = Field(..., description="Fecha inicial")
     end: str = Field(..., description="Fecha final")
 
@@ -57,6 +75,7 @@ class PortfolioCapmRequest(BaseModel):
         if value not in {"simple", "log"}:
             raise ValueError("return_type debe ser 'simple' o 'log'")
         return value
+
 
 class PortfolioCapmResponse(BaseModel):
     tickers: list[str] = Field(..., description="Tickers del portafolio")
