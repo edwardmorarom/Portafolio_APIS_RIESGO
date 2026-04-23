@@ -28,10 +28,24 @@ class GarchService:
         if returns.empty:
             raise TickerNotFoundError(ticker=ticker)
 
-        # arch trabaja mejor con retornos en porcentaje
         returns = returns * 100.0
         returns.name = ticker.upper()
         return returns
+
+    @staticmethod
+    def _safe_float_list(values) -> list[float]:
+        out: list[float] = []
+        if values is None:
+            return out
+
+        for value in values:
+            try:
+                f_value = float(value)
+                if np.isfinite(f_value):
+                    out.append(f_value)
+            except Exception:
+                continue
+        return out
 
     def analyze(
         self,
@@ -42,7 +56,12 @@ class GarchService:
         mode: str,
         forecast_horizon: int,
     ) -> dict:
-        returns = self._get_returns(ticker=ticker, start=start, end=end, return_type=return_type)
+        returns = self._get_returns(
+            ticker=ticker,
+            start=start,
+            end=end,
+            return_type=return_type,
+        )
 
         if len(returns) < 100:
             raise ValueError("No hay suficientes observaciones para ajustar modelos de volatilidad.")
@@ -53,21 +72,27 @@ class GarchService:
             ("EGARCH(1,1)", {"mean": "Constant", "vol": "EGARCH", "p": 1, "o": 0, "q": 1, "dist": "normal"}),
         ]
 
-        fitted_models = []
+        fitted_models: list[tuple[str, object]] = []
 
         for name, spec in model_specs:
-            model = arch_model(
-                returns,
-                mean=spec["mean"],
-                vol=spec["vol"],
-                p=spec["p"],
-                o=spec["o"],
-                q=spec["q"],
-                dist=spec["dist"],
-                rescale=False,
-            )
-            res = model.fit(disp="off")
-            fitted_models.append((name, res))
+            try:
+                model = arch_model(
+                    returns,
+                    mean=spec["mean"],
+                    vol=spec["vol"],
+                    p=spec["p"],
+                    o=spec["o"],
+                    q=spec["q"],
+                    dist=spec["dist"],
+                    rescale=False,
+                )
+                res = model.fit(disp="off")
+                fitted_models.append((name, res))
+            except Exception:
+                continue
+
+        if not fitted_models:
+            raise ValueError("No fue posible ajustar modelos ARCH/GARCH/EGARCH con la muestra disponible.")
 
         candidate_models = [
             {
@@ -90,32 +115,61 @@ class GarchService:
             else "No se rechaza normalidad de residuos estandarizados al 5%."
         )
 
-        cond_vol = [float(x) for x in best_res.conditional_volatility.tolist()]
+        conditional_volatility_by_model: dict[str, list[float]] = {}
+        forecast_by_model: dict[str, list[float]] = {}
 
-        try:
-            forecast_res = best_res.forecast(horizon=forecast_horizon, reindex=False)
-            effective_horizon = forecast_horizon
-        except Exception:
-            forecast_res = best_res.forecast(horizon=1, reindex=False)
-            effective_horizon = 1
+        effective_horizon = forecast_horizon
 
-        forecast_variances = forecast_res.variance.iloc[-1].values.tolist()
+        for name, res in fitted_models:
+            try:
+                cond_vol_values = self._safe_float_list(res.conditional_volatility.tolist())
+            except Exception:
+                cond_vol_values = []
 
-        forecast = [
-            {
-                "step": i + 1,
-                "variance": float(v),
-                "volatility": float(np.sqrt(v)),
-            }
-            for i, v in enumerate(forecast_variances)
-        ]
+            conditional_volatility_by_model[name] = cond_vol_values
+
+            try:
+                model_forecast_res = res.forecast(horizon=forecast_horizon, reindex=False)
+                model_forecast_variances = self._safe_float_list(
+                    model_forecast_res.variance.iloc[-1].values.tolist()
+                )
+            except Exception:
+                try:
+                    model_forecast_res = res.forecast(horizon=1, reindex=False)
+                    model_forecast_variances = self._safe_float_list(
+                        model_forecast_res.variance.iloc[-1].values.tolist()
+                    )
+                    effective_horizon = 1
+                except Exception:
+                    model_forecast_variances = []
+
+            forecast_by_model[name] = [
+                float(np.sqrt(v)) for v in model_forecast_variances if np.isfinite(v) and v >= 0
+            ]
+
+        cond_vol = conditional_volatility_by_model.get(best_name, [])
+
+        best_forecast_volatility = forecast_by_model.get(best_name, [])
+
+        forecast: list[dict[str, float | int]] = []
+        for i, volatility in enumerate(best_forecast_volatility, start=1):
+            variance = float(volatility) ** 2
+            forecast.append(
+                {
+                    "step": i,
+                    "variance": float(variance),
+                    "volatility": float(volatility),
+                }
+            )
+
+        effective_forecast_horizon = len(forecast) if forecast else int(effective_horizon)
 
         if mode == "general":
             summary = (
                 f"Se compararon ARCH(1), GARCH(1,1) y EGARCH(1,1). "
                 f"El mejor modelo por AIC fue {best_name}. "
                 f"El diagnostico de residuos indica: {residuals_conclusion} "
-                f"El horizonte efectivo de pronostico fue {effective_horizon}."
+                f"El horizonte efectivo de pronostico fue {effective_forecast_horizon}."
             )
         else:
             summary = (
@@ -123,7 +177,7 @@ class GarchService:
                 f"AIC={float(best_res.aic):.6f}, "
                 f"BIC={float(best_res.bic):.6f}, "
                 f"JB p-value residuos={float(jb_p):.6f}, "
-                f"effective_horizon={effective_horizon}."
+                f"effective_horizon={effective_forecast_horizon}."
             )
 
         return {
@@ -140,8 +194,10 @@ class GarchService:
             "residuals_jarque_bera_p_value": float(jb_p),
             "residuals_normality_conclusion": residuals_conclusion,
             "conditional_volatility": cond_vol,
+            "conditional_volatility_by_model": conditional_volatility_by_model,
             "forecast": forecast,
+            "forecast_by_model": forecast_by_model,
             "mode": mode,
             "summary": summary,
-            "effective_forecast_horizon": int(effective_horizon),
+            "effective_forecast_horizon": int(effective_forecast_horizon),
         }

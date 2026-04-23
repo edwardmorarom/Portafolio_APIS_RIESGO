@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -41,12 +43,35 @@ class VarMethodResult(BaseModel):
     cvar_annualized: float = Field(..., description="CVaR anualizado")
 
 
+class KupiecBacktestResult(BaseModel):
+    violations: int = Field(..., description="Número de violaciones observadas")
+    observed_rate: float = Field(..., description="Frecuencia observada de violaciones")
+    expected_rate: float = Field(..., description="Frecuencia esperada de violaciones")
+    p_value: float = Field(..., description="P-value del test de Kupiec")
+    conclusion: str = Field(..., description="Conclusión textual del backtesting")
+
+
 class PortfolioVarResponse(BaseModel):
     tickers: list[str] = Field(..., description="Tickers del portafolio")
     weights: list[float] = Field(..., description="Pesos del portafolio")
     alpha: float = Field(..., description="Nivel de confianza")
     start: str = Field(..., description="Fecha inicial")
     end: str = Field(..., description="Fecha final")
+
     parametric: VarMethodResult = Field(..., description="VaR y CVaR paramétricos")
     historical: VarMethodResult = Field(..., description="VaR y CVaR históricos")
     monte_carlo: VarMethodResult = Field(..., description="VaR y CVaR por simulación Monte Carlo")
+
+    portfolio_returns: list[float] = Field(
+        default_factory=list,
+        description="Distribución histórica de rendimientos del portafolio",
+    )
+    simulated_returns: list[float] = Field(
+        default_factory=list,
+        description="Distribución simulada de rendimientos Monte Carlo",
+    )
+
+    kupiec_test: KupiecBacktestResult | None = Field(
+        default=None,
+        description="Backtesting VaR con test de Kupiec",
+    )

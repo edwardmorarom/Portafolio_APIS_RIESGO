@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -53,15 +55,37 @@ class GarchResponse(BaseModel):
     end: str
     return_type: str
     observations: int
+
     candidate_models: list[GarchModelResult] = Field(default_factory=list)
+
     best_model: str
     best_model_aic: float
     best_model_bic: float
+
     residuals_jarque_bera_stat: float
     residuals_jarque_bera_p_value: float
     residuals_normality_conclusion: str
-    conditional_volatility: list[float] = Field(default_factory=list)
-    forecast: list[GarchForecastPoint] = Field(default_factory=list)
+
+    conditional_volatility: list[float] = Field(
+        default_factory=list,
+        description="Serie de volatilidad condicional del mejor modelo",
+    )
+
+    conditional_volatility_by_model: dict[str, list[float]] = Field(
+        default_factory=dict,
+        description="Serie de volatilidad condicional por modelo candidato",
+    )
+
+    forecast: list[GarchForecastPoint] = Field(
+        default_factory=list,
+        description="Pronostico del mejor modelo",
+    )
+
+    forecast_by_model: dict[str, list[float]] = Field(
+        default_factory=dict,
+        description="Pronostico por modelo candidato",
+    )
+
     effective_forecast_horizon: int
     mode: str
     summary: str
