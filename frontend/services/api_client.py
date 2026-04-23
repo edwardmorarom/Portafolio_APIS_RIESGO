@@ -149,18 +149,11 @@ class ApiClient:
         return self.get("/assets/")
 
     def search_assets(self, query: str) -> dict[str, Any]:
-        return self.get("/assets/search", params={"q": query})
+        return self.get("/assets/search", params={"query": query})
 
     # ---------- Help ----------
     def get_help_catalog(self) -> dict[str, Any]:
         return self.get("/help/catalog")
-
-    # ---------- Macro ----------
-    def get_macro_snapshot(self, base_currency: str = "USD") -> dict[str, Any]:
-        return self.get("/macro/", params={"base_currency": base_currency})
-
-    def get_fx_spot(self, base_currency: str) -> dict[str, Any]:
-        return self.get(f"/macro/fx-spot/{base_currency}")
 
     # ---------- Market ----------
     def get_prices(self, ticker: str, start: str, end: str) -> dict[str, Any]:
@@ -176,10 +169,28 @@ class ApiClient:
         )
 
     # ---------- Technical ----------
-    def get_technical_indicators(self, ticker: str, start: str, end: str) -> dict[str, Any]:
+    def get_technical_indicators(
+        self,
+        ticker: str,
+        start: str,
+        end: str,
+        sma_window: int = 20,
+        ema_window: int = 20,
+        rsi_window: int = 14,
+        bb_window: int = 20,
+        stoch_window: int = 14,
+    ) -> dict[str, Any]:
         return self.get(
             f"/technical/indicators/{ticker}",
-            params={"start": start, "end": end},
+            params={
+                "start": start,
+                "end": end,
+                "sma_window": sma_window,
+                "ema_window": ema_window,
+                "rsi_window": rsi_window,
+                "bb_window": bb_window,
+                "stoch_window": stoch_window,
+            },
         )
 
     # ---------- Returns stats ----------
@@ -189,7 +200,7 @@ class ApiClient:
         start: str,
         end: str,
         return_type: str = "log",
-        mode: str = "estadistico",
+        mode: str = "general",
     ) -> dict[str, Any]:
         return self.get(
             f"/returns-stats/summary/{ticker}",
@@ -231,7 +242,7 @@ class ApiClient:
         start: str,
         end: str,
         return_type: str = "log",
-        mode: str = "estadistico",
+        mode: str = "general",
         forecast_horizon: int = 5,
     ) -> dict[str, Any]:
         return self.get(
@@ -251,15 +262,17 @@ class ApiClient:
         ticker: str,
         start: str,
         end: str,
-        base_currency: str = "USD",
         benchmark_ticker: str | None = None,
+        base_currency: str = "USD",
         return_type: str = "log",
+        mode: str = "general",
     ) -> dict[str, Any]:
         params = {
             "start": start,
             "end": end,
             "base_currency": base_currency,
             "return_type": return_type,
+            "mode": mode,
         }
         if benchmark_ticker:
             params["benchmark_ticker"] = benchmark_ticker
@@ -270,24 +283,59 @@ class ApiClient:
         return self.post("/capm/portfolio", json_payload=payload, include_api_key=True)
 
     # ---------- Risk ----------
-    def get_portfolio_var(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def post_var_risk(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self.post("/risk/var", json_payload=payload, include_api_key=True)
 
+    def get_portfolio_var(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post_var_risk(payload)
+
     # ---------- Portfolio ----------
+    def post_efficient_frontier(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post(
+            "/portfolio/efficient-frontier",
+            json_payload=payload,
+            include_api_key=True,
+        )
+
     def get_efficient_frontier(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self.post("/portfolio/efficient-frontier", json_payload=payload, include_api_key=True)
+        return self.post_efficient_frontier(payload)
+
+    # ---------- Macro ----------
+    def get_macro(self, base_currency: str = "USD") -> dict[str, Any]:
+        return self.get("/macro/", params={"base_currency": base_currency})
+
+    def get_macro_snapshot(self, base_currency: str = "USD") -> dict[str, Any]:
+        return self.get_macro(base_currency=base_currency)
+
+    def get_fx_spot(self, base_currency: str = "USD") -> dict[str, Any]:
+        return self.get(f"/macro/fx-spot/{base_currency}")
 
     # ---------- Benchmark ----------
+    def post_benchmark_compare(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post(
+            "/benchmark/compare",
+            json_payload=payload,
+            include_api_key=True,
+        )
+
     def compare_benchmark(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self.post("/benchmark/compare", json_payload=payload, include_api_key=True)
+        return self.post_benchmark_compare(payload)
 
     # ---------- Decision ----------
     def get_decision_panel(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self.post("/decision/panel", json_payload=payload, include_api_key=True)
+        return self.post(
+            "/decision/panel",
+            json_payload=payload,
+            include_api_key=True,
+        )
 
     # ---------- Investor ----------
     def validate_investor_preferences(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self.post("/investor/preferences", json_payload=payload)
+        return self.post(
+            "/investor/preferences",
+            json_payload=payload,
+            include_api_key=True,
+        )
 
 
 @st.cache_resource
