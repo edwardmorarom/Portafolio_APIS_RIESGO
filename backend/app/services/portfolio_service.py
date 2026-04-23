@@ -74,11 +74,11 @@ class PortfolioService:
 
     def _efficient_frontier(self, sim_df: pd.DataFrame, n_bins: int = 50) -> pd.DataFrame:
         if sim_df.empty:
-            return pd.DataFrame(columns=["volatility", "return"])
+            return pd.DataFrame(columns=["volatility", "return", "sharpe"])
 
-        df = sim_df[["volatility", "return"]].dropna().copy()
+        df = sim_df[["volatility", "return", "sharpe"]].dropna().copy()
         if df.empty:
-            return pd.DataFrame(columns=["volatility", "return"])
+            return pd.DataFrame(columns=["volatility", "return", "sharpe"])
 
         n_unique = int(df["volatility"].nunique())
         n_bins_eff = min(n_bins, max(2, n_unique))
@@ -87,7 +87,7 @@ class PortfolioService:
         df = df.dropna(subset=["bin"])
 
         if df.empty:
-            return pd.DataFrame(columns=["volatility", "return"])
+            return pd.DataFrame(columns=["volatility", "return", "sharpe"])
 
         frontier = (
             df.groupby("bin", observed=True, group_keys=False)
@@ -99,7 +99,7 @@ class PortfolioService:
         frontier["cummax_return"] = frontier["return"].cummax()
         frontier = frontier[frontier["return"] >= frontier["cummax_return"]]
 
-        return frontier[["volatility", "return"]].dropna()
+        return frontier[["volatility", "return", "sharpe"]].dropna()
 
     def _extract_weights(self, row: pd.Series) -> list[dict]:
         items = []
@@ -113,69 +113,6 @@ class PortfolioService:
                 )
         items.sort(key=lambda x: x["weight"], reverse=True)
         return items
-
-    def build_efficient_frontier(
-        self,
-        tickers: list[str],
-        start: str,
-        end: str,
-        rf_annual: float,
-        n_portfolios: int,
-        return_type: str,
-        target_return_annual: float | None = None,
-        risk_profile: str | None = None,
-    ) -> dict:
-        returns_df = self._build_returns_matrix(tickers=tickers, start=start, end=end, return_type=return_type)
-
-        if returns_df.empty:
-            raise ValueError("No fue posible construir la matriz de rendimientos.")
-
-        if len(returns_df.columns) != len(tickers):
-            raise ValueError("No fue posible obtener datos válidos para todos los tickers enviados.")
-
-        sim_df = self._simulate_portfolios(
-            returns_df=returns_df,
-            rf_annual=rf_annual,
-            n_portfolios=n_portfolios,
-        )
-
-        if len(returns_df) < self.client.settings.min_obs_portfolio:
-            raise ValueError(
-                f"Se requieren al menos {self.client.settings.min_obs_portfolio} observaciones para optimización."
-            )
-
-        if sim_df.empty:
-            raise ValueError("No fue posible simular portafolios.")
-
-        frontier_df = self._efficient_frontier(sim_df)
-
-        min_var = sim_df.loc[sim_df["volatility"].idxmin()]
-        max_sharpe = sim_df.loc[sim_df["sharpe"].idxmax()]
-
-        target_return_portfolio = self._closest_target_return(sim_df, target_return_annual) if target_return_annual is not None else None
-        suggested_profile_portfolio = self._profile_suggestion(sim_df, risk_profile)
-
-        return {
-            "tickers": tickers,
-            "start": start,
-            "end": end,
-            "rf_annual": rf_annual,
-            "frontier": frontier_df.to_dict(orient="records"),
-            "min_variance": {
-                "return": float(min_var["return"]),
-                "volatility": float(min_var["volatility"]),
-                "sharpe": float(min_var["sharpe"]),
-                "weights": self._extract_weights(min_var),
-            },
-            "max_sharpe": {
-                "return": float(max_sharpe["return"]),
-                "volatility": float(max_sharpe["volatility"]),
-                "sharpe": float(max_sharpe["sharpe"]),
-                "weights": self._extract_weights(max_sharpe),
-            },
-            "target_return_portfolio": target_return_portfolio,
-            "suggested_profile_portfolio": suggested_profile_portfolio,
-        }
 
     def _closest_target_return(self, sim_df: pd.DataFrame, target_return_annual: float) -> dict | None:
         if sim_df.empty:
@@ -217,4 +154,77 @@ class PortfolioService:
             "volatility": float(row["volatility"]),
             "sharpe": float(row["sharpe"]),
             "weights": self._extract_weights(row),
+        }
+
+    def build_efficient_frontier(
+        self,
+        tickers: list[str],
+        start: str,
+        end: str,
+        rf_annual: float,
+        n_portfolios: int,
+        return_type: str,
+        target_return_annual: float | None = None,
+        risk_profile: str | None = None,
+    ) -> dict:
+        returns_df = self._build_returns_matrix(tickers=tickers, start=start, end=end, return_type=return_type)
+
+        if returns_df.empty:
+            raise ValueError("No fue posible construir la matriz de rendimientos.")
+
+        if len(returns_df.columns) != len(tickers):
+            raise ValueError("No fue posible obtener datos válidos para todos los tickers enviados.")
+
+        if len(returns_df) < self.client.settings.min_obs_portfolio:
+            raise ValueError(
+                f"Se requieren al menos {self.client.settings.min_obs_portfolio} observaciones para optimización."
+            )
+
+        sim_df = self._simulate_portfolios(
+            returns_df=returns_df,
+            rf_annual=rf_annual,
+            n_portfolios=n_portfolios,
+        )
+
+        if sim_df.empty:
+            raise ValueError("No fue posible simular portafolios.")
+
+        frontier_df = self._efficient_frontier(sim_df)
+
+        min_var = sim_df.loc[sim_df["volatility"].idxmin()]
+        max_sharpe = sim_df.loc[sim_df["sharpe"].idxmax()]
+
+        target_return_portfolio = (
+            self._closest_target_return(sim_df, target_return_annual)
+            if target_return_annual is not None
+            else None
+        )
+        suggested_profile_portfolio = self._profile_suggestion(sim_df, risk_profile)
+
+        corr_df = returns_df.corr().round(6)
+
+        return {
+            "tickers": [t.upper() for t in tickers],
+            "start": start,
+            "end": end,
+            "rf_annual": float(rf_annual),
+            "frontier": frontier_df.to_dict(orient="records"),
+            "simulated_portfolios": sim_df[["volatility", "return", "sharpe"]].to_dict(orient="records"),
+            "correlation_matrix": corr_df.to_dict(),
+            "observations": int(len(returns_df)),
+            "n_assets": int(returns_df.shape[1]),
+            "min_variance": {
+                "return": float(min_var["return"]),
+                "volatility": float(min_var["volatility"]),
+                "sharpe": float(min_var["sharpe"]),
+                "weights": self._extract_weights(min_var),
+            },
+            "max_sharpe": {
+                "return": float(max_sharpe["return"]),
+                "volatility": float(max_sharpe["volatility"]),
+                "sharpe": float(max_sharpe["sharpe"]),
+                "weights": self._extract_weights(max_sharpe),
+            },
+            "target_return_portfolio": target_return_portfolio,
+            "suggested_profile_portfolio": suggested_profile_portfolio,
         }

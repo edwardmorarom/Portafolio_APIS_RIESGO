@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field, field_validator
+from __future__ import annotations
+
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class EfficientFrontierRequest(BaseModel):
@@ -18,6 +20,20 @@ class EfficientFrontierRequest(BaseModel):
         default=None,
         description="Perfil opcional: conservador, arriesgado, minimo_riesgo, maxima_utilidad",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def map_frontend_aliases(cls, values: dict):
+        if not isinstance(values, dict):
+            return values
+
+        if "risk_free_rate" in values and "rf_annual" not in values:
+            values["rf_annual"] = values["risk_free_rate"]
+
+        if "target_return" in values and "target_return_annual" not in values:
+            values["target_return_annual"] = values["target_return"]
+
+        return values
 
     @field_validator("tickers")
     @classmethod
@@ -52,6 +68,7 @@ class EfficientFrontierRequest(BaseModel):
 class FrontierPoint(BaseModel):
     volatility: float = Field(..., description="Volatilidad anualizada")
     return_: float = Field(..., alias="return", description="Retorno anualizado")
+    sharpe: float | None = Field(default=None, description="Sharpe opcional")
 
 
 class PortfolioWeightsItem(BaseModel):
@@ -64,16 +81,6 @@ class OptimalPortfolio(BaseModel):
     volatility: float = Field(..., description="Volatilidad anualizada")
     sharpe: float = Field(..., description="Ratio de Sharpe")
     weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Composición del portafolio")
-
-
-class EfficientFrontierResponse(BaseModel):
-    tickers: list[str] = Field(..., description="Tickers analizados")
-    start: str = Field(..., description="Fecha inicial")
-    end: str = Field(..., description="Fecha final")
-    rf_annual: float = Field(..., description="Tasa libre de riesgo anual")
-    frontier: list[FrontierPoint] = Field(default_factory=list, description="Puntos de la frontera eficiente")
-    min_variance: OptimalPortfolio = Field(..., description="Portafolio de mínima varianza")
-    max_sharpe: OptimalPortfolio = Field(..., description="Portafolio de máximo Sharpe")
 
 
 class TargetReturnPortfolio(BaseModel):
@@ -96,7 +103,13 @@ class EfficientFrontierResponse(BaseModel):
     start: str = Field(..., description="Fecha inicial")
     end: str = Field(..., description="Fecha final")
     rf_annual: float = Field(..., description="Tasa libre de riesgo anual")
+
     frontier: list[FrontierPoint] = Field(default_factory=list, description="Puntos de la frontera eficiente")
+    simulated_portfolios: list[FrontierPoint] = Field(default_factory=list, description="Nube simulada de portafolios")
+    correlation_matrix: dict[str, dict[str, float]] = Field(default_factory=dict, description="Matriz de correlación")
+    observations: int = Field(..., description="Número de observaciones alineadas")
+    n_assets: int = Field(..., description="Número de activos efectivos")
+
     min_variance: OptimalPortfolio = Field(..., description="Portafolio de mínima varianza")
     max_sharpe: OptimalPortfolio = Field(..., description="Portafolio de máximo Sharpe")
     target_return_portfolio: TargetReturnPortfolio | None = Field(
