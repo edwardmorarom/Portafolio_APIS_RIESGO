@@ -2,132 +2,307 @@ from __future__ import annotations
 
 import streamlit as st
 
-from config import COMPANY_LOGOS
-from services.api_client import get_assets
 from ui.page_setup import setup_dashboard_page
-from ui.dashboard_ui import header_dashboard, nota, seccion
+from ui.dashboard_ui import (
+    header_dashboard,
+    nota,
+    seccion,
+    titulo_con_ayuda,
+    tarjeta_kpi,
+)
+from ui.cards import render_chip_row, render_info_card, render_meta_row
+from services.api_client import get_api_client, ApiClientError
 
 
-ASSET_DESCRIPTIONS = {
-    "BP.L": {
-        "desc": "Multinacional energética con exposición a petróleo, gas y transición energética.",
-        "role": "Aporta sensibilidad macro y exposición al ciclo energético global.",
-    },
-    "CA.PA": {
-        "desc": "Retail defensivo europeo con foco en consumo masivo y operación internacional.",
-        "role": "Funciona como componente estable ligado al consumo básico.",
-    },
-    "ATD.TO": {
-        "desc": "Operador global de tiendas de conveniencia y estaciones de servicio.",
-        "role": "Aporta diversificación operativa, geográfica y exposición a retail internacional.",
-    },
-    "FEMSAUBD.MX": {
-        "desc": "Conglomerado mexicano con negocios en retail, bebidas y logística.",
-        "role": "Introduce exposición regional a Latinoamérica y diversificación corporativa.",
-    },
-    "3382.T": {
-        "desc": "Grupo japonés de retail con presencia internacional y reconocimiento de marca.",
-        "role": "Añade exposición asiática y diversificación por región y estructura operativa.",
-    },
-}
+def _build_asset_role(name: str, ticker: str, country: str, is_default: bool) -> dict[str, str]:
+    ticker_u = (ticker or "").upper()
+    name_l = (name or "").lower()
+    country_l = (country or "").lower()
+
+    if "bp" in name_l or "shel" in ticker_u or "xom" in ticker_u:
+        return {
+            "rol": "Cobertura sectorial",
+            "aporte": "Exposición energética y sensibilidad macroeconómica.",
+            "tesis": "Ayuda a diversificar frente a activos de consumo y retail.",
+        }
+
+    if "femsa" in name_l or "kof" in ticker_u:
+        return {
+            "rol": "Exposición regional",
+            "aporte": "Latinoamérica, consumo y estructura operativa diversificada.",
+            "tesis": "Introduce sesgo regional y mezcla entre estabilidad y crecimiento.",
+        }
+
+    if "seven" in name_l or "atd" in ticker_u or "carrefour" in name_l or "wmt" in ticker_u:
+        return {
+            "rol": "Retail defensivo",
+            "aporte": "Consumo recurrente, operación internacional y resiliencia relativa.",
+            "tesis": "Aporta estabilidad comparativa dentro del portafolio.",
+        }
+
+    if "apple" in name_l or "microsoft" in name_l or "visa" in name_l:
+        return {
+            "rol": "Crecimiento global",
+            "aporte": "Exposición a compañías de gran escala con sesgo de crecimiento.",
+            "tesis": "Aumenta potencial de retorno esperado con mayor sensibilidad al mercado.",
+        }
+
+    if "toyota" in name_l or "nestle" in name_l or "santander" in name_l:
+        return {
+            "rol": "Diversificación internacional",
+            "aporte": "Amplía exposición geográfica y sectorial del portafolio.",
+            "tesis": "Reduce concentración por región o industria.",
+        }
+
+    if is_default:
+        return {
+            "rol": "Activo base del proyecto",
+            "aporte": "Hace parte del núcleo inicial definido en el backend.",
+            "tesis": "Sirve como universo principal para el tablero.",
+        }
+
+    return {
+        "rol": "Activo complementario",
+        "aporte": f"Permite ampliar el universo internacional desde {country}.",
+        "tesis": "Ayuda a probar escenarios de selección y búsqueda de activos.",
+    }
+
+
+def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict[str, str]], str | None]:
+    client = get_api_client()
+
+    try:
+        assets_payload = client.get_assets()
+        assets = assets_payload.get("assets", [])
+    except ApiClientError as exc:
+        return [], {}, f"No fue posible cargar el universo de activos desde backend: {exc.message}"
+
+    try:
+        help_payload = client.get_help_catalog()
+        help_items = help_payload.get("items", [])
+        help_map = {item["key"]: item for item in help_items}
+    except ApiClientError:
+        help_map = {}
+
+    return assets, help_map, None
 
 
 modo, filtros_sidebar = setup_dashboard_page(
     title="Dashboard Riesgo",
     subtitle="Universidad Santo Tomás",
     modo_default="General",
-    filtros_label="Parámetros Del Módulo",
-    filtros_expanded=True,
+    filtros_label="Parámetros De Contextualización",
+    filtros_expanded=False,
 )
 
-with filtros_sidebar:
-    st.caption("Este módulo presenta la lógica general del portafolio y la identidad de los activos base.")
+assets, help_map, load_error = _fetch_assets_and_help()
 
+with filtros_sidebar:
+    view_mode = st.radio(
+        "Vista",
+        ["Resumen", "Un activo", "Todos"],
+        index=0,
+        key="ctx_view_mode",
+    )
+
+    asset_labels = []
+    asset_map: dict[str, dict] = {}
+    for asset in assets:
+        label = f"{asset['name']} · {asset['ticker']} · {asset['country']}"
+        asset_labels.append(label)
+        asset_map[label] = asset
+
+    selected_label = None
+    if view_mode == "Un activo" and asset_labels:
+        selected_label = st.selectbox(
+            "Selecciona un activo",
+            options=asset_labels,
+            key="ctx_asset_select",
+        )
+
+    show_general_read = st.checkbox(
+        "Mostrar lectura general del portafolio",
+        value=True,
+        key="ctx_show_general_read",
+    )
+    show_connection = st.checkbox(
+        "Mostrar conexión con módulos",
+        value=True,
+        key="ctx_show_connection",
+    )
+    show_default_only = st.checkbox(
+        "Mostrar solo activos base",
+        value=False,
+        key="ctx_show_default_only",
+    )
 
 header_dashboard(
-    "Contextualización del portafolio",
-    "Comprende la lógica estratégica de los activos seleccionados y su papel dentro del análisis.",
+    "Módulo 0 - Contextualización del portafolio",
+    "Presenta el universo de activos, su rol dentro del proyecto y la lógica general del tablero conectado al backend",
     modo=modo,
 )
 
+if load_error:
+    st.error(load_error)
+    st.stop()
+
 if modo == "General":
-    nota("Esta sección presenta los activos base del proyecto y el sentido general del portafolio.")
+    nota(
+        "Este módulo introduce el universo de activos definido por el backend y resume por qué cada uno puede aportar diversificación, estabilidad o sensibilidad sectorial al portafolio."
+    )
 else:
-    nota("Esta sección sirve como marco interpretativo para los módulos cuantitativos posteriores.")
+    nota(
+        "En modo estadístico, esta vista contextualiza el universo invertible, la selección base del proyecto y la relación entre composición, benchmark y módulos analíticos posteriores."
+    )
 
-
-seccion("Resumen general")
-
-c1, c2, c3 = st.columns(3)
-
-with c1:
-    with st.container(border=True):
-        st.markdown("###### NÚMERO DE ACTIVOS BASE")
-        st.markdown("## 5")
-        st.write("BP, Carrefour, Couche-Tard, FEMSA y Seven & i.")
-
-with c2:
-    with st.container(border=True):
-        st.markdown("###### COBERTURA GEOGRÁFICA")
-        st.markdown("## Global")
-        st.write("Europa, América y Asia.")
-
-with c3:
-    with st.container(border=True):
-        st.markdown("###### LÓGICA DEL PORTAFOLIO")
-        st.markdown("## Diversificación")
-        st.write("Combina retail defensivo, consumo y energía.")
-
-
-seccion("Empresas del portafolio")
-
-try:
-    assets_data = get_assets()
-    assets = assets_data.get("assets", [])
-except Exception as exc:
-    st.error(f"No se pudo cargar el universo de activos desde el backend: {exc}")
-    assets = []
+seccion("Resumen del universo")
 
 default_assets = [a for a in assets if a.get("default") is True]
+extra_assets = [a for a in assets if a.get("default") is not True]
+countries = sorted({a.get("country", "N/D") for a in assets})
+tickers = [a.get("ticker", "") for a in assets]
 
-if not default_assets:
-    st.warning("No se encontraron activos predeterminados en el backend.")
-else:
-    cols = st.columns(2)
+c1, c2, c3, c4 = st.columns(4)
 
-    for i, asset in enumerate(default_assets):
-        with cols[i % 2]:
-            ticker = asset.get("ticker", "")
-            extra = ASSET_DESCRIPTIONS.get(ticker, {})
-            desc = extra.get("desc", "Activo incluido dentro del universo base del portafolio.")
-            role = extra.get("role", "Cumple un rol de diversificación dentro del portafolio.")
+with c1:
+    tarjeta_kpi(
+        "Activos disponibles",
+        str(len(assets)),
+        subtexto="Universo expuesto por el backend.",
+        help_text="Cantidad de activos que llegan desde /api/v1/assets/.",
+    )
 
-            with st.container(border=True):
-                logo_col, info_col = st.columns([1, 2])
+with c2:
+    tarjeta_kpi(
+        "Activos base",
+        str(len(default_assets)),
+        subtexto="Núcleo inicial del proyecto.",
+        help_text="Activos marcados como default en el registro central.",
+    )
 
-                with logo_col:
-                    logo_path = COMPANY_LOGOS.get(ticker)
-                    if logo_path:
-                        try:
-                            st.image(logo_path, width=115)
-                        except Exception:
-                            pass
+with c3:
+    tarjeta_kpi(
+        "Activos extra",
+        str(len(extra_assets)),
+        subtexto="Universo ampliado para explorar.",
+        help_text="Activos adicionales habilitados para búsqueda o expansión.",
+    )
 
-                with info_col:
-                    st.markdown("###### ACTIVO")
-                    st.markdown(f"### {asset.get('name', 'Activo')}")
-                    st.write(desc)
-                    st.write(f"**Ticker:** {ticker}")
-                    st.write(f"**País:** {asset.get('country', 'N/D')}")
-                    st.write(f"**Predeterminado:** {'Sí' if asset.get('default') else 'No'}")
+with c4:
+    tarjeta_kpi(
+        "Países cubiertos",
+        str(len(countries)),
+        subtexto="Diversificación geográfica observable.",
+        help_text="Número de países representados en el universo actual.",
+    )
 
-                st.info(f"**Rol en el portafolio:** {role}")
-
-
-seccion("Lectura del módulo")
-
-nota(
-    "Este portafolio fue planteado para analizar diversificación internacional, riesgo de mercado, "
-    "sensibilidad frente al benchmark, riesgo extremo, volatilidad condicional y decisiones integradas "
-    "de inversión bajo distintos enfoques estadísticos y financieros."
+render_meta_row(
+    [
+        ("Benchmark backend", "ACWI"),
+        ("Modo", modo),
+        ("Fuente", "API backend /assets"),
+    ]
 )
+
+if show_general_read:
+    sharpe_help = help_map.get("sharpe_ratio", {})
+    efficient_frontier_help = help_map.get("efficient_frontier", {})
+    correlation_help = help_map.get("correlation_heatmap", {})
+
+    render_info_card(
+        "Lectura general del portafolio",
+        (
+            "La capa de contexto sirve para conectar selección de activos, benchmark global, "
+            "riesgo extremo, optimización y métricas de desempeño. "
+            f"Sharpe: {sharpe_help.get(modo.lower(), 'Ayuda no disponible')} "
+            f"Frontera eficiente: {efficient_frontier_help.get(modo.lower(), 'Ayuda no disponible')} "
+            f"Correlación: {correlation_help.get(modo.lower(), 'Ayuda no disponible')}"
+        ),
+    )
+
+seccion("Activos del universo")
+
+filtered_assets = default_assets if show_default_only else assets
+
+if view_mode == "Un activo" and selected_label:
+    filtered_assets = [asset_map[selected_label]]
+elif view_mode == "Resumen":
+    filtered_assets = default_assets
+
+if not filtered_assets:
+    st.warning("No hay activos para mostrar con el filtro actual.")
+    st.stop()
+
+for asset in filtered_assets:
+    role_info = _build_asset_role(
+        name=asset.get("name", ""),
+        ticker=asset.get("ticker", ""),
+        country=asset.get("country", ""),
+        is_default=bool(asset.get("default")),
+    )
+
+    titulo_con_ayuda(
+        f"{asset.get('name', 'Activo')} ({asset.get('ticker', 'N/D')})",
+        "Resumen contextual del activo dentro del universo disponible.",
+        nivel=3,
+    )
+
+    render_chip_row(
+        [
+            f"País: {asset.get('country', 'N/D')}",
+            f"Ticker: {asset.get('ticker', 'N/D')}",
+            "Base del proyecto" if asset.get("default") else "Activo ampliado",
+            f"Modo {modo}",
+        ]
+    )
+
+    col_left, col_right = st.columns([1.2, 1.8], gap="large")
+
+    with col_left:
+        tarjeta_kpi(
+            "Rol en portafolio",
+            role_info["rol"],
+            subtexto=role_info["aporte"],
+            help_text="Lectura funcional del activo dentro del portafolio y del dashboard.",
+        )
+
+    with col_right:
+        render_info_card(
+            "Tesis visual de interpretación",
+            role_info["tesis"],
+        )
+
+    st.markdown("")
+
+seccion("Conexión con módulos del dashboard")
+
+if show_connection:
+    render_chip_row(
+        [
+            "01 Técnico",
+            "02 Rendimientos",
+            "03 GARCH",
+            "04 CAPM",
+            "05 VaR / CVaR",
+            "06 Markowitz",
+            "07 Alertas",
+            "08 Macro / Benchmark",
+            "09 Panel de decisión",
+        ]
+    )
+
+    benchmark_help = help_map.get("benchmark_comparison", {})
+    var_help = help_map.get("var", {})
+    capm_help = help_map.get("beta", {})
+
+    render_info_card(
+        "Cómo se conecta esta vista con el resto del proyecto",
+        (
+            "Desde aquí se define qué activos forman parte del análisis. "
+            f"Benchmark: {benchmark_help.get(modo.lower(), 'Ayuda no disponible')} "
+            f"VaR: {var_help.get(modo.lower(), 'Ayuda no disponible')} "
+            f"Beta: {capm_help.get(modo.lower(), 'Ayuda no disponible')}"
+        ),
+    )
+else:
+    nota("La conexión con módulos quedó oculta desde el panel lateral.")
