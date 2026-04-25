@@ -237,77 +237,72 @@ def _extract_forecast_df(payload: dict) -> pd.DataFrame:
     return df
 
 
-def _build_forecast_figure(payload: dict, modo: str) -> go.Figure:
-    forecast_df = _extract_forecast_df(payload)
+def _build_forecast_figure(
+    forecast_df: pd.DataFrame,
+    modo: str,
+    clean_view: bool,
+) -> go.Figure:
     fig = go.Figure()
 
-    if forecast_df.empty:
-        return style_plotly_figure(
-            fig,
-            modo=modo,
-            title="Pronóstico de volatilidad",
-            xaxis_title="Horizonte",
-            yaxis_title="Volatilidad",
-            show_xgrid=True,
-            show_ygrid=True,
-        )
+    if not forecast_df.empty:
+        x_vals = forecast_df["step"]
+        y_vals = forecast_df["volatility"]
 
-    if len(forecast_df) == 1:
-        x_val = float(forecast_df.iloc[0]["step"])
-        y_val = float(forecast_df.iloc[0]["volatility"])
-
-        spread = max(abs(y_val) * 0.10, 0.12)
-
+        # Punto principal
         fig.add_trace(
             go.Scatter(
-                x=[x_val],
-                y=[y_val],
+                x=x_vals,
+                y=y_vals,
                 mode="markers",
-                name="Pronóstico puntual",
-                marker=dict(size=16, color="#1E3A8A"),
+                name="Volatilidad esperada",
+                marker=dict(
+                    size=12 if len(forecast_df) == 1 else 9,
+                    color="#1D4ED8",
+                ),
             )
         )
 
-        fig.add_trace(
-            go.Scatter(
-                x=[x_val - 0.45, x_val + 0.45],
-                y=[y_val, y_val],
-                mode="lines",
-                name="Nivel forecast",
-                line=dict(width=2.2, dash="dot", color="#8A1538"),
+        # Línea de referencia / trayectoria
+        if len(forecast_df) == 1:
+            fig.add_trace(
+                go.Scatter(
+                    x=[float(x_vals.iloc[0]) - 0.45, float(x_vals.iloc[0]) + 0.45],
+                    y=[float(y_vals.iloc[0]), float(y_vals.iloc[0])],
+                    mode="lines",
+                    name="Forecast 1 paso",
+                    line=dict(
+                        width=2.2,
+                        dash="dot",
+                        color="#8A1538",
+                    ),
+                )
             )
-        )
-
-        fig.update_xaxes(
-            range=[x_val - 0.8, x_val + 0.8],
-            tickmode="array",
-            tickvals=[x_val],
-            ticktext=[str(int(x_val))],
-        )
-        fig.update_yaxes(
-            range=[y_val - spread, y_val + spread],
-        )
-    else:
-        fig.add_trace(
-            go.Scatter(
-                x=forecast_df["step"],
-                y=forecast_df["volatility"],
-                mode="lines+markers",
-                name="Pronóstico",
-                line=dict(width=2.6),
-                marker=dict(size=8),
+        else:
+            fig.add_trace(
+                go.Scatter(
+                    x=x_vals,
+                    y=y_vals,
+                    mode="lines",
+                    name="Trayectoria forecast",
+                    line=dict(
+                        width=2.4,
+                        dash="dot",
+                        color="#8A1538",
+                    ),
+                )
             )
-        )
 
-    return style_plotly_figure(
+    fig = style_plotly_figure(
         fig,
         modo=modo,
         title="Pronóstico de volatilidad",
         xaxis_title="Horizonte",
         yaxis_title="Volatilidad",
-        show_xgrid=True,
-        show_ygrid=True,
+        show_xgrid=not clean_view,
+        show_ygrid=not clean_view,
     )
+
+    return fig
 
 
 def _forecast_message(payload: dict) -> str:
@@ -594,7 +589,13 @@ with g2:
         modo=modo,
         caption="Cuando el horizonte efectivo es de un solo paso, el punto se amplía visualmente para que sí pueda verse.",
     )
-    fig_forecast = _build_forecast_figure(payload, modo=modo)
+    forecast_df = pd.DataFrame(payload.get("forecast", []))
+
+    fig_forecast = _build_forecast_figure(
+        forecast_df,
+        modo=modo,
+        clean_view=False,
+    )
     st.plotly_chart(fig_forecast, use_container_width=True)
     plot_card_footer(_forecast_message(payload))
 
