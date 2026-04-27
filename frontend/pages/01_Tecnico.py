@@ -193,7 +193,36 @@ def _interpret_bollinger(close_now: float | None, bb_low: float | None, bb_up: f
     return "Observa la posición del precio frente a las bandas para identificar episodios de alta o baja dispersión."
 
 
-def _plot_price_ma(df: pd.DataFrame, modo: str, sma_window: int, ema_window: int) -> go.Figure:
+def _interpret_macd(macd_now: float | None, signal_now: float | None, hist_now: float | None) -> str:
+    if macd_now is None or signal_now is None or hist_now is None:
+        return "No hay suficiente información para interpretar el MACD."
+
+    if macd_now > signal_now and hist_now > 0:
+        return "El MACD está por encima de su línea de señal, lo que sugiere momentum alcista reciente."
+    if macd_now < signal_now and hist_now < 0:
+        return "El MACD está por debajo de su línea de señal, lo que sugiere pérdida de fuerza o momentum bajista."
+    return "El MACD se encuentra cerca de su línea de señal, lo que puede indicar una zona de transición."
+
+
+def _interpret_stochastic(stoch_k_now: float | None, stoch_d_now: float | None) -> str:
+    if stoch_k_now is None or stoch_d_now is None:
+        return "No hay suficiente información para interpretar el oscilador estocástico."
+
+    if stoch_k_now >= 80:
+        return f"El estocástico %K está en {stoch_k_now:.2f}, zona asociada a posible sobrecompra."
+    if stoch_k_now <= 20:
+        return f"El estocástico %K está en {stoch_k_now:.2f}, zona asociada a posible sobreventa."
+
+    if stoch_k_now > stoch_d_now:
+        return "El %K está por encima del %D, lo que puede sugerir impulso alcista de corto plazo."
+    if stoch_k_now < stoch_d_now:
+        return "El %K está por debajo del %D, lo que puede sugerir debilidad de corto plazo."
+
+    return "El oscilador estocástico está en zona neutral."
+
+
+def _plot_price_ma(df: pd.DataFrame,modo: str,sma_window: int,ema_window: int,show_price: bool,show_sma: bool,show_ema: bool,
+) -> go.Figure:
     fig = go.Figure()
 
     fig.add_trace(
@@ -203,8 +232,10 @@ def _plot_price_ma(df: pd.DataFrame, modo: str, sma_window: int, ema_window: int
             mode="lines",
             name="Precio",
             line=dict(width=2.8),
+            visible=True if show_price else "legendonly",
         )
     )
+
     fig.add_trace(
         go.Scatter(
             x=df["date"],
@@ -212,8 +243,10 @@ def _plot_price_ma(df: pd.DataFrame, modo: str, sma_window: int, ema_window: int
             mode="lines",
             name=f"SMA {sma_window}",
             line=dict(width=2.1),
+            visible=True if show_sma else "legendonly",
         )
     )
+
     fig.add_trace(
         go.Scatter(
             x=df["date"],
@@ -221,6 +254,7 @@ def _plot_price_ma(df: pd.DataFrame, modo: str, sma_window: int, ema_window: int
             mode="lines",
             name=f"EMA {ema_window}",
             line=dict(width=2.1),
+            visible=True if show_ema else "legendonly",
         )
     )
 
@@ -329,6 +363,115 @@ def _plot_bollinger(
         title="Bandas de Bollinger",
         xaxis_title="Fecha",
         yaxis_title="Precio",
+        show_xgrid=False,
+        show_ygrid=True,
+    )
+
+
+def _plot_macd(
+    df: pd.DataFrame,
+    modo: str,
+    show_macd: bool,
+    show_signal: bool,
+    show_hist: bool,
+) -> go.Figure:
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["macd"],
+            mode="lines",
+            name="MACD",
+            line=dict(width=2.4, color="#1D4ED8"),
+            visible=True if show_macd else "legendonly",
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["macd_signal"],
+            mode="lines",
+            name="Señal",
+            line=dict(width=2.2, dash="dot", color="#8A1538"),
+            visible=True if show_signal else "legendonly",
+        )
+    )
+
+    hist_values = pd.to_numeric(df["macd_hist"], errors="coerce")
+
+    hist_colors = [
+        "rgba(22, 163, 74, 0.65)" if value >= 0 else "rgba(220, 38, 38, 0.65)"
+        for value in hist_values
+    ]
+
+    fig.add_trace(
+        go.Bar(
+            x=df["date"],
+            y=hist_values,
+            name="Histograma",
+            opacity=0.72,
+            marker=dict(
+                color=hist_colors,
+                line=dict(color="rgba(15, 23, 42, 0.12)", width=0.25),
+            ),
+            visible=True if show_hist else "legendonly",
+        )
+    )
+
+    return style_plotly_figure(
+        fig,
+        modo=modo,
+        title="MACD",
+        xaxis_title="Fecha",
+        yaxis_title="Valor MACD",
+        show_xgrid=False,
+        show_ygrid=True,
+    )
+
+
+def _plot_stochastic(
+    df: pd.DataFrame,
+    modo: str,
+    stoch_window: int,
+    show_levels: bool,
+) -> go.Figure:
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df[f"stoch_k_{stoch_window}"],
+            mode="lines",
+            name="%K",
+            line=dict(width=2.4, color="#1D4ED8"),
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df[f"stoch_d_{stoch_window}"],
+            mode="lines",
+            name="%D",
+            line=dict(width=2.7, dash="dash", color="#F97316"),
+        )
+    )
+
+
+    if show_levels:
+        add_reference_line(fig, 80)
+        add_reference_line(fig, 20)
+
+    fig.update_yaxes(range=[0, 100])
+
+    return style_plotly_figure(
+        fig,
+        modo=modo,
+        title="Oscilador Estocástico",
+        xaxis_title="Fecha",
+        yaxis_title="Estocástico",
         show_xgrid=False,
         show_ygrid=True,
     )
@@ -499,6 +642,10 @@ rsi_now = _latest_valid(df[f"rsi_{rsi_window}"])
 bb_up_now = _latest_valid(df[f"bb_up_{boll_window}"])
 bb_low_now = _latest_valid(df[f"bb_low_{boll_window}"])
 stoch_k_now = _latest_valid(df[f"stoch_k_{stoch_window}"])
+stoch_d_now = _latest_valid(df[f"stoch_d_{stoch_window}"])
+macd_now = _latest_valid(df["macd"])
+macd_signal_now = _latest_valid(df["macd_signal"])
+macd_hist_now = _latest_valid(df["macd_hist"])
 
 render_meta_row(
     [
@@ -508,28 +655,15 @@ render_meta_row(
         ("Horizonte", horizonte),
         ("SMA", str(sma_window)),
         ("EMA", str(ema_window)),
+        ("Moneda base", "USD"),
     ]
 )
-
-seccion("Resumen del módulo")
 
 moving_averages_help = help_map.get("moving_averages", {})
 rsi_help = help_map.get("rsi", {})
 boll_help = help_map.get("bollinger_bands", {})
 stochastic_help = help_map.get("stochastic", {})
-
-render_info_card(
-    "Lectura técnica resumida",
-    (
-        f"{_interpret_trend(close_now, sma_now, ema_now)} "
-        f"{_interpret_rsi(rsi_now)} "
-        f"{_interpret_bollinger(close_now, bb_low_now, bb_up_now)} "
-        f"Medias móviles: {moving_averages_help.get(modo.lower(), 'Ayuda no disponible')} "
-        f"RSI: {rsi_help.get(modo.lower(), 'Ayuda no disponible')} "
-        f"Bollinger: {boll_help.get(modo.lower(), 'Ayuda no disponible')} "
-        f"Estocástico: {stochastic_help.get(modo.lower(), 'Ayuda no disponible')}"
-    ),
-)
+macd_help = help_map.get("macd", {})
 
 seccion("KPIs del activo")
 
@@ -568,6 +702,46 @@ with c4:
         help_text=stochastic_help.get(modo.lower(), "Lectura del estocástico."),
     )
 
+c5, c6, c7, c8 = st.columns(4)
+
+with c5:
+    tarjeta_kpi(
+        "MACD",
+        f"{macd_now:.4f}" if macd_now is not None else "N/D",
+        subtexto="Diferencia entre EMA rápida y EMA lenta.",
+        help_text=(
+            "MACD mide el momentum comparando una media exponencial rápida con una lenta. "
+            "Ayuda a identificar cambios de tendencia."
+        ),
+    )
+
+with c6:
+    tarjeta_kpi(
+        "Señal MACD",
+        f"{macd_signal_now:.4f}" if macd_signal_now is not None else "N/D",
+        subtexto="Media suavizada del MACD.",
+        help_text=(
+            "La línea de señal permite detectar cruces con el MACD. "
+            "Un cruce alcista ocurre cuando MACD pasa por encima de la señal."
+        ),
+    )
+
+with c7:
+    tarjeta_kpi(
+        "Hist. MACD",
+        f"{macd_hist_now:.4f}" if macd_hist_now is not None else "N/D",
+        subtexto="Diferencia MACD - señal.",
+        help_text="El histograma muestra la distancia entre MACD y su línea de señal.",
+    )
+
+with c8:
+    tarjeta_kpi(
+        "Stoch %D",
+        f"{stoch_d_now:.2f}" if stoch_d_now is not None else "N/D",
+        subtexto="Promedio suavizado de %K.",
+        help_text="El %D suaviza el oscilador estocástico y ayuda a leer cruces con %K.",
+    )
+
 plot_card_footer(
     f"Se cargaron {len(df)} observaciones para {asset_name} ({ticker}) entre {start_date.date()} y {end_date.date()}."
 )
@@ -582,16 +756,28 @@ plot_card_header(
 )
 
 toolbar_label("Capas del gráfico")
-render_chip_row(
-    [
-        "Precio",
-        f"SMA {sma_window}",
-        f"EMA {ema_window}",
-    ]
-)
 
-fig_price = _plot_price_ma(df, modo=modo, sma_window=sma_window, ema_window=ema_window)
-st.plotly_chart(fig_price, use_container_width=True)
+p1, p2, p3 = st.columns(3)
+
+with p1:
+    show_price = st.checkbox("Precio", value=True, key="tec_price_show_price")
+
+with p2:
+    show_sma = st.checkbox(f"SMA {sma_window}", value=True, key="tec_price_show_sma")
+
+with p3:
+    show_ema = st.checkbox(f"EMA {ema_window}", value=True, key="tec_price_show_ema")
+
+fig_price = _plot_price_ma(
+    df=df,
+    modo=modo,
+    sma_window=sma_window,
+    ema_window=ema_window,
+    show_price=show_price,
+    show_sma=show_sma,
+    show_ema=show_ema,
+)
+st.plotly_chart(fig_price, width="stretch")
 plot_card_footer(_interpret_trend(close_now, sma_now, ema_now))
 
 g1, g2 = st.columns(2, gap="large")
@@ -616,7 +802,7 @@ with g1:
         for trace in fig_rsi.data:
             trace.visible = "legendonly"
 
-    st.plotly_chart(fig_rsi, use_container_width=True)
+    st.plotly_chart(fig_rsi, width="stretch")
     plot_card_footer(_interpret_rsi(rsi_now))
 
 with g2:
@@ -647,8 +833,89 @@ with g2:
         show_up=show_boll_up,
         show_low=show_boll_low,
     )
-    st.plotly_chart(fig_boll, use_container_width=True)
+    st.plotly_chart(fig_boll, width="stretch")
     plot_card_footer(_interpret_bollinger(close_now, bb_low_now, bb_up_now))
+
+g3, g4 = st.columns(2, gap="large")
+
+with g3:
+    plot_card_header(
+        "MACD",
+        macd_help.get(
+            modo.lower(),
+            "MACD compara medias exponenciales para detectar cambios de momentum y posibles cruces de tendencia.",
+        ),
+        modo=modo,
+        caption="El cruce entre MACD y la línea de señal ayuda a identificar posibles cambios de dirección.",
+    )
+
+    toolbar_label("Capas del gráfico")
+
+    m1, m2, m3 = st.columns(3)
+
+    with m1:
+        show_macd = st.checkbox("MACD", value=True, key="tec_macd_show_macd")
+
+    with m2:
+        show_signal = st.checkbox("Señal", value=True, key="tec_macd_show_signal")
+
+    with m3:
+        show_hist = st.checkbox("Histograma", value=True, key="tec_macd_show_hist")
+
+    fig_macd = _plot_macd(
+        df=df,
+        modo=modo,
+        show_macd=show_macd,
+        show_signal=show_signal,
+        show_hist=show_hist,
+    )
+
+    st.plotly_chart(fig_macd, width="stretch")
+
+    plot_card_footer(
+        _interpret_macd(macd_now, macd_signal_now, macd_hist_now)
+    )
+
+with g4:
+    plot_card_header(
+        "Oscilador Estocástico",
+        stochastic_help.get(
+            modo.lower(),
+            "El oscilador estocástico compara el cierre actual contra el rango reciente de precios.",
+        ),
+        modo=modo,
+        caption="Valores cercanos a 80 sugieren sobrecompra; valores cercanos a 20 sugieren sobreventa.",
+    )
+
+    toolbar_label("Capas del gráfico")
+    s1, s2, s3 = st.columns(3)
+
+    with s1:
+        show_stoch_k = st.checkbox("%K", value=True, key="tec_stoch_show_k")
+    with s2:
+        show_stoch_d = st.checkbox("%D", value=True, key="tec_stoch_show_d")
+    with s3:
+        show_stoch_levels = st.checkbox("Niveles 20/80", value=True, key="tec_stoch_levels")
+
+    fig_stoch = _plot_stochastic(
+        df=df,
+        modo=modo,
+        stoch_window=stoch_window,
+        show_levels=show_stoch_levels,
+    )
+
+    for trace in fig_stoch.data:
+        name = str(getattr(trace, "name", "")).lower()
+        if "%k" in name:
+            trace.visible = True if show_stoch_k else "legendonly"
+        elif "%d" in name:
+            trace.visible = True if show_stoch_d else "legendonly"
+
+    st.plotly_chart(fig_stoch, width="stretch")
+
+    plot_card_footer(
+        _interpret_stochastic(stoch_k_now, stoch_d_now)
+    )
 
 if modo == "Estadístico":
     seccion("Datos recientes")
@@ -674,8 +941,9 @@ if modo == "Estadístico":
         f"stoch_d_{stoch_window}",
     ]
 
-    recent_df = df[recent_cols].copy().tail(10).sort_values("date", ascending=False)
+    existing_cols = [col for col in recent_cols if col in df.columns]
+    recent_df = df[existing_cols].copy().tail(10).sort_values("date", ascending=False)
     recent_df["date"] = recent_df["date"].dt.strftime("%Y-%m-%d")
 
     with st.expander("Ver tabla", expanded=False):
-        st.dataframe(recent_df, use_container_width=True)
+        st.dataframe(recent_df, width="stretch")

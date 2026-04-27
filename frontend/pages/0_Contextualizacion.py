@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 from ui.page_setup import setup_dashboard_page
@@ -304,6 +305,149 @@ def _render_asset_block(asset: dict, modo: str):
 
     st.markdown("<div style='height:1rem;'></div>", unsafe_allow_html=True)
 
+
+def _render_rf_and_benchmark_tab():
+    seccion("Moneda base y conversión histórica a USD")
+
+    render_info_card(
+        "Nota metodológica sobre moneda",
+        (
+            "Los precios descargados desde yfinance pueden venir en la moneda de cotización de cada mercado. "
+            "Por ejemplo, BP cotiza en Londres, Carrefour en euros, Couche-Tard en dólares canadienses, "
+            "FEMSA en pesos mexicanos y Seven & i en yenes japoneses. "
+            "Para evitar mezclar monedas dentro de una misma matriz de rendimientos, el backend convierte "
+            "históricamente los precios a USD usando la divisa correspondiente antes de calcular rendimientos, "
+            "CAPM, VaR/CVaR, GARCH y Markowitz."
+        ),
+    )
+
+    conversion_rows = [
+        {
+            "Activo": "BP",
+            "Ticker": "BP.L",
+            "Moneda original": "GBP/GBp",
+            "FX a USD": "GBPUSD=X",
+            "Uso metodológico": "Conversión histórica a USD",
+            "Nota": "Si el precio viene en pence, se corrige escala antes de convertir.",
+        },
+        {
+            "Activo": "Carrefour",
+            "Ticker": "CA.PA",
+            "Moneda original": "EUR",
+            "FX a USD": "EURUSD=X",
+            "Uso metodológico": "Conversión histórica a USD",
+            "Nota": "Permite comparar retornos en una moneda común.",
+        },
+        {
+            "Activo": "Couche-Tard",
+            "Ticker": "ATD.TO",
+            "Moneda original": "CAD",
+            "FX a USD": "CADUSD=X",
+            "Uso metodológico": "Conversión histórica a USD",
+            "Nota": "Evita mezclar retornos canadienses con retornos de otros mercados.",
+        },
+        {
+            "Activo": "FEMSA",
+            "Ticker": "FEMSAUBD.MX",
+            "Moneda original": "MXN",
+            "FX a USD": "MXNUSD=X",
+            "Uso metodológico": "Conversión histórica a USD",
+            "Nota": "Incorpora el efecto cambiario frente al dólar.",
+        },
+        {
+            "Activo": "Seven & i",
+            "Ticker": "3382.T",
+            "Moneda original": "JPY",
+            "FX a USD": "JPYUSD=X",
+            "Uso metodológico": "Conversión histórica a USD",
+            "Nota": "Permite integrar el activo japonés en el portafolio global.",
+        },
+    ]
+
+    st.dataframe(pd.DataFrame(conversion_rows), width="stretch", hide_index=True)
+
+    seccion("Tasa libre de riesgo")
+
+    render_info_card(
+        "Criterio usado para la Rf",
+        (
+            "Después de convertir los activos a USD, el proyecto usa una tasa libre de riesgo común en USD. "
+            "Esto permite calcular Sharpe, CAPM y Markowitz con un criterio homogéneo. "
+            "No se usa una Rf diferente por activo dentro de Markowitz, porque eso mezclaría tasas de monedas "
+            "distintas y haría menos comparable la frontera eficiente."
+        ),
+    )
+
+    rf_rows = [
+        {
+            "Concepto": "Rf principal del proyecto",
+            "Ticker yfinance": "^IRX",
+            "Descripción": "Treasury Bill USA 13 semanas",
+            "Uso": "Tasa libre de riesgo común en USD para Sharpe, CAPM y Markowitz.",
+        },
+        {
+            "Concepto": "Rf contextual USA 10Y",
+            "Ticker yfinance": "^TNX",
+            "Descripción": "Yield del Tesoro USA a 10 años",
+            "Uso": "Referencia macro de largo plazo, no principal para Markowitz.",
+        },
+        {
+            "Concepto": "Proxy Canadá",
+            "Ticker yfinance": "CLF.TO",
+            "Descripción": "ETF de bonos gubernamentales canadienses",
+            "Uso": "Referencia contextual del mercado canadiense.",
+        },
+        {
+            "Concepto": "Proxy México / emergentes",
+            "Ticker yfinance": "EMB",
+            "Descripción": "ETF de bonos de mercados emergentes",
+            "Uso": "Referencia contextual para exposición emergente.",
+        },
+    ]
+
+    st.dataframe(pd.DataFrame(rf_rows), width="stretch", hide_index=True)
+
+    render_meta_row(
+        [
+            ("Rf principal", "^IRX"),
+            ("Moneda base", "USD"),
+            ("Uso", "Sharpe, CAPM y Markowitz"),
+        ]
+    )
+
+    seccion("Benchmark del portafolio")
+
+    render_info_card(
+        "Benchmark usado: ACWI",
+        (
+            "El benchmark del proyecto es ACWI, una referencia global de renta variable. "
+            "Se utiliza porque el portafolio combina activos de diferentes países y no sería adecuado "
+            "compararlo únicamente contra un índice local. ACWI permite evaluar si el portafolio internacional "
+            "genera un desempeño razonable frente a una referencia global diversificada."
+        ),
+    )
+
+    benchmark_rows = [
+        {
+            "Benchmark": "ACWI",
+            "Tipo": "Referencia global de renta variable",
+            "Uso en el proyecto": "Comparación de desempeño, CAPM, beta, alpha de Jensen y métricas relativas.",
+            "Justificación": "Es coherente con un portafolio internacional y multimoneda convertido a USD.",
+        }
+    ]
+
+    st.dataframe(pd.DataFrame(benchmark_rows), width="stretch", hide_index=True)
+
+    render_info_card(
+        "Relación entre Rf, moneda y benchmark",
+        (
+            "La conversión histórica a USD permite que los retornos de los activos sean comparables entre sí. "
+            "Una vez todo está expresado en una moneda común, se usa una Rf en USD y un benchmark global en USD. "
+            "Así, las métricas de Sharpe, beta, alpha y frontera eficiente quedan alineadas bajo el mismo marco metodológico."
+        ),
+    )
+
+
 modo, filtros_sidebar = setup_dashboard_page(
     title="Dashboard Riesgo",
     subtitle="Universidad Santo Tomás",
@@ -342,7 +486,7 @@ with filtros_sidebar:
 
 header_dashboard(
     "Módulo 0 - Contextualización del portafolio",
-    "Presenta el universo de activos, su lógica financiera y el papel que cumple cada uno dentro de un portafolio internacional y heterogéneo",
+    "Presenta el universo de activos, su lógica financiera, la conversión a USD, la tasa libre de riesgo y el benchmark global del proyecto",
     modo=modo,
 )
 
@@ -352,109 +496,118 @@ if load_error:
 
 if modo == "General":
     nota(
-        "Este módulo introduce el universo de activos definido por el backend y muestra por qué el portafolio combina geografías, sectores y perfiles de riesgo distintos."
+        "Este módulo introduce el universo de activos definido por el backend y muestra por qué el portafolio combina geografías, sectores, monedas y perfiles de riesgo distintos."
     )
 else:
     nota(
         "En modo estadístico, esta vista enfatiza que el portafolio no está concentrado en una sola región ni en una sola fuente de riesgo: mezcla activos con sensibilidades sectoriales, cambiarias y macroeconómicas diferentes."
     )
 
-seccion("Resumen del universo")
-
-default_assets = [a for a in assets if a.get("default") is True]
-extra_assets = [a for a in assets if a.get("default") is not True]
-countries = sorted({a.get("country", "N/D") for a in assets})
-
-c1, c2, c3, c4 = st.columns(4)
-
-with c1:
-    tarjeta_kpi(
-        "Activos disponibles",
-        str(len(assets)),
-        subtexto="Universo expuesto por el backend.",
-        help_text="Cantidad de activos que llegan desde /api/v1/assets/.",
-    )
-
-with c2:
-    tarjeta_kpi(
-        "Activos base",
-        str(len(default_assets)),
-        subtexto="Núcleo inicial del proyecto.",
-        help_text="Activos marcados como default en el registro central.",
-    )
-
-with c3:
-    tarjeta_kpi(
-        "Activos extra",
-        str(len(extra_assets)),
-        subtexto="Universo ampliado para explorar.",
-        help_text="Activos adicionales habilitados para búsqueda o expansión.",
-    )
-
-with c4:
-    tarjeta_kpi(
-        "Países cubiertos",
-        str(len(countries)),
-        subtexto="Diversificación geográfica observable.",
-        help_text="Número de países representados en el universo actual.",
-    )
-
-render_meta_row(
-    [
-        ("Benchmark global de referencia", "ACWI"),
-        ("Modo", modo),
-        ("Fuente", "API backend /assets"),
-    ]
+tab_activos, tab_rf_benchmark = st.tabs(
+    ["Activos del portafolio", "Moneda, Rf y benchmark"]
 )
 
-if show_general_read:
+with tab_activos:
+    seccion("Resumen del universo")
+
+    default_assets = [a for a in assets if a.get("default") is True]
+    extra_assets = [a for a in assets if a.get("default") is not True]
+    countries = sorted({a.get("country", "N/D") for a in assets})
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        tarjeta_kpi(
+            "Activos disponibles",
+            str(len(assets)),
+            subtexto="Universo expuesto por el backend.",
+            help_text="Cantidad de activos que llegan desde /api/v1/assets/.",
+        )
+
+    with c2:
+        tarjeta_kpi(
+            "Activos base",
+            str(len(default_assets)),
+            subtexto="Núcleo inicial del proyecto.",
+            help_text="Activos marcados como default en el registro central.",
+        )
+
+    with c3:
+        tarjeta_kpi(
+            "Activos extra",
+            str(len(extra_assets)),
+            subtexto="Universo ampliado para explorar.",
+            help_text="Activos adicionales habilitados para búsqueda o expansión.",
+        )
+
+    with c4:
+        tarjeta_kpi(
+            "Países cubiertos",
+            str(len(countries)),
+            subtexto="Diversificación geográfica observable.",
+            help_text="Número de países representados en el universo actual.",
+        )
+
+    render_meta_row(
+        [
+            ("Benchmark global de referencia", "ACWI"),
+            ("Moneda metodológica", "USD"),
+            ("Modo", modo),
+            ("Fuente", "API backend /assets"),
+        ]
+    )
+
+    if show_general_read:
+        render_info_card(
+            "Lectura financiera del portafolio",
+            (
+                "Este universo combina consumo defensivo, retail internacional, exposición regional y un componente energético más cíclico. "
+                "Por eso no todos los activos reaccionan igual ante el mercado: algunos aportan estabilidad relativa, mientras otros introducen "
+                "más sensibilidad macroeconómica, sectorial o cambiaria. Esa mezcla hace que la contextualización sea importante antes de pasar "
+                "a módulos de riesgo, CAPM, VaR y optimización."
+            ),
+        )
+
+    seccion("Descripción estratégica del portafolio")
+
     render_info_card(
-        "Lectura financiera del portafolio",
+        "Lógica financiera del conjunto",
         (
-            "Este universo combina consumo defensivo, retail internacional, exposición regional y un componente energético más cíclico. "
-            "Por eso no todos los activos reaccionan igual ante el mercado: algunos aportan estabilidad relativa, mientras otros introducen "
-            "más sensibilidad macroeconómica, sectorial o cambiaria. Esa mezcla hace que la contextualización sea importante antes de pasar "
-            "a módulos de riesgo, CAPM, VaR y optimización."
+            "Este portafolio académico no está construido sobre una sola industria ni sobre una sola región, sino sobre una combinación "
+            "de emisores internacionales con perfiles de riesgo heterogéneos. Eso implica que su lectura no debe reducirse a un único "
+            "benchmark sectorial, porque cada activo responde a motores distintos: consumo defensivo, dinámica minorista internacional, "
+            "exposición emergente, riesgo energético y sensibilidad macro. "
+            "Desde una perspectiva financiera, esta diversidad permite estudiar diversificación real, diferencia de betas, sensibilidad "
+            "regional y contraste entre activos más estables y más cíclicos."
         ),
     )
 
-seccion("Descripción estratégica del portafolio")
+    seccion("Activos del universo")
 
-render_info_card(
-    "Lógica financiera del conjunto",
-    (
-        "Este portafolio académico no está construido sobre una sola industria ni sobre una sola región, sino sobre una combinación "
-        "de emisores internacionales con perfiles de riesgo heterogéneos. Eso implica que su lectura no debe reducirse a un único "
-        "benchmark sectorial, porque cada activo responde a motores distintos: consumo defensivo, dinámica minorista internacional, "
-        "exposición emergente, riesgo energético y sensibilidad macro. "
-        "Desde una perspectiva financiera, esta diversidad permite estudiar diversificación real, diferencia de betas, sensibilidad "
-        "regional y contraste entre activos más estables y más cíclicos."
-    ),
-)
+    filtered_assets = default_assets if show_default_only else assets
 
-seccion("Activos del universo")
+    if view_mode == "Un activo" and selected_label:
+        filtered_assets = [asset_map[selected_label]]
+    elif view_mode == "Resumen":
+        filtered_assets = default_assets
 
-filtered_assets = default_assets if show_default_only else assets
+    if not filtered_assets:
+        st.warning("No hay activos para mostrar con el filtro actual.")
+        st.stop()
 
-if view_mode == "Un activo" and selected_label:
-    filtered_assets = [asset_map[selected_label]]
-elif view_mode == "Resumen":
-    filtered_assets = default_assets
+    if view_mode == "Un activo":
+        for asset in filtered_assets:
+            _render_asset_block(asset, modo)
+    else:
+        for pair in _chunks(filtered_assets, 2):
+            col_a, col_b = st.columns(2, gap="large")
 
-if not filtered_assets:
-    st.warning("No hay activos para mostrar con el filtro actual.")
-    st.stop()
+            with col_a:
+                _render_asset_block(pair[0], modo)
 
-if view_mode == "Un activo":
-    for asset in filtered_assets:
-        _render_asset_block(asset, modo)
-else:
-    for pair in _chunks(filtered_assets, 2):
-        col_a, col_b = st.columns(2, gap="large")
+            if len(pair) > 1:
+                with col_b:
+                    _render_asset_block(pair[1], modo)
 
-        with col_a:
-            _render_asset_block(pair[0], modo)
-
-        if len(pair) > 1:
-            with col_b:
-                _render_asset_block(pair[1], modo)
+with tab_rf_benchmark:
+    _render_rf_and_benchmark_tab()

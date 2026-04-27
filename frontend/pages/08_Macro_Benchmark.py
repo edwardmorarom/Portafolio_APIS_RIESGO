@@ -323,7 +323,16 @@ with filtros_sidebar:
             )
 
     benchmark_ticker = st.text_input("Benchmark", value="ACWI", key="macro_benchmark_ticker")
-    base_currency = st.selectbox("Moneda base", ["USD", "EUR", "COP"], index=0, key="macro_benchmark_currency")
+    base_currency = st.selectbox(
+        "Moneda base",
+        ["USD"],
+        index=0,
+        key="macro_benchmark_currency",
+        help=(
+            "El portafolio se compara en USD porque el backend convierte históricamente "
+            "los precios desde su moneda local antes de calcular rendimientos y métricas."
+        ),
+    )
 
     weights_decimals, total_pct = _weights_editor(filtros_sidebar, "macro_benchmark_weight")
 
@@ -340,17 +349,19 @@ if start_date >= end_date:
 
 header_dashboard(
     "Mód. 8: Macro y benchmark",
-    "Contexto macro y comparación del portafolio frente al benchmark",
+    "Contextualiza la tasa libre de riesgo y compara el portafolio convertido a USD frente al benchmark global",
     modo=modo,
 )
 
 if modo == "General":
     nota(
-        "Integra snapshot macroeconómico y comparación de desempeño del portafolio óptimo frente al benchmark de referencia."
+        "Integra la tasa libre de riesgo, el contexto macroeconómico y la comparación del portafolio frente al benchmark global ACWI. "
+        "Las métricas se interpretan en USD porque los activos internacionales fueron convertidos históricamente a una moneda común."
     )
 else:
     nota(
-        "En modo estadístico se enfatizan alfa de Jensen, tracking error, information ratio y el contraste técnico con el benchmark."
+        "En modo estadístico se enfatizan Alpha de Jensen, Tracking Error, Information Ratio, Sharpe, drawdown "
+        "y el contraste técnico del portafolio contra el benchmark global."
     )
 
 if abs(total_pct - 100.0) > 1e-6:
@@ -383,9 +394,10 @@ summary = _pick_value(benchmark_payload, "summary")
 render_meta_row(
     [
         ("Benchmark", benchmark_ticker.strip() or "ACWI"),
-        ("Moneda base", base_currency),
+        ("Moneda base", "USD"),
+        ("Rf usada", _format_pct((float(rf_rate_pct) / 100.0) if rf_rate_pct is not None else None)),
+        ("Ticker Rf", str(rf_ticker or "N/D")),
         ("Horizonte", horizonte),
-        ("Tasa libre", _format_pct((float(rf_rate_pct) / 100.0) if rf_rate_pct is not None else None)),
     ]
 )
 
@@ -396,24 +408,29 @@ with k1:
     tarjeta_kpi(
         "Tasa libre de riesgo",
         _format_pct((float(rf_rate_pct) / 100.0) if rf_rate_pct is not None else None),
-        subtexto="Referencia usada para Sharpe y Alpha de Jensen.",
+        subtexto=f"Referencia usada para Sharpe y Alpha de Jensen. Fuente: {rf_ticker or 'N/D'}.",
+        help_text=(
+            "La tasa libre de riesgo representa el retorno de referencia con riesgo mínimo. "
+            "En este proyecto se usa una Rf en USD porque el portafolio fue convertido históricamente a dólares."
+        ),
     )
-inflation_value = _pick_value(macro_payload, "inflation_pct", "inflation", "cpi_yoy_pct")
+inflation_value = _pick_value(macro_payload, "inflation_pct", "inflation_yoy", "inflation", "cpi_yoy_pct")
 fx_value = _pick_value(macro_payload, "fx_spot", "spot_fx", "fx_rate")
 
 with k2:
-    if inflation_value is not None:
-        tarjeta_kpi(
-            "Inflación",
-            _format_pct(float(inflation_value) / 100.0),
-            subtexto="Indicador macro capturado por el snapshot backend.",
-        )
-    else:
-        tarjeta_kpi(
-            "Inflación",
-            "No disponible",
-            subtexto="El endpoint macro no devolvió este indicador.",
-        )
+    tarjeta_kpi(
+        "Inflación",
+        _format_pct(float(inflation_value) / 100.0) if inflation_value is not None else "No disponible",
+        subtexto=(
+            "Inflación anual YoY desde FRED CPIAUCSL."
+            if inflation_value is not None
+            else "No disponible: falta FRED_API_KEY o FRED no respondió."
+        ),
+        help_text=(
+            "La inflación se calcula desde FRED usando CPIAUCSL cuando existe una API key configurada. "
+            "Si no hay FRED_API_KEY, el sistema no inventa el dato y lo reporta como no disponible."
+        ),
+    )
 
 with k3:
     if fx_value is not None:
@@ -431,10 +448,14 @@ with k3:
 
 render_info_card(
     "Lectura macro",
-    "El panel macro resume la tasa libre de riesgo, inflación y referencia cambiaria. Estos datos contextualizan la comparación del portafolio frente al benchmark y ayudan a explicar el entorno de inversión.",
+    (
+        "El panel macro resume la tasa libre de riesgo, inflación y referencia cambiaria. "
+        "Como el portafolio contiene activos de varios países, el backend convierte históricamente los precios a USD "
+        "para que la comparación contra ACWI sea homogénea. La tasa libre de riesgo se usa como referencia para Sharpe, "
+        "Alpha de Jensen y otras métricas ajustadas por riesgo."
+    ),
 )
 
-st.dataframe(_extract_macro_table(macro_payload), use_container_width=True, hide_index=True)
 
 seccion("Comparación contra benchmark")
 
@@ -444,36 +465,54 @@ with c1:
         "Alpha de Jensen",
         _format_pct(alpha_jensen),
         subtexto="Exceso de retorno frente al CAPM aplicado al benchmark.",
+        help_text=(
+            "Alpha de Jensen mide si el portafolio obtuvo más o menos retorno del esperado "
+            "según su riesgo sistemático frente al benchmark."
+        ),
     )
+
 with c2:
     tarjeta_kpi(
         "Tracking Error",
         _format_pct(tracking_error),
         subtexto="Desviación anualizada de retornos activos.",
+        help_text=(
+            "Tracking Error mide qué tan diferente se mueve el portafolio respecto al benchmark. "
+            "Un valor alto indica mayor desviación frente a la referencia."
+        ),
     )
+
 with c3:
     tarjeta_kpi(
         "Information Ratio",
         _format_num(information_ratio, 3),
         subtexto="Retorno activo por unidad de tracking error.",
+        help_text=(
+            "Information Ratio mide si el exceso de retorno frente al benchmark compensa "
+            "la desviación asumida respecto a esa referencia."
+        ),
     )
 
 plot_card_header(
-    "Portafolio óptimo vs benchmark",
-    "Comparación visual simplificada en base 100 usando el rendimiento acumulado.",
+    "Portafolio vs benchmark global",
+    (
+        "La comparación base 100 muestra cómo habría evolucionado el portafolio frente al benchmark "
+        "durante el horizonte seleccionado."
+    ),
     modo=modo,
-    caption="La línea azul representa el portafolio y la vinotinto el benchmark.",
+    caption="La línea azul representa el portafolio convertido a USD y la vinotinto el benchmark ACWI.",
 )
 
 clean_view = st.checkbox("Vista limpia", value=False, key="macro_benchmark_clean_chart")
 fig = _build_base100_chart(benchmark_payload, modo=modo, clean_view=clean_view)
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 plot_card_footer(
-    "El gráfico base 100 resume si el portafolio terminó por encima o por debajo del benchmark durante el horizonte seleccionado."
+    "Si la línea del portafolio queda por encima del benchmark, tuvo mejor desempeño acumulado. "
+    "Si queda por debajo, el benchmark global fue superior durante el periodo."
 )
 
-st.dataframe(_comparison_table(benchmark_payload), use_container_width=True, hide_index=True)
+st.dataframe(_comparison_table(benchmark_payload), width="stretch", hide_index=True)
 
 seccion("Interpretación")
 
@@ -481,14 +520,10 @@ render_info_card(
     "Resumen interpretativo",
     str(summary)
     if summary
-    else "No llegó un resumen textual desde backend. Revisa alpha de Jensen, tracking error e information ratio para sustentar si el portafolio superó al benchmark.",
-)
-
-render_info_card(
-    "Guía para la sustentación",
-    (
-        "Si Alpha de Jensen es positiva, el portafolio superó lo esperado por su riesgo sistemático. "
-        "Si el Information Ratio es mayor, el exceso de retorno frente al benchmark fue más eficiente. "
-        "El tracking error ayuda a explicar qué tan distinta fue la trayectoria del portafolio frente a su referencia."
+    else (
+        "El portafolio se compara contra ACWI usando métricas relativas. "
+        "Alpha de Jensen permite evaluar desempeño ajustado por riesgo sistemático; "
+        "Tracking Error mide qué tanto se desvía el portafolio del benchmark; "
+        "e Information Ratio resume si el exceso de retorno compensa esa desviación."
     ),
 )

@@ -9,6 +9,10 @@ class PricePoint(BaseModel):
     close: float | None = Field(default=None, description="Precio de cierre")
     adj_close: float | None = Field(default=None, description="Precio ajustado")
     volume: float | None = Field(default=None, description="Volumen")
+    currency: str | None = Field(default=None, description="Moneda original del activo")
+    base_currency: str | None = Field(default=None, description="Moneda base del análisis")
+    fx_ticker: str | None = Field(default=None, description="Ticker FX usado para conversión")
+    fx_rate_to_usd: float | None = Field(default=None, description="Tasa histórica usada para convertir a USD")
 
 
 class PricesResponse(BaseModel):

@@ -210,13 +210,109 @@ def _build_boxplot_figure(
     )
 
 
-def _render_test_card(title: str, metric_label: str, metric_value, conclusion: str, note: str = ""):
-    value_text = "N/D" if metric_value is None else f"{float(metric_value):.8f}"
+def _extract_qq_df(payload: dict) -> pd.DataFrame:
+    qq_data = payload.get("qq_plot", [])
 
-    if "no se rechaza" in conclusion.lower():
-        short_conclusion = "No se rechaza normalidad"
+    if not isinstance(qq_data, list) or not qq_data:
+        return pd.DataFrame(columns=["theoretical", "sample"])
+
+    df = pd.DataFrame(qq_data)
+    lowered = {str(c).lower(): c for c in df.columns}
+
+    def pick(*names):
+        for name in names:
+            if name in lowered:
+                return lowered[name]
+        return None
+
+    theoretical_col = pick(
+        "theoretical",
+        "theoretical_quantile",
+        "theoretical_quantiles",
+        "x",
+    )
+    sample_col = pick(
+        "sample",
+        "sample_quantile",
+        "sample_quantiles",
+        "ordered_values",
+        "y",
+    )
+
+    if theoretical_col is None or sample_col is None:
+        return pd.DataFrame(columns=["theoretical", "sample"])
+
+    out = pd.DataFrame(
+        {
+            "theoretical": pd.to_numeric(df[theoretical_col], errors="coerce"),
+            "sample": pd.to_numeric(df[sample_col], errors="coerce"),
+        }
+    ).dropna()
+
+    return out.reset_index(drop=True)
+
+
+def _build_qq_figure(qq_df: pd.DataFrame, modo: str) -> go.Figure:
+    fig = go.Figure()
+
+    if not qq_df.empty:
+        fig.add_trace(
+            go.Scatter(
+                x=qq_df["theoretical"],
+                y=qq_df["sample"],
+                mode="markers",
+                name="Cuantiles observados",
+                marker=dict(size=6, opacity=0.72),
+            )
+        )
+
+        x_min = float(qq_df["theoretical"].min())
+        x_max = float(qq_df["theoretical"].max())
+        y_min = float(qq_df["sample"].min())
+        y_max = float(qq_df["sample"].max())
+
+        ref_min = min(x_min, y_min)
+        ref_max = max(x_max, y_max)
+
+        fig.add_trace(
+            go.Scatter(
+                x=[ref_min, ref_max],
+                y=[ref_min, ref_max],
+                mode="lines",
+                name="Normal teórica",
+                line=dict(width=2.4, dash="dash"),
+            )
+        )
+
+    return style_plotly_figure(
+        fig,
+        modo=modo,
+        title="Q-Q plot de rendimientos",
+        xaxis_title="Cuantiles teóricos normales",
+        yaxis_title="Cuantiles muestrales",
+        show_xgrid=True,
+        show_ygrid=True,
+    )
+
+
+def _render_test_card(
+    title: str,
+    metric_label: str,
+    metric_value,
+    conclusion: str,
+    note: str = "",
+    unavailable: bool = False,
+):
+    if unavailable:
+        value_text = "No disponible"
+        short_conclusion = "No apta para esta muestra"
     else:
-        short_conclusion = "Se rechaza normalidad"
+        value_text = "N/D" if metric_value is None else f"{float(metric_value):.8f}"
+
+        if "no se rechaza" in conclusion.lower():
+            short_conclusion = "No se rechaza normalidad"
+        else:
+            short_conclusion = "Se rechaza normalidad"
 
     st.markdown(
         f"""
@@ -496,26 +592,39 @@ with n2:
     )
 
 with n3:
-    ad_note = ""
     if observations is not None and observations > 500:
-        ad_note = "Cuando la muestra es mayor a 500 observaciones, esta prueba no es la más recomendable como referencia principal."
-
-    _render_test_card(
-        "Anderson-Darling",
-        "estadístico",
-        ad.get("statistic"),
-        ad.get("conclusion", "Sin conclusión disponible."),
-        note=ad_note,
-    )
+        _render_test_card(
+            "Anderson-Darling",
+            "estado",
+            None,
+            "No disponible. La prueba no es apta para la cantidad de datos ingresados.",
+            note=(
+                "Para esta cantidad de datos, se recomienda priorizar Jarque-Bera, "
+                "histograma, boxplot y Q-Q plot como apoyo visual."
+            ),
+            unavailable=True,
+        )
+    else:
+        _render_test_card(
+            "Anderson-Darling",
+            "estadístico",
+            ad.get("statistic"),
+            ad.get("conclusion", "Sin conclusión disponible."),
+        )
 
 seccion("Visualizaciones")
+
+qq_df = _extract_qq_df(payload)
 
 g1, g2 = st.columns(2, gap="large")
 
 with g1:
     plot_card_header(
         "Histograma con referencia normal",
-        help_map.get("histogram_normal", {}).get(modo.lower(), "Compara la distribución empírica con una forma normal teórica."),
+        help_map.get("histogram_normal", {}).get(
+            modo.lower(),
+            "Compara la distribución empírica con una forma normal teórica.",
+        ),
         modo=modo,
         caption="Activa o desactiva elementos para simplificar o ampliar la lectura visual.",
     )
@@ -535,12 +644,18 @@ with g1:
         show_normal=show_normal,
     )
     st.plotly_chart(fig_hist, width="stretch")
-    plot_card_footer("Observa si la distribución se concentra cerca de cero o si presenta colas amplias, lo que puede indicar episodios de variación más fuerte.")
+    plot_card_footer(
+        "Observa si la distribución se concentra cerca de cero o si presenta colas amplias, "
+        "lo que puede indicar episodios de variación más fuerte."
+    )
 
 with g2:
     plot_card_header(
         "Boxplot de rendimientos",
-        help_map.get("boxplot", {}).get(modo.lower(), "Resume mediana, dispersión y valores extremos."),
+        help_map.get("boxplot", {}).get(
+            modo.lower(),
+            "Resume mediana, dispersión y valores extremos.",
+        ),
         modo=modo,
         caption="Útil para identificar rápidamente dispersión y extremos.",
     )
@@ -555,4 +670,27 @@ with g2:
         horizontal=horizontal_box,
     )
     st.plotly_chart(fig_box, width="stretch")
-    plot_card_footer("El boxplot resume mediana, dispersión y valores atípicos. Una caja amplia o muchos outliers suele asociarse con mayor inestabilidad en los rendimientos.")
+    plot_card_footer(
+        "El boxplot resume mediana, dispersión y valores atípicos. "
+        "Una caja amplia o muchos outliers suele asociarse con mayor inestabilidad en los rendimientos."
+    )
+
+# OJO: este bloque queda afuera de g1 y g2, alineado al margen izquierdo
+plot_card_header(
+    "Q-Q plot",
+    (
+        "El Q-Q plot compara los cuantiles observados de los rendimientos contra los cuantiles "
+        "de una distribución normal. Si los puntos se alejan mucho de la línea de referencia, "
+        "hay evidencia visual de colas pesadas, asimetría o no normalidad."
+    ),
+    modo=modo,
+    caption="Sirve como apoyo visual para evaluar si los rendimientos se comportan parecido a una normal teórica.",
+)
+
+fig_qq = _build_qq_figure(qq_df, modo=modo)
+st.plotly_chart(fig_qq, width="stretch")
+
+plot_card_footer(
+    "Cuando los puntos se separan de la línea diagonal, especialmente en las colas, "
+    "los rendimientos no siguen bien una distribución normal."
+)

@@ -8,7 +8,7 @@ class PortfolioVarRequest(BaseModel):
     weights: list[float] = Field(..., min_length=1, description="Pesos del portafolio")
     start: str = Field(default="2021-01-01", description="Fecha inicial")
     end: str = Field(default="2026-12-31", description="Fecha final")
-    alpha: float = Field(default=0.95, ge=0.80, le=0.999, description="Nivel de confianza")
+    alpha: float = Field(default=0.95,ge=0.95,le=0.9999,description="Nivel de confianza entre 95% y 99.99%",)
     n_sim: int = Field(default=10000, ge=1000, le=200000, description="Número de simulaciones Monte Carlo")
     return_type: str = Field(default="log", description="Tipo de rendimiento: simple o log")
 

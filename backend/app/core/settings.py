@@ -16,11 +16,12 @@ class Settings(BaseSettings):
     default_end_date: str = Field(default="2026-12-31", description="Fecha final por defecto")
     global_benchmark: str = Field(default="ACWI", description="Benchmark global por defecto")
     default_base_currency: str = Field(default="USD", description="Moneda base por defecto")
-    rf_ticker_usd: str = Field(default="^TNX", description="Ticker de tasa libre de riesgo para USD")
+    rf_ticker_usd: str = Field(default="^IRX    ", description="Ticker de tasa libre de riesgo para USD")
     rf_ticker_eur: str = Field(default="^GDBR10", description="Ticker de tasa libre de riesgo para EUR")
     rf_ticker_cop_proxy: str = Field(default="^TNX", description="Ticker proxy de tasa libre de riesgo para COP")
 
     fred_api_key: str | None = Field(default=None, description="API key de FRED")
+    external_api_timeout_seconds: int = Field(default=20, description="Timeout para APIs externas")
     frontend_base_url: str = Field(default="http://localhost:8501", description="URL del frontend")
     yahoo_timeout_seconds: int = Field(default=20, ge=1, le=120, description="Timeout para datos de mercado")
     macro_timeout_seconds: int = Field(default=20, ge=1, le=120, description="Timeout para datos macro")

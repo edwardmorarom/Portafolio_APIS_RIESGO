@@ -33,6 +33,10 @@ async def get_prices(
                 close=float(row["Close"]) if "Close" in row and pd.notna(row["Close"]) else None,
                 adj_close=float(row["Adj Close"]) if "Adj Close" in row and pd.notna(row["Adj Close"]) else None,
                 volume=float(row["Volume"]) if "Volume" in row and pd.notna(row["Volume"]) else None,
+                currency=str(row["Currency"]) if "Currency" in row and pd.notna(row["Currency"]) else None,
+                base_currency=str(row["BaseCurrency"]) if "BaseCurrency" in row and pd.notna(row["BaseCurrency"]) else None,
+                fx_ticker=str(row["FxTicker"]) if "FxTicker" in row and pd.notna(row["FxTicker"]) else None,
+                fx_rate_to_usd=float(row["FxRateToUSD"]) if "FxRateToUSD" in row and pd.notna(row["FxRateToUSD"]) else None,
             )
         )
 

@@ -166,16 +166,16 @@ def _human_description(alert: dict) -> str:
     joined = f"{title} {category}".lower()
 
     if "macd" in joined:
-        return "Línea MACD cruzando señal."
+        return "Cruce entre MACD y su línea de señal; resume cambios de momentum."
     if "rsi" in joined:
-        return "RSI mayor a 70 o menor a 30."
+        return "RSI en zona extrema: sobrecompra o sobreventa según los umbrales configurados."
     if "boll" in joined:
-        return "Precio tocando banda superior o inferior."
+        return "Precio cercano o por fuera de las bandas de Bollinger; indica presión o dispersión elevada."
     if "stoch" in joined or "estoc" in joined:
-        return "Cruce de %K y %D en zona extrema."
+        return "Lectura del Estocástico %K/%D en zonas extremas de corto plazo."
     if "moving" in joined or "media" in joined:
-        return "Cruce de medias móviles."
-    return "Sin detalle operativo adicional."
+        return "Cruce de medias móviles; resume cambios en la dirección de tendencia."
+    return "Condición técnica detectada por el backend según los indicadores configurados."
 
 
 def _human_date(alert: dict) -> str:
@@ -401,18 +401,20 @@ if start_date >= end_date:
     st.stop()
 
 header_dashboard(
-    "Mód. 7: Señales",
-    "Operacionaliza indicadores técnicos como señales de compra/venta.",
+    "Mód. 7: Señales técnicas",
+    "Convierte indicadores técnicos en alertas de compra, venta o neutralidad por activo.",
     modo=modo,
 )
 
 if modo == "General":
     nota(
-        "El sistema evalúa MACD, RSI, Bollinger, medias móviles y estocástico para construir alertas tipo semáforo por activo."
+        "Este módulo resume señales técnicas en un formato tipo semáforo. "
+        "Cada alerta se deriva de indicadores como RSI, MACD, Bollinger, medias móviles y Estocástico."
     )
 else:
     nota(
-        "En modo estadístico se enfatiza la lectura estructurada de señales técnicas, umbrales configurables y síntesis comparativa entre activos."
+        "En modo estadístico se enfatiza la lógica de activación de señales, los umbrales configurables "
+        "y la comparación de señales alcistas, bajistas y neutrales entre activos."
     )
 
 asset_results: list[dict] = []
@@ -468,7 +470,12 @@ with k4:
 
 render_info_card(
     "Lectura general",
-    "Este módulo transforma indicadores técnicos en alertas interpretables. La intención no es reemplazar el juicio financiero, sino resumir rápidamente episodios de compra, venta o neutralidad técnica en cada activo.",
+    (
+        "El motor de señales no predice el precio futuro de forma automática. "
+        "Su función es resumir condiciones técnicas observadas: momentum, sobrecompra, sobreventa, cruces de tendencia "
+        "y ruptura de bandas. Por eso, una señal de compra o venta debe interpretarse como apoyo al análisis, "
+        "no como una recomendación absoluta de inversión."
+    ),
 )
 
 seccion("Panel de alertas por activo")
@@ -479,8 +486,11 @@ for item in asset_results:
 
     if not alerts:
         render_info_card(
-            "Sin alertas disponibles",
-            "El backend no devolvió alertas utilizables para este activo en el horizonte seleccionado.",
+            "Sin alertas activas",
+            (
+                "No se activaron señales técnicas claras para este activo en el horizonte seleccionado. "
+                "Esto no significa error: indica que los indicadores no cruzaron los umbrales definidos para compra o venta."
+            ),
         )
         continue
 
@@ -506,8 +516,9 @@ plot_card_header(
     modo=modo,
     caption="Útil para sustentar qué activo concentra más activaciones y cuál permanece estable.",
 )
-st.dataframe(summary_df, use_container_width=True, hide_index=True)
+st.dataframe(summary_df, width="stretch", hide_index=True)
 
 plot_card_footer(
-    "Neutral no significa error. Significa que el indicador no activó una condición operativa clara bajo los umbrales configurados."
+    "Una lectura neutral no es un error del modelo. Significa que, bajo los umbrales configurados, "
+    "el indicador no activó una condición suficientemente clara de compra o venta."
 )

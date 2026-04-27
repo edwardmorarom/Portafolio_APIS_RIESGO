@@ -217,6 +217,27 @@ def _build_conditional_volatility_figure(payload: dict, modo: str) -> tuple[go.F
 
     return fig, has_multiple_models
 
+def compact_help_card(title: str, help_text: str, caption: str = ""):
+    caption_html = (
+        f'<div style="font-size:0.92rem;color:var(--text-soft);font-weight:600;line-height:1.45;margin-top:0.35rem;">{caption}</div>'
+        if caption
+        else ""
+    )
+
+    st.markdown(
+        f"""
+        <div class="ui-plot-head">
+            <div class="ui-plot-head-top">
+                <div style="display:flex;align-items:center;gap:0.35rem;margin:0;">
+                    <div class="ui-plot-title">{title}</div>
+                    <span class="ui-help" title="{help_text}">?</span>
+                </div>
+            </div>
+            {caption_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 def _extract_forecast_df(payload: dict) -> pd.DataFrame:
     forecast = payload.get("forecast", []) or []
@@ -461,19 +482,23 @@ payload, garch_error = _fetch_garch(
     forecast_horizon=forecast_horizon,
 )
 
+# 1. Título del módulo actualizado
 header_dashboard(
-    "Módulo 3 - Modelos ARCH / GARCH / EGARCH",
-    "Compara especificaciones de volatilidad condicional y revisa el pronóstico del mejor modelo seleccionado por backend",
+    "Mód. 3: Volatilidad ARCH/GARCH/EGARCH",
+    "Modela la volatilidad condicional del activo y compara modelos de heterocedasticidad.",
     modo=modo,
 )
 
+# 2. Nota inicial mejorada
 if modo == "General":
     nota(
-        "Este módulo compara variantes ARCH/GARCH/EGARCH para identificar cuál describe mejor la dinámica reciente de volatilidad del activo."
+        "Este módulo analiza si la volatilidad del activo cambia en el tiempo. "
+        "Los modelos ARCH, GARCH y EGARCH permiten capturar periodos de calma y periodos de alta inestabilidad."
     )
 else:
     nota(
-        "En modo estadístico se enfatiza la comparación técnica entre modelos, la volatilidad condicional estimada, el pronóstico y el diagnóstico de residuos."
+        "En modo estadístico se enfatizan la comparación por AIC/BIC, el diagnóstico de residuos, "
+        "la volatilidad condicional y el pronóstico de volatilidad futura."
     )
 
 if garch_error:
@@ -484,6 +509,34 @@ comparison_df = _format_comparison_table(payload.get("candidate_models", []))
 diagnostics_df = _format_diagnostics_table(payload)
 forecast_df = _extract_forecast_df(payload)
 forecast_final = float(forecast_df.iloc[-1]["volatility"]) if not forecast_df.empty else None
+
+# Extraer valores para KPIs (según el payload del backend)
+best_model_name = payload.get("best_model")
+best_aic = payload.get("best_model_aic")
+best_bic = payload.get("best_model_bic")
+current_volatility = None
+if "conditional_volatility" in payload and payload["conditional_volatility"]:
+    # La volatilidad actual es el último valor de la serie
+    try:
+        current_volatility = float(payload["conditional_volatility"][-1])
+    except (IndexError, TypeError, ValueError):
+        current_volatility = None
+
+def _format_num(valor, decimales=4):
+    if valor is None:
+        return "N/D"
+    try:
+        return f"{float(valor):.{decimales}f}"
+    except Exception:
+        return str(valor)
+
+def _format_pct(valor):
+    if valor is None:
+        return "N/D"
+    try:
+        return f"{float(valor):.2%}"
+    except Exception:
+        return str(valor)
 
 render_meta_row(
     [
@@ -497,33 +550,65 @@ render_meta_row(
 
 seccion("KPIs del ajuste")
 
-c1, c2, c3, c4 = st.columns(4)
+# 3. KPIs mejorados con help_text
+c1, c2, c3, c4, c5, c6 = st.columns(6)
 
 with c1:
     tarjeta_kpi(
-        "Activo",
-        asset_name,
-        subtexto="Activo usado como base del ajuste.",
-        help_text="Ticker y nombre del activo seleccionado.",
+        "Mejor modelo",
+        str(best_model_name or "N/D"),
+        subtexto="Modelo seleccionado según criterio de información.",
+        help_text=(
+            "El mejor modelo se elige usando criterios como AIC o BIC. "
+            "Un menor AIC/BIC indica mejor equilibrio entre ajuste y complejidad."
+        ),
     )
 
 with c2:
     tarjeta_kpi(
-        "Modelos comparados",
-        str(len(comparison_df)),
-        subtexto="Cantidad de variantes ARCH/GARCH evaluadas.",
-        help_text="Número de especificaciones candidatas devueltas por el backend.",
+        "AIC",
+        _format_num(best_aic, 4),
+        subtexto="Criterio de información de Akaike.",
+        help_text=(
+            "AIC compara modelos penalizando la complejidad. "
+            "Valores más bajos suelen indicar un mejor modelo relativo."
+        ),
     )
 
 with c3:
     tarjeta_kpi(
-        "Mejor modelo",
-        str(payload.get("best_model", "N/D")),
-        subtexto="Especificación con mejor desempeño comparativo.",
-        help_text="Modelo con menor AIC dentro de las alternativas evaluadas.",
+        "BIC",
+        _format_num(best_bic, 4),
+        subtexto="Criterio bayesiano de información.",
+        help_text=(
+            "BIC también compara modelos, pero penaliza más la complejidad que AIC. "
+            "Se usa para evitar elegir modelos innecesariamente complejos."
+        ),
     )
 
 with c4:
+    tarjeta_kpi(
+        "Log-likelihood",
+        _format_num(payload.get("best_model_log_likelihood"), 4),
+        subtexto="Log-verosimilitud del mejor modelo.",
+        help_text=(
+            "Mide qué tan bien se ajusta el modelo a los datos. "
+            "A mayor valor, mejor ajuste, pero sin penalizar la complejidad."
+        ),
+    )
+
+with c5:
+    tarjeta_kpi(
+        "Volatilidad actual",
+        _format_pct(current_volatility),
+        subtexto="Última volatilidad condicional estimada.",
+        help_text=(
+            "La volatilidad condicional mide el riesgo estimado del activo en cada momento, "
+            "considerando que la varianza cambia a través del tiempo."
+        ),
+    )
+
+with c6:
     tarjeta_kpi(
         "Forecast final",
         f"{forecast_final:.4f}" if forecast_final is not None else "N/D",
@@ -531,33 +616,22 @@ with c4:
         help_text="Último valor del pronóstico de volatilidad.",
     )
 
-c5, c6 = st.columns(2)
-
-with c5:
-    tarjeta_kpi(
-        "Observaciones",
-        str(payload.get("observations", "N/D")),
-        subtexto="Datos efectivos usados en el ajuste.",
-        help_text="Tamaño muestral empleado por el modelo.",
-    )
-
-with c6:
-    tarjeta_kpi(
-        "JB p-value",
-        f"{float(payload.get('residuals_jarque_bera_p_value')):.6f}" if payload.get("residuals_jarque_bera_p_value") is not None else "N/D",
-        subtexto="Normalidad de residuos estandarizados.",
-        help_text="P-value de Jarque-Bera sobre residuos del mejor modelo.",
-    )
-
-plot_card_footer(_diagnostic_guide(payload))
-
 seccion("Comparación de modelos")
+
+# 7. Agregar tarjeta de comparación antes de la tabla
+render_info_card(
+    "Comparación de modelos",
+    (
+        "La comparación entre ARCH, GARCH y EGARCH permite elegir el modelo que mejor representa la dinámica de volatilidad. "
+        "ARCH responde más a choques recientes, GARCH captura persistencia y EGARCH puede representar efectos asimétricos."
+    ),
+)
 
 if modo == "General":
     with st.expander("Ver comparación completa de modelos", expanded=False):
-        st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+        st.dataframe(comparison_df, width="stretch", hide_index=True)
 else:
-    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+    st.dataframe(comparison_df, width="stretch", hide_index=True)
 
 seccion("Volatilidad y pronóstico")
 
@@ -565,29 +639,38 @@ g1, g2 = st.columns(2, gap="large")
 
 with g1:
     fig_vol, has_multiple_models = _build_conditional_volatility_figure(payload, modo=modo)
-
+    
+    # 5. Encabezado mejorado para gráfica de volatilidad
     plot_card_header(
         "Volatilidad condicional estimada",
-        "Si el backend devuelve series por modelo, aquí se comparan ARCH, GARCH y EGARCH. Si no, solo se muestra el mejor modelo.",
+        (
+            "La volatilidad condicional muestra cómo cambia el riesgo estimado del activo a lo largo del tiempo. "
+            "Picos altos indican episodios de mayor incertidumbre o estrés."
+        ),
         modo=modo,
-        caption="El frontend quedó preparado para múltiples trayectorias, pero depende de que el backend entregue esa información.",
+        caption="Permite identificar periodos de calma y periodos de volatilidad elevada.",
     )
-    st.plotly_chart(fig_vol, use_container_width=True)
-
+    st.plotly_chart(fig_vol, width="stretch")
+    
+    # Footer mejorado
     if has_multiple_models:
         plot_card_footer(
             "Se comparan ARCH(1), GARCH(1,1) y EGARCH(1,1). ARCH suele reaccionar con picos más bruscos ante shocks puntuales, mientras GARCH y EGARCH tienden a ofrecer trayectorias más estables para lectura comparativa."
         )
     else:
         plot_card_footer(
-            "El backend no devolvió trayectorias separadas para ARCH, GARCH y EGARCH; por eso solo se muestra la serie del mejor modelo."
+            "Los picos de volatilidad no indican necesariamente caída del precio, sino mayor incertidumbre en los rendimientos."
         )
+
 with g2:
+    # 6. Encabezado mejorado para forecast
     plot_card_header(
-        "Forecast de volatilidad",
-        "Pronóstico devuelto por el modelo seleccionado por backend.",
+        "Pronóstico de volatilidad",
+        (
+            "El forecast proyecta la volatilidad esperada para los próximos periodos usando el modelo seleccionado."
+        ),
         modo=modo,
-        caption="Cuando el horizonte efectivo es de un solo paso, el punto se amplía visualmente para que sí pueda verse.",
+        caption="Sirve para anticipar si el riesgo estimado tiende a mantenerse, subir o bajar en el corto plazo.",
     )
     forecast_df = pd.DataFrame(payload.get("forecast", []))
 
@@ -596,11 +679,26 @@ with g2:
         modo=modo,
         clean_view=False,
     )
-    st.plotly_chart(fig_forecast, use_container_width=True)
-    plot_card_footer(_forecast_message(payload))
+    st.plotly_chart(fig_forecast, width="stretch")
+    # Footer mejorado para forecast
+    plot_card_footer(
+        "El pronóstico de volatilidad no predice el precio, sino la magnitud esperada de la variabilidad futura."
+    )
 
 if mostrar_diagnostico:
     seccion("Diagnóstico")
+    
+    # 4. Tarjeta de lectura del módulo (interpretación general)
+    compact_help_card(
+        "Lectura del módulo",
+        (
+            "Los modelos ARCH/GARCH permiten estudiar volatilidad agrupada: periodos tranquilos tienden a estar seguidos "
+            "por periodos tranquilos, y periodos turbulentos por nuevos episodios de alta volatilidad. "
+            "ARCH captura choques recientes, GARCH incorpora persistencia de la volatilidad y EGARCH permite capturar "
+            "asimetrías, es decir, que malas noticias y buenas noticias puedan afectar de forma distinta el riesgo."
+        ),
+        caption="Resumen conceptual del comportamiento de la volatilidad condicional.",
+    )
 
     plot_card_header(
         "Diagnóstico del modelo",
@@ -609,10 +707,10 @@ if mostrar_diagnostico:
         caption="La tabla resume el ajuste y la caja inferior te ayuda a defenderlo metodológicamente.",
     )
 
-    st.dataframe(diagnostics_df, use_container_width=True, hide_index=True)
+    st.dataframe(diagnostics_df, width="stretch", hide_index=True)
 
-    st.markdown("")
-    render_info_card(
+    compact_help_card(
         "Cómo hacer el diagnóstico",
         _diagnostic_guide(payload),
+    caption="Pasa el cursor sobre el signo de ayuda para ver la guía metodológica.",
     )

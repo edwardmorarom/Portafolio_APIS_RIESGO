@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from services.api_client import ApiClientError, get_api_client
-from ui.cards import render_info_card
+from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import (
     header_dashboard,
     nota,
@@ -25,6 +25,9 @@ BASE_PORTFOLIO = [
     {"name": "BP", "ticker": "BP.L", "country": "UK"},
     {"name": "Carrefour", "ticker": "CA.PA", "country": "FR"},
 ]
+
+RF_FALLBACK_ANNUAL = 0.03
+RF_FALLBACK_TICKER = "^IRX"
 
 
 def _resolve_dates(
@@ -65,10 +68,63 @@ def _pick_value(payload: dict | None, *keys):
     return None
 
 
-def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:
+def _format_pct(x) -> str:
+    if x is None:
+        return "N/D"
+    try:
+        return f"{float(x):.2%}"
+    except Exception:
+        return str(x)
+
+
+def _format_num(x, ndigits: int = 4) -> str:
+    if x is None:
+        return "N/D"
+    try:
+        return f"{float(x):.{ndigits}f}"
+    except Exception:
+        return str(x)
+
+
+def _format_money(x) -> str:
+    if x is None:
+        return "N/D"
+    try:
+        return f"USD {float(x):,.2f}"
+    except Exception:
+        return str(x)
+
+
+def _profile_to_backend(profile_label: str) -> str | None:
+    mapping = {
+        "Sin perfil": None,
+        "Mínimo riesgo": "minimo_riesgo",
+        "Máxima utilidad": "maxima_utilidad",
+        "Arriesgado": "arriesgado",
+    }
+    return mapping.get(profile_label)
+
+
+def _weights_editor(
+    sidebar_container,
+    key_prefix: str,
+    disabled: bool,
+) -> tuple[list[float], float]:
     with sidebar_container:
-        st.markdown("**Pesos de referencia del portafolio (%)**")
+        st.markdown("**Pesos manuales del portafolio (%)**")
+
+        if disabled:
+            st.caption(
+                "Los pesos manuales quedan bloqueados porque seleccionaste un perfil de optimización "
+                "o un retorno objetivo. En ese caso, el backend calcula la composición óptima."
+            )
+        else:
+            st.caption(
+                "Puedes modificar estos pesos solo cuando el perfil es 'Sin perfil' y no se usa retorno objetivo."
+            )
+
         weights_pct: list[float] = []
+
         for asset in BASE_PORTFOLIO:
             value = st.number_input(
                 asset["ticker"],
@@ -78,18 +134,36 @@ def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], fl
                 step=1.0,
                 key=f"{key_prefix}_{asset['ticker']}",
                 format="%.2f",
+                disabled=disabled,
             )
             weights_pct.append(float(value))
 
         total_pct = float(sum(weights_pct))
         st.caption(f"Total asignado: {total_pct:.2f}%")
 
-        if total_pct > 100.0 + 1e-6:
-            st.error("Los pesos no pueden superar 100%.")
-        elif abs(total_pct - 100.0) > 1e-6:
-            st.warning("Estos pesos son de referencia visual. La optimización de Markowitz sigue calculándose sobre el universo seleccionado.")
+        if not disabled:
+            if total_pct > 100.0 + 1e-6:
+                st.error("Los pesos no pueden superar 100%.")
+            elif abs(total_pct - 100.0) > 1e-6:
+                st.warning("Los pesos manuales deberían sumar exactamente 100%.")
 
     return [w / 100.0 for w in weights_pct], total_pct
+
+
+def _fetch_rf_usd() -> tuple[float, str, str | None]:
+    client = get_api_client()
+
+    try:
+        payload = client.get_macro_snapshot(base_currency="USD")
+        rf_pct = _pick_value(payload, "rf_rate_pct", "risk_free_rate_pct")
+        rf_ticker = _pick_value(payload, "rf_ticker") or RF_FALLBACK_TICKER
+
+        if rf_pct is None:
+            return RF_FALLBACK_ANNUAL, RF_FALLBACK_TICKER, "El backend no devolvió Rf; se usó fallback 3%."
+
+        return float(rf_pct) / 100.0, str(rf_ticker), None
+    except Exception as exc:
+        return RF_FALLBACK_ANNUAL, RF_FALLBACK_TICKER, f"No fue posible consultar Rf desde backend: {exc}"
 
 
 def _build_frontier_payload(
@@ -99,7 +173,6 @@ def _build_frontier_payload(
     n_portfolios: int,
     target_return: float | None,
     risk_profile: str | None,
-    reference_weights: list[float],
 ) -> dict:
     return {
         "tickers": [a["ticker"] for a in BASE_PORTFOLIO],
@@ -110,12 +183,12 @@ def _build_frontier_payload(
         "target_return_annual": target_return,
         "risk_profile": risk_profile,
         "return_type": "log",
-        "weights": reference_weights,
     }
 
 
 def _fetch_frontier(payload: dict) -> tuple[dict, str | None]:
     client = get_api_client()
+
     try:
         response = client.post_efficient_frontier(payload)
         if response is None:
@@ -279,22 +352,51 @@ def _metric_from_block(block: dict, *keys):
     return _pick_value(block, *keys)
 
 
-def _format_pct(x) -> str:
-    if x is None:
-        return "N/D"
-    try:
-        return f"{float(x):.2%}"
-    except Exception:
-        return str(x)
+def _selected_portfolio_block(
+    profile_label: str,
+    use_target_return: bool,
+    min_var: dict,
+    max_sharpe: dict,
+    target_port: dict,
+    profile_suggestion: dict,
+) -> tuple[str, dict]:
+    if use_target_return and target_port:
+        return "Portafolio por retorno objetivo", target_port
+
+    if profile_label == "Mínimo riesgo" and min_var:
+        return "Portafolio de mínimo riesgo", min_var
+
+    if profile_label == "Máxima utilidad" and max_sharpe:
+        return "Portafolio de máxima utilidad", max_sharpe
+
+    if profile_label == "Arriesgado" and profile_suggestion:
+        return "Portafolio sugerido para perfil arriesgado", profile_suggestion
+
+    if profile_label == "Arriesgado" and max_sharpe:
+        return "Portafolio arriesgado aproximado", max_sharpe
+
+    if max_sharpe:
+        return "Portafolio de referencia: máximo Sharpe", max_sharpe
+
+    return "Portafolio seleccionado", {}
 
 
-def _format_num(x, ndigits: int = 4) -> str:
-    if x is None:
-        return "N/D"
-    try:
-        return f"{float(x):.{ndigits}f}"
-    except Exception:
-        return str(x)
+def _selected_return_and_vol(block: dict) -> tuple[float | None, float | None]:
+    ret = _metric_from_block(
+        block,
+        "achieved_return_annual",
+        "return",
+        "expected_return",
+        "retorno",
+    )
+    vol = _metric_from_block(
+        block,
+        "volatility_annual",
+        "volatility",
+        "risk",
+        "std",
+    )
+    return ret, vol
 
 
 def _build_corr_heatmap(corr_df: pd.DataFrame, modo: str, clean_view: bool) -> go.Figure:
@@ -342,6 +444,7 @@ def _build_frontier_figure(
     simulated_df: pd.DataFrame,
     min_var: dict,
     max_sharpe: dict,
+    selected_block: dict,
     modo: str,
     show_cloud: bool,
     show_frontier: bool,
@@ -394,6 +497,7 @@ def _build_frontier_figure(
         mv_vol = _metric_from_block(min_var, "volatility", "risk", "std")
         ms_ret = _metric_from_block(max_sharpe, "return", "expected_return", "retorno")
         ms_vol = _metric_from_block(max_sharpe, "volatility", "risk", "std")
+        sel_ret, sel_vol = _selected_return_and_vol(selected_block)
 
         if mv_ret is not None and mv_vol is not None:
             fig.add_trace(
@@ -414,6 +518,17 @@ def _build_frontier_figure(
                     mode="markers",
                     name="Máximo Sharpe",
                     marker=dict(size=13, symbol="star", color="#8B5CF6"),
+                )
+            )
+
+        if sel_ret is not None and sel_vol is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=[sel_vol],
+                    y=[sel_ret],
+                    mode="markers",
+                    name="Seleccionado",
+                    marker=dict(size=14, symbol="circle", color="#DC2626"),
                 )
             )
 
@@ -447,6 +562,8 @@ def _build_frontier_figure(
 def _module_reading(
     min_var: dict,
     max_sharpe: dict,
+    selected_label: str,
+    selected_block: dict,
     n_assets: int,
     observations,
     n_portfolios: int,
@@ -456,12 +573,14 @@ def _module_reading(
     mv_vol = _metric_from_block(min_var, "volatility", "risk", "std")
     ms_ret = _metric_from_block(max_sharpe, "return", "expected_return", "retorno")
     ms_sharpe = _metric_from_block(max_sharpe, "sharpe", "sharpe_ratio")
+    sel_ret, sel_vol = _selected_return_and_vol(selected_block)
 
     return (
-        f"Se analizaron {n_assets} activos con {observations} observaciones alineadas y se simularon {n_portfolios:,} "
-        f"portafolios usando una tasa libre de riesgo de {_format_pct(risk_free_rate)}. "
+        f"Se analizaron {n_assets} activos con {observations} observaciones alineadas y se simularon "
+        f"{n_portfolios:,} portafolios usando una tasa libre de riesgo metodológica de {_format_pct(risk_free_rate)}. "
         f"El portafolio de mínima varianza ofrece un retorno esperado de {_format_pct(mv_ret)} con volatilidad de {_format_pct(mv_vol)}, "
-        f"mientras que el portafolio de máximo Sharpe alcanza un retorno esperado de {_format_pct(ms_ret)} con Sharpe de {_format_num(ms_sharpe, 3)}."
+        f"mientras que el portafolio de máximo Sharpe alcanza un retorno esperado de {_format_pct(ms_ret)} con Sharpe de {_format_num(ms_sharpe, 3)}. "
+        f"La selección actual es '{selected_label}', con retorno esperado de {_format_pct(sel_ret)} y volatilidad de {_format_pct(sel_vol)}."
     )
 
 
@@ -502,50 +621,69 @@ with filtros_sidebar:
                 key="markowitz_custom_end",
             )
 
-    risk_free_rate = st.number_input(
-        "Tasa libre de riesgo (%)",
-        min_value=0.0,
-        max_value=20.0,
-        value=3.0,
-        step=0.1,
-        key="markowitz_rf",
-    ) / 100.0
+    portfolio_value = st.number_input(
+        "Valor del portafolio",
+        min_value=1000.0,
+        max_value=100000000.0,
+        value=100000.0,
+        step=1000.0,
+        key="markowitz_portfolio_value",
+        format="%.2f",
+        help="Monto que el inversionista desea invertir. Se usa para convertir retornos esperados porcentuales a valores monetarios.",
+    )
 
     n_portfolios = st.slider(
         "Número de portafolios",
-        min_value=5000,
+        min_value=10000,
         max_value=50000,
         value=10000,
         step=1000,
         key="markowitz_n_portfolios",
+        help="Cantidad de combinaciones simuladas para construir la nube de portafolios y la frontera eficiente.",
     )
-
-    target_return_pct = st.number_input(
-        "Retorno anual objetivo del portafolio (%)",
-        min_value=0.0,
-        max_value=50.0,
-        value=10.0,
-        step=0.5,
-        key="markowitz_target_return",
-    ) / 100.0
 
     risk_profile_label = st.selectbox(
         "Perfil del inversor",
-        ["Sin perfil", "Conservador", "Mínimo riesgo", "Máxima utilidad", "Arriesgado"],
+        ["Sin perfil", "Mínimo riesgo", "Máxima utilidad", "Arriesgado"],
         index=0,
         key="markowitz_investor_profile",
+        help=(
+            "Sin perfil permite editar pesos manualmente. "
+            "Mínimo riesgo, Máxima utilidad y Arriesgado usan pesos sugeridos por el modelo."
+        ),
     )
 
-    reference_weights, total_pct = _weights_editor(filtros_sidebar, "markowitz_weight")
+    use_target_return = st.checkbox(
+        "Usar retorno objetivo",
+        value=False,
+        key="markowitz_use_target_return",
+        help="Si activas esta opción, los pesos manuales se bloquean porque el modelo busca el portafolio más cercano al retorno deseado.",
+    )
 
-risk_profile_map = {
-    "Sin perfil": None,
-    "Conservador": "conservador",
-    "Mínimo riesgo": "minimo_riesgo",
-    "Máxima utilidad": "maxima_utilidad",
-    "Arriesgado": "arriesgado",
-}
-risk_profile = risk_profile_map[risk_profile_label]
+    target_return_pct = None
+    if use_target_return:
+        target_return_pct = (
+            st.number_input(
+                "Retorno anual objetivo (%)",
+                min_value=0.0,
+                max_value=50.0,
+                value=10.0,
+                step=0.5,
+                key="markowitz_target_return",
+                format="%.2f",
+            )
+            / 100.0
+        )
+
+    allow_manual_weights = risk_profile_label == "Sin perfil" and not use_target_return
+
+    reference_weights, total_pct = _weights_editor(
+        filtros_sidebar,
+        "markowitz_weight",
+        disabled=not allow_manual_weights,
+    )
+
+risk_profile = _profile_to_backend(risk_profile_label)
 
 start_date, end_date = _resolve_dates(
     horizonte=horizonte,
@@ -558,32 +696,42 @@ if start_date >= end_date:
     st.error("La fecha inicial debe ser menor que la fecha final.")
     st.stop()
 
+rf_annual, rf_ticker, rf_warning = _fetch_rf_usd()
+
 request_payload = _build_frontier_payload(
     start=start_date.strftime("%Y-%m-%d"),
     end=end_date.strftime("%Y-%m-%d"),
-    risk_free_rate=risk_free_rate,
+    risk_free_rate=rf_annual,
     n_portfolios=n_portfolios,
     target_return=target_return_pct,
     risk_profile=risk_profile,
-    reference_weights=reference_weights,
 )
 
 payload, frontier_error = _fetch_frontier(request_payload)
 
 header_dashboard(
     "Módulo 6 - Markowitz",
-    "Construye y compara carteras sobre la frontera eficiente para estudiar riesgo, retorno y eficiencia",
+    "Construye y compara carteras sobre la frontera eficiente para estudiar riesgo, retorno, eficiencia y composición óptima",
     modo=modo,
 )
 
 if modo == "General":
     nota(
-        "Este módulo construye múltiples combinaciones de portafolios para identificar aquellas que ofrecen una mejor relación entre retorno esperado y riesgo. Se resaltan el portafolio de mínima varianza, el de máximo Sharpe y una solución con retorno objetivo."
+        "Este módulo construye múltiples combinaciones de portafolios para identificar aquellas que ofrecen una mejor relación entre retorno esperado y riesgo. "
+        "La tasa libre de riesgo no es editable: se toma desde la metodología del proyecto en USD."
     )
 else:
     nota(
-        "En modo estadístico se enfatizan la matriz de correlación, la frontera eficiente, la composición de portafolios óptimos y el perfil de inversor."
+        "En modo estadístico se enfatizan la matriz de correlación, la frontera eficiente, la composición de portafolios óptimos, "
+        "la tasa libre de riesgo metodológica y el perfil del inversionista."
     )
+
+if rf_warning:
+    st.warning(rf_warning)
+
+if allow_manual_weights and abs(total_pct - 100.0) > 1e-6:
+    st.error("Cuando usas pesos manuales, estos deben sumar exactamente 100%.")
+    st.stop()
 
 if frontier_error:
     st.error(frontier_error)
@@ -601,18 +749,129 @@ max_sharpe = _extract_max_sharpe(payload)
 target_port = _extract_target(payload)
 profile_suggestion = _extract_profile_suggestion(payload)
 
+max_sharpe_return = _metric_from_block(
+    max_sharpe,
+    "return",
+    "expected_return",
+    "retorno",
+)
+
+if (
+    use_target_return
+    and target_return_pct is not None
+    and max_sharpe_return is not None
+    and float(target_return_pct) > float(max_sharpe_return)
+):
+    st.error(
+        "Excede las capacidades de este portafolio. "
+        f"El retorno anual objetivo ingresado es {_format_pct(target_return_pct)}, "
+        f"pero el portafolio de máxima utilidad alcanza aproximadamente {_format_pct(max_sharpe_return)}."
+    )
+    st.stop()   
+
+selected_label, selected_block = _selected_portfolio_block(
+    profile_label=risk_profile_label,
+    use_target_return=use_target_return,
+    min_var=min_var,
+    max_sharpe=max_sharpe,
+    target_port=target_port,
+    profile_suggestion=profile_suggestion,
+)
+
+selected_return, selected_volatility = _selected_return_and_vol(selected_block)
+selected_money_return = None if selected_return is None else portfolio_value * float(selected_return)
+selected_final_value = None if selected_return is None else portfolio_value * (1.0 + float(selected_return))
+
 min_var_df = _extract_weights_df(min_var)
 max_sharpe_df = _extract_weights_df(max_sharpe)
 target_df = _extract_weights_df(target_port)
 profile_df = _extract_weights_df(profile_suggestion)
+selected_df = _extract_weights_df(selected_block)
 reference_df = _extract_reference_weights_df(reference_weights)
 
 observations = _pick_value(payload, "observations", "n_observations", "sample_size")
 n_assets = _pick_value(payload, "n_assets", "num_assets") or len(BASE_PORTFOLIO)
 
+render_meta_row(
+    [
+        ("Horizonte", horizonte),
+        ("Perfil", risk_profile_label),
+        ("Retorno objetivo", _format_pct(target_return_pct) if use_target_return else "No usado"),
+        ("Rf metodológica", f"{rf_ticker} · {_format_pct(rf_annual)}"),
+        ("Valor portafolio", _format_money(portfolio_value)),
+    ]
+)
+
 tab1, tab2, tab3 = st.tabs(["Portafolios destacados", "Gráficas", "Composición óptima"])
 
 with tab1:
+    seccion("Portafolio seleccionado")
+
+    c1, c2, c3, c4 = st.columns(4)
+
+    with c1:
+        tarjeta_kpi(
+            "Selección actual",
+            selected_label,
+            subtexto="Criterio usado para elegir la cartera mostrada.",
+            help_text="Depende del perfil del inversor o del retorno objetivo activado.",
+        )
+
+    with c2:
+        tarjeta_kpi(
+            "Retorno esperado",
+            _format_pct(selected_return),
+            subtexto="Rentabilidad anual esperada del portafolio seleccionado.",
+            help_text="Retorno anual estimado para la cartera elegida dentro de las simulaciones.",
+        )
+
+    with c3:
+        tarjeta_kpi(
+            "Volatilidad",
+            _format_pct(selected_volatility),
+            subtexto="Riesgo anual asociado a la cartera seleccionada.",
+            help_text="La volatilidad resume la dispersión esperada del rendimiento anual.",
+        )
+
+    with c4:
+        tarjeta_kpi(
+            "Valor final esperado",
+            _format_money(selected_final_value),
+            subtexto="Valor aproximado si se cumple el retorno esperado.",
+            help_text="Valor final esperado = valor inicial del portafolio multiplicado por 1 + retorno esperado.",
+        )
+
+    k5, k6 = st.columns(2)
+
+    with k5:
+        tarjeta_kpi(
+            "Retorno esperado en dinero",
+            _format_money(selected_money_return),
+            subtexto="Ganancia o pérdida esperada en USD.",
+            help_text="Retorno monetario = valor del portafolio multiplicado por el retorno esperado.",
+        )
+
+    with k6:
+        tarjeta_kpi(
+            "Tasa libre de riesgo",
+            _format_pct(rf_annual),
+            subtexto=f"Fuente metodológica: {rf_ticker}.",
+            help_text="La tasa libre de riesgo se usa para calcular Sharpe y comparar eficiencia riesgo-retorno.",
+        )
+
+    plot_card_footer(
+        _module_reading(
+            min_var=min_var,
+            max_sharpe=max_sharpe,
+            selected_label=selected_label,
+            selected_block=selected_block,
+            n_assets=int(n_assets),
+            observations=observations,
+            n_portfolios=n_portfolios,
+            risk_free_rate=rf_annual,
+        )
+    )
+
     seccion("Portafolios destacados")
 
     mv_ret = _metric_from_block(min_var, "return", "expected_return", "retorno")
@@ -620,51 +879,85 @@ with tab1:
     ms_ret = _metric_from_block(max_sharpe, "return", "expected_return", "retorno")
     ms_sharpe = _metric_from_block(max_sharpe, "sharpe", "sharpe_ratio")
 
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        tarjeta_kpi("Retorno mín. varianza", _format_pct(mv_ret), subtexto="Rentabilidad asociada a la cartera de menor volatilidad.")
-    with c2:
-        tarjeta_kpi("Volatilidad mín. varianza", _format_pct(mv_vol), subtexto="Menor riesgo disponible.")
-    with c3:
-        tarjeta_kpi("Retorno máx. Sharpe", _format_pct(ms_ret), subtexto="Rentabilidad esperada del mejor balance riesgo-retorno.")
-    with c4:
-        tarjeta_kpi("Sharpe máximo", _format_num(ms_sharpe, 3), subtexto="Mejor eficiencia riesgo-retorno.")
+    p1, p2, p3, p4 = st.columns(4)
 
-    plot_card_footer(
-        _module_reading(
-            min_var=min_var,
-            max_sharpe=max_sharpe,
-            n_assets=int(n_assets),
-            observations=observations,
-            n_portfolios=n_portfolios,
-            risk_free_rate=risk_free_rate,
+    with p1:
+        tarjeta_kpi(
+            "Retorno mín. varianza",
+            _format_pct(mv_ret),
+            subtexto="Rentabilidad asociada a la cartera de menor volatilidad.",
         )
-    )
+
+    with p2:
+        tarjeta_kpi(
+            "Volatilidad mín. varianza",
+            _format_pct(mv_vol),
+            subtexto="Menor riesgo disponible dentro de la simulación.",
+        )
+
+    with p3:
+        tarjeta_kpi(
+            "Retorno máx. Sharpe",
+            _format_pct(ms_ret),
+            subtexto="Rentabilidad esperada del mejor balance riesgo-retorno.",
+        )
+
+    with p4:
+        tarjeta_kpi(
+            "Sharpe máximo",
+            _format_num(ms_sharpe, 3),
+            subtexto="Mejor eficiencia riesgo-retorno.",
+        )
 
     seccion("KPIs del módulo")
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        tarjeta_kpi("Activos analizados", str(int(n_assets)), subtexto="Universo usado para construir combinaciones factibles.")
-    with k2:
-        tarjeta_kpi("Observaciones", str(observations) if observations is not None else "N/D", subtexto="Muestra histórica disponible para covarianzas y retornos.")
-    with k3:
-        tarjeta_kpi("Portafolios simulados", f"{n_portfolios:,}".replace(",", "."), subtexto="Exploración aleatoria del espacio riesgo-retorno.")
-    with k4:
-        tarjeta_kpi("Tasa libre de riesgo", _format_pct(risk_free_rate), subtexto="Referencia para medir eficiencia ajustada por riesgo.")
 
-    if profile_suggestion:
-        p1, p2, p3 = st.columns(3)
-        with p1:
-            tarjeta_kpi("Perfil sugerido", str(_pick_value(profile_suggestion, "profile") or "N/D").replace("_", " ").title(), subtexto="Solución alineada al perfil seleccionado.")
-        with p2:
-            tarjeta_kpi("Retorno perfil", _format_pct(_metric_from_block(profile_suggestion, "return", "expected_return")), subtexto="Rentabilidad de la sugerencia.")
-        with p3:
-            tarjeta_kpi("Volatilidad perfil", _format_pct(_metric_from_block(profile_suggestion, "volatility", "risk")), subtexto="Riesgo de la sugerencia.")
+    k1, k2, k3, k4 = st.columns(4)
+
+    with k1:
+        tarjeta_kpi(
+            "Activos analizados",
+            str(int(n_assets)),
+            subtexto="Universo usado para construir combinaciones factibles.",
+        )
+
+    with k2:
+        tarjeta_kpi(
+            "Observaciones",
+            str(observations) if observations is not None else "N/D",
+            subtexto="Muestra histórica disponible para covarianzas y retornos.",
+        )
+
+    with k3:
+        tarjeta_kpi(
+            "Portafolios simulados",
+            f"{n_portfolios:,}".replace(",", "."),
+            subtexto="Exploración aleatoria del espacio riesgo-retorno.",
+        )
+
+    with k4:
+        tarjeta_kpi(
+            "Rf usada",
+            _format_pct(rf_annual),
+            subtexto=f"Ticker de referencia: {rf_ticker}.",
+        )
 
     seccion("Interpretación")
+
     render_info_card(
         "Lectura del módulo",
-        "Este módulo muestra que no existe una única mejor cartera: todo depende del equilibrio entre retorno y riesgo. La frontera eficiente resume las combinaciones más convenientes, mientras que mínima varianza, máximo Sharpe y retorno objetivo representan decisiones distintas dentro del mismo problema.",
+        (
+            "Este módulo muestra que no existe una única mejor cartera: todo depende del equilibrio entre retorno y riesgo. "
+            "La frontera eficiente resume las combinaciones más convenientes, mientras que mínima varianza, máximo Sharpe, perfil del inversor "
+            "y retorno objetivo representan decisiones distintas dentro del mismo problema."
+        ),
+    )
+
+    render_info_card(
+        "Regla de pesos",
+        (
+            "Los pesos manuales solo se habilitan cuando el perfil es 'Sin perfil' y no se usa retorno objetivo. "
+            "Cuando eliges un perfil o un retorno objetivo, los pesos se bloquean porque la composición debe salir del modelo de optimización."
+        ),
     )
 
 with tab2:
@@ -675,9 +968,9 @@ with tab2:
     with g1:
         plot_card_header(
             "Matriz de correlación",
-            "Activo o desactiva detalles para simplificar la lectura visual de la matriz.",
+            "La matriz de correlación muestra qué tan parecido se mueven los activos entre sí. Correlaciones más bajas ayudan a diversificar.",
             modo=modo,
-            caption="Usa una escala azul-vinotinto para distinguir mejor correlaciones negativas y positivas.",
+            caption="Usa una escala azul-vinotinto para distinguir correlaciones negativas y positivas.",
         )
 
         o1, o2 = st.columns(2)
@@ -687,20 +980,20 @@ with tab2:
             show_corr_table = st.checkbox("Ver tabla de correlación", value=False, key="markowitz_corr_table")
 
         fig_corr = _build_corr_heatmap(corr_df, modo=modo, clean_view=corr_clean)
-        st.plotly_chart(fig_corr, use_container_width=True)
+        st.plotly_chart(fig_corr, width="stretch")
         plot_card_footer(
-            "La matriz de correlación ayuda a identificar qué tan parecidos son los movimientos entre activos. Correlaciones más bajas suelen mejorar el potencial de diversificación del portafolio."
+            "La matriz de correlación ayuda a identificar qué activos se mueven parecido y cuáles aportan diversificación."
         )
 
         if show_corr_table and not corr_df.empty:
-            st.dataframe(corr_df, use_container_width=True)
+            st.dataframe(corr_df, width="stretch")
 
     with g2:
         plot_card_header(
             "Frontera eficiente",
-            "Mejoré leyenda, ejes y contraste para una lectura más clara.",
+            "La frontera eficiente muestra las combinaciones que maximizan retorno para cada nivel de riesgo.",
             modo=modo,
-            caption="La nube simulada, la frontera y los óptimos se muestran separados visualmente para evitar interferencias con el título.",
+            caption="La nube simulada, la frontera, los óptimos y la selección actual se muestran diferenciados.",
         )
 
         p1, p2, p3, p4 = st.columns(4)
@@ -718,104 +1011,142 @@ with tab2:
             simulated_df=simulated_df,
             min_var=min_var,
             max_sharpe=max_sharpe,
+            selected_block=selected_block,
             modo=modo,
             show_cloud=show_cloud,
             show_frontier=show_frontier,
             show_optimal=show_optimal,
             clean_view=frontier_clean,
         )
-        st.plotly_chart(fig_frontier, use_container_width=True)
+        st.plotly_chart(fig_frontier, width="stretch")
         plot_card_footer(
-            "La frontera eficiente resume las mejores combinaciones riesgo-retorno encontradas. Los portafolios destacados permiten comparar estabilidad, eficiencia y metas de rentabilidad."
+            "La frontera eficiente resume las mejores combinaciones riesgo-retorno encontradas. "
+            "El punto seleccionado depende del perfil o del retorno objetivo configurado."
         )
 
-    seccion("KPIs del módulo")
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        tarjeta_kpi("Activos analizados", str(int(n_assets)), subtexto="Universo usado para construir combinaciones factibles.")
-    with k2:
-        tarjeta_kpi("Observaciones", str(observations) if observations is not None else "N/D", subtexto="Muestra histórica disponible para covarianzas y retornos.")
-    with k3:
-        tarjeta_kpi("Portafolios simulados", f"{n_portfolios:,}".replace(",", "."), subtexto="Exploración aleatoria del espacio riesgo-retorno.")
-    with k4:
-        tarjeta_kpi("Tasa libre de riesgo", _format_pct(risk_free_rate), subtexto="Referencia para medir eficiencia ajustada por riesgo.")
+    seccion("Interpretación gráfica")
 
-    seccion("Interpretación")
     render_info_card(
         "Lectura gráfica",
-        "La dispersión de portafolios permite ver el trade-off entre riesgo y retorno. La curva eficiente concentra las soluciones dominantes, mientras que la matriz de correlación ayuda a explicar por qué ciertas combinaciones ofrecen más diversificación que otras.",
+        (
+            "La dispersión de portafolios permite ver el trade-off entre riesgo y retorno. "
+            "La curva eficiente concentra las soluciones dominantes, mientras que la matriz de correlación explica "
+            "por qué ciertas combinaciones ofrecen más diversificación que otras."
+        ),
     )
 
 with tab3:
+    seccion("Composición del portafolio seleccionado")
+
+    plot_card_header(
+        selected_label,
+        "La composición muestra los pesos que el modelo asigna al portafolio seleccionado.",
+        modo=modo,
+        caption="Ordenado de mayor a menor participación.",
+    )
+
+    if selected_df.empty:
+        render_info_card(
+            "Sin composición disponible",
+            "El backend no devolvió pesos para el portafolio seleccionado.",
+        )
+    else:
+        st.dataframe(selected_df, width="stretch", hide_index=True)
+
     seccion("Composición de portafolios óptimos")
 
     c1, c2 = st.columns(2, gap="large")
+
     with c1:
         plot_card_header(
             "Portafolio de mínima varianza",
-            "Diseñado de mayor a menor participación.",
+            "Cartera con menor volatilidad simulada.",
             modo=modo,
             caption="Ordenado de mayor a menor participación.",
         )
-        st.dataframe(min_var_df, use_container_width=True, hide_index=True)
+        st.dataframe(min_var_df, width="stretch", hide_index=True)
 
     with c2:
         plot_card_header(
             "Portafolio de máximo Sharpe",
-            "Diseñado de mayor a menor participación.",
+            "Cartera con mejor relación entre exceso de retorno y riesgo.",
             modo=modo,
             caption="Ordenado de mayor a menor participación.",
         )
-        st.dataframe(max_sharpe_df, use_container_width=True, hide_index=True)
+        st.dataframe(max_sharpe_df, width="stretch", hide_index=True)
 
-    seccion("Optimización con retorno objetivo")
+    if use_target_return:
+        seccion("Optimización con retorno objetivo")
 
-    target_ret = _metric_from_block(target_port, "achieved_return_annual", "expected_return", "return", "retorno")
-    target_vol = _metric_from_block(target_port, "volatility_annual", "volatility", "risk", "std")
-
-    t1, t2 = st.columns([1.05, 1.2], gap="large")
-    with t1:
-        plot_card_header(
-            "Solución condicionada",
-            "Retorno objetivo configurado actualmente",
-            modo=modo,
-            caption=f"Retorno objetivo configurado actualmente: {_format_pct(target_return_pct)}",
+        target_ret = _metric_from_block(
+            target_port,
+            "achieved_return_annual",
+            "expected_return",
+            "return",
+            "retorno",
         )
-        tarjeta_kpi("Retorno esperado", _format_pct(target_ret), subtexto="Objetivo alcanzado.")
-        tarjeta_kpi("Volatilidad", _format_pct(target_vol), subtexto="Riesgo asociado al retorno objetivo impuesto.")
+        target_vol = _metric_from_block(
+            target_port,
+            "volatility_annual",
+            "volatility",
+            "risk",
+            "std",
+        )
 
-    with t2:
-        st.dataframe(target_df, use_container_width=True, hide_index=True)
+        t1, t2 = st.columns([1.05, 1.2], gap="large")
+
+        with t1:
+            plot_card_header(
+                "Solución condicionada",
+                "Portafolio más cercano al retorno objetivo configurado.",
+                modo=modo,
+                caption=f"Retorno objetivo configurado: {_format_pct(target_return_pct)}",
+            )
+            tarjeta_kpi("Retorno esperado", _format_pct(target_ret), subtexto="Objetivo alcanzado.")
+            tarjeta_kpi("Volatilidad", _format_pct(target_vol), subtexto="Riesgo asociado al retorno objetivo.")
+
+        with t2:
+            st.dataframe(target_df, width="stretch", hide_index=True)
 
     if profile_suggestion:
         seccion("Portafolio sugerido por perfil")
+
         s1, s2 = st.columns([1.0, 1.25], gap="large")
+
         with s1:
-            tarjeta_kpi("Perfil", str(_pick_value(profile_suggestion, "profile") or "N/D").replace("_", " ").title(), subtexto="Preferencia seleccionada en el panel lateral.")
-            tarjeta_kpi("Sharpe", _format_num(_metric_from_block(profile_suggestion, "sharpe", "sharpe_ratio"), 3), subtexto="Eficiencia de la cartera sugerida.")
+            tarjeta_kpi(
+                "Perfil",
+                str(_pick_value(profile_suggestion, "profile") or "N/D").replace("_", " ").title(),
+                subtexto="Preferencia seleccionada en el panel lateral.",
+            )
+            tarjeta_kpi(
+                "Sharpe",
+                _format_num(_metric_from_block(profile_suggestion, "sharpe", "sharpe_ratio"), 3),
+                subtexto="Eficiencia de la cartera sugerida.",
+            )
+
         with s2:
-            st.dataframe(profile_df, use_container_width=True, hide_index=True)
+            st.dataframe(profile_df, width="stretch", hide_index=True)
 
-    seccion("Pesos de referencia del usuario")
+    seccion("Pesos manuales de referencia")
+
     render_info_card(
-        "Referencia visual",
-        "Estos pesos son la asignación manual del usuario en el panel lateral. Sirven como referencia para comparar la cartera actual frente a las soluciones óptimas de Markowitz.",
+        "Referencia manual",
+        (
+            "Estos pesos solo son editables cuando el perfil es 'Sin perfil' y no se usa retorno objetivo. "
+            "Cuando el usuario elige un perfil o un retorno objetivo, la composición relevante es la que calcula el backend."
+        ),
     )
-    st.dataframe(reference_df, use_container_width=True, hide_index=True)
 
-    seccion("KPIs del módulo")
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        tarjeta_kpi("Activos analizados", str(int(n_assets)), subtexto="Universo usado para construir combinaciones factibles.")
-    with k2:
-        tarjeta_kpi("Observaciones", str(observations) if observations is not None else "N/D", subtexto="Muestra histórica disponible para covarianzas y retornos.")
-    with k3:
-        tarjeta_kpi("Portafolios simulados", f"{n_portfolios:,}".replace(",", "."), subtexto="Exploración aleatoria del espacio riesgo-retorno.")
-    with k4:
-        tarjeta_kpi("Tasa libre de riesgo", _format_pct(risk_free_rate), subtexto="Referencia para medir eficiencia ajustada por riesgo.")
+    st.dataframe(reference_df, width="stretch", hide_index=True)
 
     seccion("Interpretación")
+
     render_info_card(
         "Lectura composicional",
-        "La composición óptima muestra cómo cambia el peso relativo de cada activo según el criterio elegido. Mínima varianza privilegia estabilidad, máximo Sharpe eficiencia y retorno objetivo una meta explícita de rentabilidad.",
+        (
+            "La composición óptima muestra cómo cambia el peso relativo de cada activo según el criterio elegido. "
+            "Mínima varianza privilegia estabilidad, máximo Sharpe privilegia eficiencia, retorno objetivo busca una meta explícita "
+            "y el perfil arriesgado prioriza una cartera con mayor expectativa de retorno."
+        ),
     )

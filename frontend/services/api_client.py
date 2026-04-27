@@ -12,7 +12,7 @@ import streamlit as st
 class ApiConfig:
     base_url: str
     api_prefix: str = "/api/v1"
-    timeout: int = 30
+    timeout: int = 120
     internal_api_key: str | None = None
 
     @property
@@ -36,7 +36,7 @@ def _read_secret(key: str, default: str | None = None) -> str | None:
 def get_api_config() -> ApiConfig:
     base_url = _read_secret("BACKEND_BASE_URL", "http://127.0.0.1:8000")
     api_prefix = _read_secret("BACKEND_API_PREFIX", "/api/v1")
-    timeout_raw = _read_secret("BACKEND_TIMEOUT_SECONDS", "30")
+    timeout_raw = _read_secret("BACKEND_TIMEOUT_SECONDS", "120")
     internal_api_key = _read_secret("INTERNAL_API_KEY", None)
 
     try:

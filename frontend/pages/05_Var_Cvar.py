@@ -60,6 +60,7 @@ def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], fl
     with sidebar_container:
         st.markdown("**Pesos del portafolio (%)**")
         weights_pct: list[float] = []
+
         for asset in PORTFOLIO_ASSETS:
             value = st.number_input(
                 asset["ticker"],
@@ -101,6 +102,24 @@ def _format_num(x, ndigits: int = 4) -> str:
         return str(x)
 
 
+def _format_money(x) -> str:
+    if x is None:
+        return "N/D"
+    try:
+        return f"USD {float(x):,.2f}"
+    except Exception:
+        return str(x)
+
+
+def _money_risk(portfolio_value: float, risk_pct) -> float | None:
+    if risk_pct is None:
+        return None
+    try:
+        return float(portfolio_value) * float(risk_pct)
+    except Exception:
+        return None
+
+
 def _fetch_var(
     tickers: list[str],
     weights: list[float],
@@ -139,9 +158,11 @@ def _method_metric(payload: dict, method_key: str, *metric_names):
     method = payload.get(method_key)
     if not isinstance(method, dict):
         return None
+
     for name in metric_names:
         if name in method and method[name] is not None:
             return method[name]
+
     return None
 
 
@@ -152,6 +173,7 @@ def _extract_distribution_series(payload: dict) -> pd.Series:
             s = pd.to_numeric(pd.Series(val), errors="coerce").dropna()
             if not s.empty:
                 return s
+
     return pd.Series(dtype=float)
 
 
@@ -160,11 +182,13 @@ def _extract_kupiec(payload: dict) -> dict:
         val = payload.get(key)
         if isinstance(val, dict):
             return val
+
     return {}
 
 
-def _comparison_table(payload: dict) -> pd.DataFrame:
+def _comparison_table(payload: dict, portfolio_value: float) -> pd.DataFrame:
     rows = []
+
     for key, label in [
         ("historical", "Histórico"),
         ("parametric", "Paramétrico"),
@@ -173,15 +197,24 @@ def _comparison_table(payload: dict) -> pd.DataFrame:
         method = payload.get(key, {})
         if not isinstance(method, dict):
             continue
+
+        var_daily = method.get("var_daily")
+        cvar_daily = method.get("cvar_daily")
+        var_annualized = method.get("var_annualized")
+        cvar_annualized = method.get("cvar_annualized")
+
         rows.append(
             {
                 "Método": label,
-                "VaR diario": _format_pct(method.get("var_daily")),
-                "CVaR diario": _format_pct(method.get("cvar_daily")),
-                "VaR anualizado": _format_pct(method.get("var_annualized")),
-                "CVaR anualizado": _format_pct(method.get("cvar_annualized")),
+                "VaR diario": _format_pct(var_daily),
+                "CVaR diario": _format_pct(cvar_daily),
+                "VaR monetario diario": _format_money(_money_risk(portfolio_value, var_daily)),
+                "CVaR monetario diario": _format_money(_money_risk(portfolio_value, cvar_daily)),
+                "VaR anualizado": _format_pct(var_annualized),
+                "CVaR anualizado": _format_pct(cvar_annualized),
             }
         )
+
     return pd.DataFrame(rows)
 
 
@@ -201,8 +234,12 @@ def _build_distribution_figure(
             go.Histogram(
                 x=returns_s,
                 name="Rendimientos",
-                opacity=0.78,
+                opacity=0.72,
                 nbinsx=35,
+                marker=dict(
+                    color="rgba(59, 130, 246, 0.42)",
+                    line=dict(color="rgba(29, 78, 216, 0.45)", width=0.6),
+                ),
             )
         )
 
@@ -216,13 +253,27 @@ def _build_distribution_figure(
         ]:
             value = _method_metric(payload, method_name, "var_daily", "var")
             if value is not None:
+                loss_value = float(value)
+                x_value = -loss_value
+
                 fig.add_vline(
-                    x=float(value),
+                    x=x_value,
                     line_dash="dash",
-                    line_width=2.2,
+                    line_width=3.0,
                     line_color=color,
+                    opacity=0.95,
                 )
-                line_specs.append((label, color, float(value)))
+
+                line_specs.append(
+                    {
+                        "section": "VaR",
+                        "label": label,
+                        "color": color,
+                        "loss_value": loss_value,
+                        "x_value": x_value,
+                        "dash": "dash",
+                    }
+                )
 
     if show_cvar:
         for method_name, label, color in [
@@ -232,13 +283,27 @@ def _build_distribution_figure(
         ]:
             value = _method_metric(payload, method_name, "cvar_daily", "cvar")
             if value is not None:
+                loss_value = float(value)
+                x_value = -loss_value
+
                 fig.add_vline(
-                    x=float(value),
+                    x=x_value,
                     line_dash="dot",
-                    line_width=2.2,
+                    line_width=3.0,
                     line_color=color,
+                    opacity=0.95,
                 )
-                line_specs.append((label, color, float(value)))
+
+                line_specs.append(
+                    {
+                        "section": "CVaR",
+                        "label": label,
+                        "color": color,
+                        "loss_value": loss_value,
+                        "x_value": x_value,
+                        "dash": "dot",
+                    }
+                )
 
     for trace in fig.data:
         if str(getattr(trace, "name", "")).lower() == "rendimientos":
@@ -255,92 +320,117 @@ def _build_distribution_figure(
     )
 
     fig.update_layout(
-        plot_bgcolor="#E8F0FF" if modo == "General" else "#F8EAF1",
+        plot_bgcolor="#EEF4FF" if modo == "General" else "#F8EAF1",
         paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
-        margin=dict(l=24, r=24, t=72, b=24),
-    )
-
-    fig.update_traces(
-        selector=dict(type="histogram"),
-        marker=dict(
-            color="rgba(59, 130, 246, 0.55)",
-            line=dict(color="rgba(29, 78, 216, 0.55)", width=0.6),
-        ),
+        margin=dict(l=24, r=24, t=84, b=24),
     )
 
     if line_specs:
-        var_specs = [item for item in line_specs if item[0].startswith("VaR")]
-        cvar_specs = [item for item in line_specs if item[0].startswith("CVaR")]
-        legend_items = [("VaR", var_specs), ("CVaR", cvar_specs)]
+        # Panel de leyenda más grande, limpio y con líneas reales dash/dot
+        panel_x0 = 0.012
+        panel_x1 = 0.36
+        panel_y1 = 0.985
 
-        base_x0 = 0.01
-        base_x1 = 0.29
-        top_y = 0.99
+        rows = []
+        var_items = [item for item in line_specs if item["section"] == "VaR"]
+        cvar_items = [item for item in line_specs if item["section"] == "CVaR"]
+
+        if var_items:
+            rows.append({"type": "header", "text": "VaR"})
+            rows.extend(var_items)
+
+        if cvar_items:
+            rows.append({"type": "space"})
+            rows.append({"type": "header", "text": "CVaR"})
+            rows.extend(cvar_items)
+
         row_gap = 0.052
-        section_gap = 0.03
-        current_y = top_y
-
-        total_rows = sum(len(items) for _, items in legend_items) + len([1 for _, items in legend_items if items])
-        panel_height = total_rows * row_gap + section_gap
+        panel_height = max(0.18, len(rows) * row_gap + 0.035)
+        panel_y0 = max(0.03, panel_y1 - panel_height)
 
         fig.add_shape(
             type="rect",
             xref="paper",
             yref="paper",
-            x0=base_x0,
-            x1=base_x1,
-            y0=max(0.02, top_y - panel_height),
-            y1=1.0,
-            line=dict(color="rgba(148,163,184,0.35)", width=1),
-            fillcolor="rgba(255,255,255,0.88)",
-            layer="below",
+            x0=panel_x0,
+            x1=panel_x1,
+            y0=panel_y0,
+            y1=panel_y1,
+            line=dict(color="rgba(15,23,42,0.18)", width=1),
+            fillcolor="rgba(255,255,255,0.92)",
+            layer="above",
         )
 
-        for section_title, items in legend_items:
-            if not items:
+        current_y = panel_y1 - 0.025
+
+        for row in rows:
+            if row.get("type") == "space":
+                current_y -= row_gap * 0.45
                 continue
 
-            fig.add_annotation(
-                xref="paper",
-                yref="paper",
-                x=0.02,
-                y=current_y,
-                xanchor="left",
-                yanchor="top",
-                showarrow=False,
-                text=f"<b>{section_title}</b>",
-                font=dict(size=11, color="#0F172A"),
-            )
-            current_y -= row_gap
-
-            for label, color, value in items:
-                fig.add_shape(
-                    type="line",
-                    xref="paper",
-                    yref="paper",
-                    x0=0.02,
-                    x1=0.06,
-                    y0=current_y,
-                    y1=current_y,
-                    line=dict(color=color, width=3),
-                )
-
+            if row.get("type") == "header":
                 fig.add_annotation(
                     xref="paper",
                     yref="paper",
-                    x=0.065,
+                    x=panel_x0 + 0.018,
                     y=current_y,
                     xanchor="left",
                     yanchor="middle",
                     showarrow=False,
-                    text=f"{label}: {value:.2%}",
-                    font=dict(size=10.5, color="#0F172A"),
+                    text=f"<b>{row['text']}</b>",
+                    font=dict(size=12, color="#0F172A"),
                 )
-
                 current_y -= row_gap
+                continue
 
-            current_y -= section_gap
+            dash_style = row["dash"]
+            color = row["color"]
+            label = row["label"]
+            loss_value = row["loss_value"]
+
+            # Línea de muestra en la leyenda, con el mismo dash/dot que la línea del gráfico
+            fig.add_shape(
+                type="line",
+                xref="paper",
+                yref="paper",
+                x0=panel_x0 + 0.020,
+                x1=panel_x0 + 0.070,
+                y0=current_y,
+                y1=current_y,
+                line=dict(
+                    color=color,
+                    width=3,
+                    dash=dash_style,
+                ),
+                layer="above",
+            )
+
+            fig.add_annotation(
+                xref="paper",
+                yref="paper",
+                x=panel_x0 + 0.080,
+                y=current_y,
+                xanchor="left",
+                yanchor="middle",
+                showarrow=False,
+                text=f"{label}: pérdida {_format_pct(loss_value)}",
+                font=dict(size=10.8, color="#0F172A"),
+            )
+
+            current_y -= row_gap
+
+        # Nota corta para aclarar por qué las líneas quedan en negativo
+        fig.add_annotation(
+            xref="paper",
+            yref="paper",
+            x=panel_x0 + 0.018,
+            y=panel_y0 + 0.018,
+            xanchor="left",
+            yanchor="bottom",
+            showarrow=False,
+            text="<span style='font-size:10px;color:#475569;'>Líneas ubicadas en la cola izquierda: -VaR y -CVaR</span>",
+        )
 
     return fig
 
@@ -382,11 +472,27 @@ with filtros_sidebar:
                 key="var_custom_end",
             )
 
-    alpha_label = st.selectbox("Nivel de confianza", ["90%", "95%", "99%"], index=1, key="var_alpha_label")
-    alpha_map = {"90%": 0.90, "95%": 0.95, "99%": 0.99}
-    alpha = alpha_map[alpha_label]
+    alpha_pct = st.number_input(
+        "Nivel de confianza (%)",
+        min_value=95.0,
+        max_value=99.99,
+        value=95.0,
+        step=0.01,
+        key="var_alpha_manual",
+        format="%.2f",
+        help="Nivel de confianza del VaR. Debe estar entre 95% y 99.99%.",
+    )
 
-    base_currency = st.selectbox("Moneda base", ["USD", "EUR", "COP"], index=0, key="var_base_currency")
+    alpha = alpha_pct / 100.0
+    alpha_label = f"{alpha_pct:.2f}%"
+
+    base_currency = st.selectbox(
+        "Moneda base",
+        ["USD"],
+        index=0,
+        key="var_base_currency",
+        help="El portafolio se trabaja en USD después de convertir históricamente los precios desde su moneda local.",
+    )
 
     portfolio_value = st.number_input(
         "Valor portafolio",
@@ -396,6 +502,7 @@ with filtros_sidebar:
         step=1000.0,
         key="var_portfolio_value",
         format="%.2f",
+        help="Monto invertido. Se usa para convertir VaR y CVaR porcentual a pérdida monetaria estimada.",
     )
 
     mc_n_sims = st.slider(
@@ -422,6 +529,7 @@ if start_date >= end_date:
 
 payload = {}
 risk_error = None
+
 if abs(total_pct - 100.0) <= 1e-6:
     payload, risk_error = _fetch_var(
         tickers=[a["ticker"] for a in PORTFOLIO_ASSETS],
@@ -435,17 +543,17 @@ if abs(total_pct - 100.0) <= 1e-6:
 
 header_dashboard(
     "Mód. 5: VaR y CVaR",
-    "Cuantificar la pérdida potencial del portafolio.",
+    "Cuantifica la pérdida potencial porcentual y monetaria del portafolio.",
     modo=modo,
 )
 
 if modo == "General":
     nota(
-        "Incluye VaR paramétrico, VaR histórico, VaR Monte Carlo, Expected Shortfall y backtesting de Kupiec."
+        "Incluye VaR paramétrico, VaR histórico, VaR Monte Carlo, Expected Shortfall, VaR monetario, CVaR monetario y backtesting de Kupiec."
     )
 else:
     nota(
-        "En modo estadístico se enfatiza la comparación de métodos, la distribución de rendimientos y el backtesting del VaR."
+        "En modo estadístico se enfatiza la comparación de métodos, la distribución de rendimientos, el backtesting del VaR y la conversión monetaria del riesgo."
     )
 
 if abs(total_pct - 100.0) > 1e-6:
@@ -458,13 +566,13 @@ if risk_error:
 
 returns_s = _extract_distribution_series(payload)
 kupiec = _extract_kupiec(payload)
-comparison_df = _comparison_table(payload)
+comparison_df = _comparison_table(payload, portfolio_value=portfolio_value)
 
 render_meta_row(
     [
         ("Confianza", alpha_label),
         ("Moneda", base_currency),
-        ("Portafolio", f"{portfolio_value:,.2f}".replace(",", ".")),
+        ("Portafolio", _format_money(portfolio_value)),
         ("Simulaciones", f"{mc_n_sims:,}".replace(",", ".")),
         ("Horizonte", horizonte),
     ]
@@ -475,7 +583,7 @@ tab1, tab2, tab3 = st.tabs(["Resumen y KPIs", "Distribución de riesgo", "Compar
 with tab1:
     seccion("Resumen VaR / CVaR")
 
-    confidence_label = f"{int(alpha * 100)}%"
+    confidence_label = alpha_label
 
     var_hist = _method_metric(payload, "historical", "var_daily", "var")
     cvar_hist = _method_metric(payload, "historical", "cvar_daily", "cvar")
@@ -484,45 +592,148 @@ with tab1:
     var_mc = _method_metric(payload, "monte_carlo", "var_daily", "var")
     cvar_mc = _method_metric(payload, "monte_carlo", "cvar_daily", "cvar")
 
+    var_hist_money = _money_risk(portfolio_value, var_hist)
+    cvar_hist_money = _money_risk(portfolio_value, cvar_hist)
+    var_param_money = _money_risk(portfolio_value, var_param)
+    cvar_param_money = _money_risk(portfolio_value, cvar_param)
+    var_mc_money = _money_risk(portfolio_value, var_mc)
+    cvar_mc_money = _money_risk(portfolio_value, cvar_mc)
+
     c1, c2, c3 = st.columns(3)
+
     with c1:
-        tarjeta_kpi(f"VaR histórico {confidence_label}", _format_pct(var_hist), subtexto="Pérdida umbral diaria observada.")
+        tarjeta_kpi(
+            f"VaR histórico {confidence_label}",
+            _format_pct(var_hist),
+            subtexto="Pérdida umbral diaria observada.",
+            help_text="VaR histórico usa la distribución empírica de retornos del portafolio.",
+        )
+
     with c2:
-        tarjeta_kpi(f"VaR paramétrico {confidence_label}", _format_pct(var_param), subtexto="Estimación bajo supuestos paramétricos.")
+        tarjeta_kpi(
+            f"VaR paramétrico {confidence_label}",
+            _format_pct(var_param),
+            subtexto="Estimación bajo supuestos paramétricos.",
+            help_text="VaR paramétrico aproxima la pérdida usando media, volatilidad y una distribución teórica.",
+        )
+
     with c3:
-        tarjeta_kpi(f"VaR Monte Carlo {confidence_label}", _format_pct(var_mc), subtexto="Estimación con simulaciones aleatorias.")
+        tarjeta_kpi(
+            f"VaR Monte Carlo {confidence_label}",
+            _format_pct(var_mc),
+            subtexto="Estimación con simulaciones aleatorias.",
+            help_text="VaR Monte Carlo simula escenarios de retornos para estimar la cola de pérdidas.",
+        )
 
     c4, c5, c6 = st.columns(3)
+
     with c4:
-        tarjeta_kpi(f"CVaR histórico {confidence_label}", _format_pct(cvar_hist), subtexto="Pérdida media condicional observada.")
+        tarjeta_kpi(
+            f"CVaR histórico {confidence_label}",
+            _format_pct(cvar_hist),
+            subtexto="Pérdida media condicional observada.",
+            help_text="CVaR mide la pérdida promedio cuando se supera el umbral VaR.",
+        )
+
     with c5:
-        tarjeta_kpi(f"CVaR paramétrico {confidence_label}", _format_pct(cvar_param), subtexto="Cola esperada bajo distribución paramétrica.")
+        tarjeta_kpi(
+            f"CVaR paramétrico {confidence_label}",
+            _format_pct(cvar_param),
+            subtexto="Cola esperada bajo distribución paramétrica.",
+            help_text="Expected Shortfall paramétrico estima la pérdida esperada en la cola bajo supuestos teóricos.",
+        )
+
     with c6:
-        tarjeta_kpi(f"CVaR Monte Carlo {confidence_label}", _format_pct(cvar_mc), subtexto="Cola esperada bajo simulación.")
+        tarjeta_kpi(
+            f"CVaR Monte Carlo {confidence_label}",
+            _format_pct(cvar_mc),
+            subtexto="Cola esperada bajo simulación.",
+            help_text="CVaR Monte Carlo promedia las peores pérdidas simuladas.",
+        )
+
+    seccion("Riesgo monetario diario")
+
+    m1, m2, m3 = st.columns(3)
+
+    with m1:
+        tarjeta_kpi(
+            f"VaR histórico monetario {confidence_label}",
+            _format_money(var_hist_money),
+            subtexto="Pérdida diaria estimada en dinero.",
+            help_text="VaR monetario = valor del portafolio multiplicado por VaR porcentual.",
+        )
+
+    with m2:
+        tarjeta_kpi(
+            f"VaR paramétrico monetario {confidence_label}",
+            _format_money(var_param_money),
+            subtexto="Pérdida diaria estimada en dinero.",
+            help_text="Convierte el VaR paramétrico porcentual a pérdida monetaria.",
+        )
+
+    with m3:
+        tarjeta_kpi(
+            f"VaR Monte Carlo monetario {confidence_label}",
+            _format_money(var_mc_money),
+            subtexto="Pérdida diaria estimada en dinero.",
+            help_text="Convierte el VaR Monte Carlo porcentual a pérdida monetaria.",
+        )
+
+    m4, m5, m6 = st.columns(3)
+
+    with m4:
+        tarjeta_kpi(
+            f"CVaR histórico monetario {confidence_label}",
+            _format_money(cvar_hist_money),
+            subtexto="Pérdida media en escenarios extremos.",
+            help_text="CVaR monetario = valor del portafolio multiplicado por CVaR porcentual.",
+        )
+
+    with m5:
+        tarjeta_kpi(
+            f"CVaR paramétrico monetario {confidence_label}",
+            _format_money(cvar_param_money),
+            subtexto="Pérdida media en escenarios extremos.",
+            help_text="Convierte el CVaR paramétrico porcentual a pérdida monetaria.",
+        )
+
+    with m6:
+        tarjeta_kpi(
+            f"CVaR Monte Carlo monetario {confidence_label}",
+            _format_money(cvar_mc_money),
+            subtexto="Pérdida media en escenarios extremos.",
+            help_text="Convierte el CVaR Monte Carlo porcentual a pérdida monetaria.",
+        )
 
     render_info_card(
         "Lectura técnica",
         (
-            f"Con {confidence_label} de confianza, el VaR histórico diario es {_format_pct(var_hist)} y el CVaR histórico diario asciende a {_format_pct(cvar_hist)}. "
-            f"El VaR paramétrico se estima en {_format_pct(var_param)} y el VaR Monte Carlo en {_format_pct(var_mc)}."
+            f"Con un portafolio de {_format_money(portfolio_value)} y un nivel de confianza de {confidence_label}, "
+            f"el VaR histórico diario es {_format_pct(var_hist)}, equivalente a una pérdida monetaria aproximada de {_format_money(var_hist_money)}. "
+            f"El CVaR histórico diario es {_format_pct(cvar_hist)}, equivalente a una pérdida media esperada de {_format_money(cvar_hist_money)} "
+            "en los escenarios que caen dentro de la cola extrema."
         ),
     )
 
 with tab2:
     plot_card_header(
         "Distribución de rendimientos del portafolio",
-        "Puedes activar o desactivar líneas de riesgo para simplificar la lectura.",
+        "La distribución permite ubicar los umbrales de pérdida VaR y CVaR en la cola izquierda de los retornos.",
         modo=modo,
-        caption="La leyenda lateral izquierda resume cada umbral de riesgo con colores distintos para evitar superposición visual.",
+        caption="Las líneas se grafican como pérdidas negativas para quedar ubicadas correctamente en la cola izquierda.",
     )
 
     t1, t2, t3, t4 = st.columns(4)
+
     with t1:
         show_hist = st.checkbox("Histograma", value=True, key="var_show_hist")
+
     with t2:
         show_var = st.checkbox("Líneas VaR", value=True, key="var_show_var")
+
     with t3:
         show_cvar = st.checkbox("Líneas CVaR", value=True, key="var_show_cvar")
+
     with t4:
         clean_view = st.checkbox("Vista limpia", value=False, key="var_clean_view")
 
@@ -535,32 +746,61 @@ with tab2:
         show_cvar=show_cvar,
         clean_view=clean_view,
     )
-    st.plotly_chart(fig_dist, use_container_width=True)
+
+    st.plotly_chart(fig_dist, width="stretch")
+
     plot_card_footer(
-        "La distribución permite ubicar visualmente dónde caen los umbrales VaR y CVaR frente a los rendimientos del portafolio."
+        "VaR y CVaR son pérdidas positivas como métrica, pero se dibujan con signo negativo para representar la cola izquierda de los retornos."
     )
 
 with tab3:
     seccion("Comparación VaR / CVaR")
-    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+
+    st.dataframe(comparison_df, width="stretch", hide_index=True)
 
     seccion("Interpretación")
+
     render_info_card(
         "Lectura metodológica",
-        "VaR paramétrico es útil cuando se asume una estructura más regular; VaR histórico se apoya en la distribución observada; Monte Carlo añade flexibilidad mediante simulación; y CVaR complementa al VaR porque mide la severidad media de la cola extrema.",
+        (
+            "VaR paramétrico es útil cuando se asume una estructura más regular; VaR histórico se apoya en la distribución observada; "
+            "Monte Carlo añade flexibilidad mediante simulación; y CVaR complementa al VaR porque mide la severidad media de la cola extrema. "
+            "La versión monetaria ayuda a traducir porcentajes de riesgo a pérdidas aproximadas en dinero."
+        ),
     )
 
     seccion("Backtesting VaR - Test de Kupiec")
 
     k1, k2, k3 = st.columns(3)
+
     with k1:
-        tarjeta_kpi("Violaciones", str(_method_metric({'tmp': kupiec}, 'tmp', 'violations') or "N/D"), subtexto="Excesos observados frente al umbral estimado.")
+        tarjeta_kpi(
+            "Violaciones",
+            str(_method_metric({"tmp": kupiec}, "tmp", "violations") or "N/D"),
+            subtexto="Excesos observados frente al umbral estimado.",
+            help_text="Cuenta cuántas veces la pérdida observada superó el VaR estimado.",
+        )
+
     with k2:
-        tarjeta_kpi("Observadas (%)", _format_pct(_method_metric({'tmp': kupiec}, 'tmp', 'observed_rate')), subtexto="Tasa real registrada en la muestra.")
+        tarjeta_kpi(
+            "Observadas (%)",
+            _format_pct(_method_metric({"tmp": kupiec}, "tmp", "observed_rate")),
+            subtexto="Tasa real registrada en la muestra.",
+            help_text="Proporción de violaciones observadas en la muestra histórica.",
+        )
+
     with k3:
-        tarjeta_kpi("Esperadas (%)", _format_pct(_method_metric({'tmp': kupiec}, 'tmp', 'expected_rate')), subtexto="Tasa teórica coherente con el nivel de confianza.")
+        tarjeta_kpi(
+            "Esperadas (%)",
+            _format_pct(_method_metric({"tmp": kupiec}, "tmp", "expected_rate")),
+            subtexto="Tasa teórica coherente con el nivel de confianza.",
+            help_text="Si la confianza es 95%, la tasa esperada de violaciones es cercana al 5%.",
+        )
 
     render_info_card(
         "Conclusión de Kupiec",
-        str(_method_metric({'tmp': kupiec}, 'tmp', 'conclusion') or "El backend no devolvió una conclusión textual de backtesting para este cálculo."),
+        str(
+            _method_metric({"tmp": kupiec}, "tmp", "conclusion")
+            or "El backend no devolvió una conclusión textual de backtesting para este cálculo."
+        ),
     )

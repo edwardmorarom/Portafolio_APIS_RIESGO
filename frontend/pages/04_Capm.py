@@ -418,18 +418,20 @@ if abs(total_pct - 100.0) <= 1e-6:
     )
 
 header_dashboard(
-    "Mód. 4: CAPM y Beta",
-    "Cuantifica el riesgo sistemático y estima el rendimiento esperado según CAPM.",
+    "Mód. 4: CAPM, Beta y Riesgo Sistemático",
+    "Cuantifica la sensibilidad del activo y del portafolio frente al benchmark global en USD.",
     modo=modo,
-)
+)       
 
 if modo == "General":
     nota(
-        "Incluye beta del activo, dispersión activo versus benchmark, CAPM con tasa libre de riesgo y beta del portafolio ponderado por el usuario."
+        "Incluye beta del activo, beta del portafolio, regresión frente al benchmark ACWI y retorno esperado bajo CAPM. "
+        "Los retornos se interpretan en USD porque el backend convierte históricamente los precios desde su moneda local."
     )
 else:
     nota(
-        "En modo estadístico se enfatizan la regresión CAPM, la clasificación del activo y la comparación entre beta individual y beta del portafolio."
+        "En modo estadístico se enfatizan la regresión CAPM, R², alpha, p-value de beta, clasificación del activo "
+        "y comparación entre beta individual y beta del portafolio."
     )
 
 if capm_error:
@@ -457,7 +459,8 @@ render_meta_row(
         ("Activo", asset_name),
         ("Ticker", ticker),
         ("Benchmark", benchmark_ticker.strip() or BENCHMARK_DEFAULT),
-        ("Moneda", base_currency),
+        ("Moneda base", "USD"),
+        ("Rf", base_currency),
         ("Horizonte", horizonte),
     ]
 )
@@ -477,21 +480,59 @@ if portfolio_beta is not None:
 
     render_info_card(
         "Lectura del portafolio",
-        (
-            f"La beta del portafolio es {_format_num(portfolio_beta, 4)}. "
-            "Esta medida resume la sensibilidad total de la cartera frente al benchmark y complementa la beta individual del activo."
-        ),
-    )
+    (
+        f"La beta del portafolio es {_format_num(portfolio_beta, 4)}. "
+        "Esta medida resume la sensibilidad conjunta de la cartera frente al benchmark global. "
+        "Si la beta es mayor que 1, el portafolio tiende a amplificar los movimientos del mercado; "
+        "si es menor que 1, se comporta de forma más defensiva. "
+        "La beta del portafolio complementa la beta individual del activo seleccionado."
+    ),
+)
 
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    tarjeta_kpi("Beta", _format_num(beta, 4), subtexto="Sensibilidad sistemática frente al mercado.")
+    tarjeta_kpi(
+        "Beta",
+        _format_num(beta, 4),
+        subtexto="Sensibilidad sistemática frente al mercado.",
+        help_text=(
+            "Beta mide cuánto se mueve el activo frente al benchmark. "
+            "Beta mayor a 1 indica mayor sensibilidad; beta menor a 1 indica comportamiento más defensivo."
+        ),
+    )
+
 with c2:
-    tarjeta_kpi("Alpha simple", _format_num(alpha_simple, 6), subtexto="Exceso de retorno no explicado por la beta.")
+    tarjeta_kpi(
+        "Alpha simple",
+        _format_num(alpha_simple, 6),
+        subtexto="Exceso de retorno no explicado por la beta.",
+        help_text=(
+            "Alpha mide la parte del retorno que no queda explicada por el movimiento del benchmark. "
+            "Un alpha positivo sugiere desempeño superior al esperado por CAPM."
+        ),
+    )
+
 with c3:
-    tarjeta_kpi("R²", _format_num(r_squared, 4), subtexto="Capacidad explicativa del ajuste lineal.")
+    tarjeta_kpi(
+        "R²",
+        _format_num(r_squared, 4),
+        subtexto="Capacidad explicativa del ajuste lineal.",
+        help_text=(
+            "R² indica qué proporción de la variación del activo es explicada por el benchmark. "
+            "Mientras más alto, más fuerte es la relación lineal activo-mercado."
+        ),
+    )
+
 with c4:
-    tarjeta_kpi("Retorno esperado anual", _expected_return_text(expected_return_annual), subtexto="Retorno teórico compatible con el riesgo sistemático.")
+    tarjeta_kpi(
+        "Retorno esperado anual",
+        _expected_return_text(expected_return_annual),
+        subtexto="Retorno teórico compatible con el riesgo sistemático.",
+        help_text=(
+            "Es el retorno esperado bajo CAPM, calculado con la tasa libre de riesgo, "
+            "la beta del activo y la prima de mercado."
+        ),
+    )
 
 plot_card_footer(_capm_reading(payload))
 
@@ -501,15 +542,18 @@ render_info_card(
     "Clasificación obtenida",
     f"La clasificación obtenida es: {classification}. Esta etiqueta resume si el activo se comporta de forma más agresiva, defensiva o cercana al mercado.",
 )
-st.dataframe(table_df, use_container_width=True, hide_index=True)
+st.dataframe(table_df, width="stretch", hide_index=True)
 
 seccion("Regresión CAPM")
 
 plot_card_header(
     "Relación activo-mercado",
-    "Usa los filtros para limpiar la lectura o enfatizar la recta de regresión.",
+    (
+        "La regresión CAPM compara los excesos de retorno del activo contra los excesos de retorno del benchmark. "
+        "La pendiente de la recta corresponde a la beta."
+    ),
     modo=modo,
-    caption="Los puntos representan excesos de retorno del activo frente al benchmark.",
+    caption="Los puntos representan excesos de retorno del activo frente al benchmark; la recta resume la sensibilidad sistemática.",
 )
 
 r1, r2, r3 = st.columns(3)
@@ -528,7 +572,7 @@ fig_reg = _build_regression_figure(
     clean_view=clean_view,
 )
 
-st.plotly_chart(fig_reg, use_container_width=True)
+st.plotly_chart(fig_reg, width="stretch")
 
 if points_df.empty:
     st.warning(
@@ -537,5 +581,6 @@ if points_df.empty:
     )
 else:
     plot_card_footer(
-        "La nube de puntos muestra cómo se relacionan los excesos de retorno del activo y del benchmark. La pendiente resume la beta."
+    "La nube de puntos muestra la relación entre el activo y el benchmark. "
+    "Una pendiente mayor implica beta más alta y, por tanto, mayor sensibilidad del activo frente al mercado."
     )

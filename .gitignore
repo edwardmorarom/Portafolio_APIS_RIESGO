@@ -3,39 +3,41 @@
 venv/
 env/
 
+# Variables de entorno y secretos
+.env
+backend/.env
+frontend/.streamlit/secrets.toml
+
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
-
-# Variables de entorno
-.env
-
-# VS Code
-.vscode/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Archivos del sistema
-.DS_Store
-Thumbs.db
-
-# Logs y temporales
-*.log
-*.tmp
-*.temp
-
-# Cache de pruebas
+*.pyo
+*.pyd
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 
-# Build
-build/
-dist/
-*.egg-info/
-
 # Streamlit
 .streamlit/secrets.toml
-frontend/.streamlit/
+
+# Archivos temporales
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Datos generados
+data/raw/
+data/processed/
+backend/data/raw/
+backend/data/processed/
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# Sistema
+desktop.ini
