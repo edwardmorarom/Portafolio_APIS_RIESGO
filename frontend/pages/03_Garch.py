@@ -109,6 +109,40 @@ def _format_comparison_table(candidate_models: list[dict]) -> pd.DataFrame:
     return df.sort_values("AIC").reset_index(drop=True)
 
 
+def _extract_best_log_likelihood(payload: dict):
+    direct_value = (
+        payload.get("best_model_log_likelihood")
+        or payload.get("best_log_likelihood")
+        or payload.get("log_likelihood")
+        or payload.get("loglikelihood")
+        or payload.get("llf")
+    )
+
+    if direct_value is not None:
+        return direct_value
+
+    best_model = str(payload.get("best_model", "")).strip().lower()
+    candidate_models = payload.get("candidate_models", []) or []
+
+    for model in candidate_models:
+        model_name = str(
+            model.get("model_name")
+            or model.get("name")
+            or model.get("model")
+            or ""
+        ).strip().lower()
+
+        if model_name == best_model:
+            return (
+                model.get("log_likelihood")
+                or model.get("loglikelihood")
+                or model.get("log_lik")
+                or model.get("llf")
+            )
+
+    return None 
+
+
 def _format_diagnostics_table(payload: dict) -> pd.DataFrame:
     rows = [
         {"Métrica": "Observaciones", "Valor": payload.get("observations")},
@@ -290,7 +324,7 @@ def _build_forecast_figure(
                     x=[float(x_vals.iloc[0]) - 0.45, float(x_vals.iloc[0]) + 0.45],
                     y=[float(y_vals.iloc[0]), float(y_vals.iloc[0])],
                     mode="lines",
-                    name="Forecast 1 paso",
+                    name="Referencia 1 paso",
                     line=dict(
                         width=2.2,
                         dash="dot",
@@ -514,6 +548,7 @@ forecast_final = float(forecast_df.iloc[-1]["volatility"]) if not forecast_df.em
 best_model_name = payload.get("best_model")
 best_aic = payload.get("best_model_aic")
 best_bic = payload.get("best_model_bic")
+best_log_likelihood = _extract_best_log_likelihood(payload)
 current_volatility = None
 if "conditional_volatility" in payload and payload["conditional_volatility"]:
     # La volatilidad actual es el último valor de la serie
@@ -589,7 +624,7 @@ with c3:
 with c4:
     tarjeta_kpi(
         "Log-likelihood",
-        _format_num(payload.get("best_model_log_likelihood"), 4),
+        _format_num(best_log_likelihood, 4),
         subtexto="Log-verosimilitud del mejor modelo.",
         help_text=(
             "Mide qué tan bien se ajusta el modelo a los datos. "
@@ -655,7 +690,7 @@ with g1:
     # Footer mejorado
     if has_multiple_models:
         plot_card_footer(
-            "Se comparan ARCH(1), GARCH(1,1) y EGARCH(1,1). ARCH suele reaccionar con picos más bruscos ante shocks puntuales, mientras GARCH y EGARCH tienden a ofrecer trayectorias más estables para lectura comparativa."
+            _forecast_message(payload)
         )
     else:
         plot_card_footer(
