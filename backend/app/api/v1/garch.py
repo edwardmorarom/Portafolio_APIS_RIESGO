@@ -16,7 +16,12 @@ async def get_garch_analysis(
     end: str = Query(default="2026-12-31"),
     return_type: str = Query(default="log"),
     mode: str = Query(default="estadistico"),
-    forecast_horizon: int = Query(default=5, ge=1, le=10),
+    forecast_horizon: int = Query(default=5, ge=1, le=20),
+    distribution: str = Query(
+        default="normal",
+        pattern="^(normal|t)$",
+        description="Distribución de errores para ARCH/GARCH/EGARCH: normal o t-Student",
+    ),
     service: GarchService = Depends(get_garch_service),
 ) -> GarchResponse:
     try:
@@ -27,6 +32,7 @@ async def get_garch_analysis(
             return_type=return_type,
             mode=mode,
             forecast_horizon=forecast_horizon,
+            distribution=distribution,
         )
         return GarchResponse(**result)
     except ValueError as exc:

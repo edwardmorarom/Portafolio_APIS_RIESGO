@@ -127,6 +127,7 @@ def _fetch_var(
     end: str,
     alpha: float,
     n_sim: int,
+    distribution: str,
     return_type: str = "log",
 ) -> tuple[dict, str | None]:
     client = get_api_client()
@@ -138,6 +139,7 @@ def _fetch_var(
         "end": end,
         "alpha": alpha,
         "n_sim": n_sim,
+        "distribution": distribution,
         "return_type": return_type,
     }
 
@@ -206,6 +208,7 @@ def _comparison_table(payload: dict, portfolio_value: float) -> pd.DataFrame:
         rows.append(
             {
                 "Método": label,
+                "Distribución": str(method.get("distribution", "N/D")),
                 "VaR diario": _format_pct(var_daily),
                 "CVaR diario": _format_pct(cvar_daily),
                 "VaR monetario diario": _format_money(_money_risk(portfolio_value, var_daily)),
@@ -486,6 +489,18 @@ with filtros_sidebar:
     alpha = alpha_pct / 100.0
     alpha_label = f"{alpha_pct:.2f}%"
 
+    distribution_label = st.selectbox(
+        "Distribución",
+        ["Normal", "t-Student"],
+        index=0,
+        key="var_distribution",
+        help=(
+            "La normal es el supuesto clásico del VaR paramétrico. "
+            "La t-Student permite colas más pesadas y suele ser más realista para rendimientos financieros."
+        ),
+    )
+    distribution = "t" if distribution_label == "t-Student" else "normal"
+
     base_currency = st.selectbox(
         "Moneda base",
         ["USD"],
@@ -538,6 +553,7 @@ if abs(total_pct - 100.0) <= 1e-6:
         end=end_date.strftime("%Y-%m-%d"),
         alpha=alpha,
         n_sim=mc_n_sims,
+        distribution=distribution,
         return_type="log",
     )
 
@@ -549,7 +565,7 @@ header_dashboard(
 
 if modo == "General":
     nota(
-        "Incluye VaR paramétrico, VaR histórico, VaR Monte Carlo, Expected Shortfall, VaR monetario, CVaR monetario y backtesting de Kupiec."
+        "Incluye VaR paramétrico, VaR histórico, VaR Monte Carlo, Expected Shortfall, VaR monetario, CVaR monetario, distribución Normal/t-Student y backtesting de Kupiec."
     )
 else:
     nota(
@@ -573,6 +589,7 @@ render_meta_row(
         ("Confianza", alpha_label),
         ("Moneda", base_currency),
         ("Portafolio", _format_money(portfolio_value)),
+        ("Distribución", distribution_label),
         ("Simulaciones", f"{mc_n_sims:,}".replace(",", ".")),
         ("Horizonte", horizonte),
     ]
@@ -614,7 +631,10 @@ with tab1:
             f"VaR paramétrico {confidence_label}",
             _format_pct(var_param),
             subtexto="Estimación bajo supuestos paramétricos.",
-            help_text="VaR paramétrico aproxima la pérdida usando media, volatilidad y una distribución teórica.",
+            help_text=(
+                "VaR paramétrico aproxima la pérdida usando media, volatilidad y una distribución teórica. "
+                "Con t-Student se asigna mayor peso a eventos extremos que con la normal."
+            ),
         )
 
     with c3:
@@ -640,7 +660,10 @@ with tab1:
             f"CVaR paramétrico {confidence_label}",
             _format_pct(cvar_param),
             subtexto="Cola esperada bajo distribución paramétrica.",
-            help_text="Expected Shortfall paramétrico estima la pérdida esperada en la cola bajo supuestos teóricos.",
+            help_text=(
+                "Expected Shortfall paramétrico estima la pérdida esperada en la cola bajo supuestos teóricos. "
+                "La t-Student suele producir colas más pesadas que la normal."
+            ),
         )
 
     with c6:
@@ -763,8 +786,10 @@ with tab3:
     render_info_card(
         "Lectura metodológica",
         (
-            "VaR paramétrico es útil cuando se asume una estructura más regular; VaR histórico se apoya en la distribución observada; "
-            "Monte Carlo añade flexibilidad mediante simulación; y CVaR complementa al VaR porque mide la severidad media de la cola extrema. "
+            "VaR paramétrico es útil cuando se asume una distribución teórica. En este módulo puede calcularse con Normal o t-Student. "
+            "La distribución t-Student permite colas más pesadas y suele ser más realista para rendimientos financieros extremos. "
+            "VaR histórico se apoya en la distribución observada; Monte Carlo añade flexibilidad mediante simulación; "
+            "y CVaR complementa al VaR porque mide la severidad media de la cola extrema. "
             "La versión monetaria ayuda a traducir porcentajes de riesgo a pérdidas aproximadas en dinero."
         ),
     )

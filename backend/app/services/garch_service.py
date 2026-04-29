@@ -47,6 +47,17 @@ class GarchService:
                 continue
         return out
 
+    @staticmethod
+    def _normalize_distribution(distribution: str) -> str:
+        value = str(distribution or "normal").strip().lower()
+        if value in {"student", "student-t", "t-student", "t_student"}:
+            value = "t"
+        return "t" if value == "t" else "normal"
+
+    @staticmethod
+    def _distribution_label(distribution: str) -> str:
+        return "t-Student" if distribution == "t" else "Normal"
+
     def analyze(
         self,
         ticker: str,
@@ -55,7 +66,11 @@ class GarchService:
         return_type: str,
         mode: str,
         forecast_horizon: int,
+        distribution: str = "normal",
     ) -> dict:
+        distribution = self._normalize_distribution(distribution)
+        dist_label = self._distribution_label(distribution)
+
         returns = self._get_returns(
             ticker=ticker,
             start=start,
@@ -67,9 +82,9 @@ class GarchService:
             raise ValueError("No hay suficientes observaciones para ajustar modelos de volatilidad.")
 
         model_specs = [
-            ("ARCH(1)", {"mean": "Constant", "vol": "ARCH", "p": 1, "o": 0, "q": 0, "dist": "normal"}),
-            ("GARCH(1,1)", {"mean": "Constant", "vol": "GARCH", "p": 1, "o": 0, "q": 1, "dist": "normal"}),
-            ("EGARCH(1,1)", {"mean": "Constant", "vol": "EGARCH", "p": 1, "o": 0, "q": 1, "dist": "normal"}),
+            ("ARCH(1)", {"mean": "Constant", "vol": "ARCH", "p": 1, "o": 0, "q": 0, "dist": distribution}),
+            ("GARCH(1,1)", {"mean": "Constant", "vol": "GARCH", "p": 1, "o": 0, "q": 1, "dist": distribution}),
+            ("EGARCH(1,1)", {"mean": "Constant", "vol": "EGARCH", "p": 1, "o": 0, "q": 1, "dist": distribution}),
         ]
 
         fitted_models: list[tuple[str, object]] = []
@@ -166,7 +181,7 @@ class GarchService:
 
         if mode == "general":
             summary = (
-                f"Se compararon ARCH(1), GARCH(1,1) y EGARCH(1,1). "
+                f"Se compararon ARCH(1), GARCH(1,1) y EGARCH(1,1) con errores {dist_label}. "
                 f"El mejor modelo por AIC fue {best_name}. "
                 f"El diagnostico de residuos indica: {residuals_conclusion} "
                 f"El horizonte efectivo de pronostico fue {effective_forecast_horizon}."
@@ -174,6 +189,7 @@ class GarchService:
         else:
             summary = (
                 f"Best model={best_name}, "
+                f"distribution={dist_label}, "
                 f"AIC={float(best_res.aic):.6f}, "
                 f"BIC={float(best_res.bic):.6f}, "
                 f"JB p-value residuos={float(jb_p):.6f}, "
@@ -186,6 +202,8 @@ class GarchService:
             "end": end,
             "return_type": return_type,
             "observations": int(len(returns)),
+            "distribution": distribution,
+            "distribution_label": dist_label,
             "candidate_models": candidate_models,
             "best_model": best_name,
             "best_model_aic": float(best_res.aic),

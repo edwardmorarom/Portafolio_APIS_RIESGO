@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2, norm
+from scipy.stats import chi2, norm, t
 
 from app.clients.market_client import MarketClient
 
@@ -41,6 +41,17 @@ class RiskService:
         port.name = "portfolio_return"
         return port
 
+    @staticmethod
+    def _normalize_distribution(distribution: str) -> str:
+        value = str(distribution or "normal").strip().lower()
+        if value in {"student", "student-t", "t-student", "t_student"}:
+            return "t"
+        return "t" if value == "t" else "normal"
+
+    @staticmethod
+    def _distribution_label(distribution: str) -> str:
+        return "t-Student" if distribution == "t" else "Normal"
+
     def _historical_var_cvar(self, portfolio_returns: pd.Series, alpha: float) -> dict:
         q = 1 - alpha
         cutoff = float(np.quantile(portfolio_returns, q))
@@ -54,6 +65,7 @@ class RiskService:
             "cvar_daily": float(cvar_daily),
             "var_annualized": float(var_daily * np.sqrt(252)),
             "cvar_annualized": float(cvar_daily * np.sqrt(252)),
+            "distribution": "Empírica histórica",
         }
 
     def _monte_carlo_var_cvar(
@@ -62,13 +74,25 @@ class RiskService:
         weights: list[float],
         alpha: float,
         n_sim: int,
+        distribution: str,
+        df_t: int = 5,
     ) -> tuple[dict, np.ndarray]:
         w = np.asarray(weights, dtype=float)
         mu = returns_df.mean().values
         cov = returns_df.cov().values
 
         rng = np.random.default_rng(42)
-        sims = rng.multivariate_normal(mu, cov, size=n_sim)
+
+        if distribution == "t":
+            # Simulación multivariada t-Student con covarianza aproximada igual a la histórica.
+            # Para df>2, Cov(t) = df/(df-2) * scale_matrix.
+            scale_cov = cov * ((df_t - 2) / df_t) if df_t > 2 else cov
+            z = rng.multivariate_normal(np.zeros(len(mu)), scale_cov, size=n_sim)
+            u = rng.chisquare(df_t, size=n_sim)
+            sims = mu + z / np.sqrt(u[:, None] / df_t)
+        else:
+            sims = rng.multivariate_normal(mu, cov, size=n_sim)
+
         port_sim = sims @ w
 
         q = 1 - alpha
@@ -83,31 +107,55 @@ class RiskService:
             "cvar_daily": float(cvar_daily),
             "var_annualized": float(var_daily * np.sqrt(252)),
             "cvar_annualized": float(cvar_daily * np.sqrt(252)),
+            "distribution": self._distribution_label(distribution),
         }
         return result, port_sim
 
-    def _parametric_var_cvar(self, portfolio_returns: pd.Series, alpha: float) -> dict:
+    def _parametric_var_cvar(
+        self,
+        portfolio_returns: pd.Series,
+        alpha: float,
+        distribution: str,
+        df_t: int = 5,
+    ) -> dict:
         mu = float(portfolio_returns.mean())
         sigma = float(portfolio_returns.std(ddof=1))
+        tail_prob = 1.0 - alpha
 
         if np.isclose(sigma, 0.0):
             var_daily = max(0.0, -mu)
             cvar_daily = var_daily
+        elif distribution == "t":
+            # Paramétrico t-Student. Se ajusta la escala para que la desviación histórica
+            # sea comparable con la varianza de una t con df_t grados de libertad.
+            q = float(t.ppf(tail_prob, df=df_t))
+            scale = sigma / np.sqrt(df_t / (df_t - 2)) if df_t > 2 else sigma
+
+            var_return = mu + scale * q
+
+            cvar_return = mu - scale * (
+                (t.pdf(q, df_t) * (df_t + q**2))
+                / ((df_t - 1) * tail_prob)
+            )
+
+            var_daily = max(0.0, -float(var_return))
+            cvar_daily = max(var_daily, -float(cvar_return))
         else:
-            z = float(norm.ppf(1 - alpha))
+            z = float(norm.ppf(tail_prob))
             pdf_z = float(norm.pdf(z))
 
-            var_daily = float(-(mu + sigma * z))
-            cvar_daily = float(-(mu - sigma * (pdf_z / (1 - alpha))))
+            var_return = mu + sigma * z
+            cvar_return = mu - sigma * (pdf_z / tail_prob)
 
-            var_daily = max(0.0, var_daily)
-            cvar_daily = max(var_daily, cvar_daily)
+            var_daily = max(0.0, -float(var_return))
+            cvar_daily = max(var_daily, -float(cvar_return))
 
         return {
-            "var_daily": var_daily,
-            "cvar_daily": cvar_daily,
+            "var_daily": float(var_daily),
+            "cvar_daily": float(cvar_daily),
             "var_annualized": float(var_daily * np.sqrt(252)),
             "cvar_annualized": float(cvar_daily * np.sqrt(252)),
+            "distribution": self._distribution_label(distribution),
         }
 
     def _kupiec_test(self, portfolio_returns: pd.Series, alpha: float, var_daily: float) -> dict:
@@ -121,7 +169,6 @@ class RiskService:
                 "conclusion": "No hay observaciones suficientes para aplicar Kupiec.",
             }
 
-        # Violación si la pérdida observada supera el VaR
         violations = int((portfolio_returns < -var_daily).sum())
         observed_rate = violations / n
         expected_rate = 1 - alpha
@@ -159,7 +206,10 @@ class RiskService:
         alpha: float,
         n_sim: int,
         return_type: str,
+        distribution: str = "normal",
     ) -> dict:
+        distribution = self._normalize_distribution(distribution)
+
         returns_df = self._build_returns_matrix(
             tickers=tickers,
             start=start,
@@ -184,10 +234,12 @@ class RiskService:
             weights=weights,
             alpha=alpha,
             n_sim=n_sim,
+            distribution=distribution,
         )
         parametric = self._parametric_var_cvar(
             portfolio_returns=portfolio_returns,
             alpha=alpha,
+            distribution=distribution,
         )
 
         kupiec_test = self._kupiec_test(
@@ -202,6 +254,8 @@ class RiskService:
             "alpha": alpha,
             "start": start,
             "end": end,
+            "distribution": distribution,
+            "distribution_label": self._distribution_label(distribution),
             "parametric": parametric,
             "historical": historical,
             "monte_carlo": monte_carlo,

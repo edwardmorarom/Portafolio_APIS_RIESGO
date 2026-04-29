@@ -10,6 +10,7 @@ class GarchRequest(BaseModel):
     return_type: str = Field(default="log", description="simple o log")
     mode: str = Field(default="estadistico", description="general o estadistico")
     forecast_horizon: int = Field(default=5, ge=1, le=30, description="Horizonte de pronostico")
+    distribution: str = Field(default="normal", description="Distribución de errores: normal o t")
 
     @field_validator("ticker")
     @classmethod
@@ -35,6 +36,16 @@ class GarchRequest(BaseModel):
             raise ValueError("mode debe ser 'general' o 'estadistico'")
         return value
 
+    @field_validator("distribution")
+    @classmethod
+    def validate_distribution(cls, v: str) -> str:
+        value = v.strip().lower()
+        if value in {"student", "student-t", "t-student", "t_student"}:
+            value = "t"
+        if value not in {"normal", "t"}:
+            raise ValueError("distribution debe ser 'normal' o 't'")
+        return value
+
 
 class GarchModelResult(BaseModel):
     model_name: str
@@ -55,6 +66,9 @@ class GarchResponse(BaseModel):
     end: str
     return_type: str
     observations: int
+
+    distribution: str = Field(default="normal", description="Distribución de errores seleccionada")
+    distribution_label: str = Field(default="Normal", description="Etiqueta legible de distribución")
 
     candidate_models: list[GarchModelResult] = Field(default_factory=list)
 

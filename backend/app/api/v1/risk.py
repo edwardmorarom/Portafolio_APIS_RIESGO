@@ -23,6 +23,7 @@ async def calculate_var(
             alpha=payload.alpha,
             n_sim=payload.n_sim,
             return_type=payload.return_type,
+            distribution=payload.distribution,
         )
         return PortfolioVarResponse(**result)
     except ValueError as exc:

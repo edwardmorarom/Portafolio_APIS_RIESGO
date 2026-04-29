@@ -72,6 +72,7 @@ def _fetch_garch(
     return_type: str,
     mode: str,
     forecast_horizon: int,
+    distribution: str,
 ) -> tuple[dict, str | None]:
     client = get_api_client()
 
@@ -83,6 +84,7 @@ def _fetch_garch(
             return_type=return_type,
             mode=mode,
             forecast_horizon=forecast_horizon,
+            distribution=distribution,
         )
         return payload, None
     except ApiClientError as exc:
@@ -147,6 +149,7 @@ def _format_diagnostics_table(payload: dict) -> pd.DataFrame:
     rows = [
         {"Métrica": "Observaciones", "Valor": payload.get("observations")},
         {"Métrica": "Mejor modelo", "Valor": payload.get("best_model")},
+        {"Métrica": "Distribución", "Valor": payload.get("distribution_label", "Normal")},
         {"Métrica": "AIC", "Valor": payload.get("best_model_aic")},
         {"Métrica": "BIC", "Valor": payload.get("best_model_bic")},
         {"Métrica": "JB residuos", "Valor": payload.get("residuals_jarque_bera_stat")},
@@ -387,6 +390,7 @@ def _forecast_message(payload: dict) -> str:
 
 def _diagnostic_guide(payload: dict) -> str:
     model = str(payload.get("best_model", "N/D"))
+    dist_label = str(payload.get("distribution_label", "Normal"))
     aic = payload.get("best_model_aic")
     bic = payload.get("best_model_bic")
     jb_p = payload.get("residuals_jarque_bera_p_value")
@@ -404,7 +408,7 @@ def _diagnostic_guide(payload: dict) -> str:
     )
 
     return (
-        f"Para diagnosticar el ajuste, primero identifica el modelo ganador: {model}. "
+        f"Para diagnosticar el ajuste, primero identifica el modelo ganador: {model} con errores {dist_label}. "
         f"Luego revisa AIC={aic_text} y BIC={bic_text}; valores más bajos favorecen ese ajuste frente a los demás. "
         f"Después observa el test de Jarque-Bera sobre residuos estandarizados: p-value={jb_text}. "
         f"{normality_read} Finalmente, valida que el número de observaciones ({obs}) sea razonable para sustentar el ajuste."
@@ -486,6 +490,18 @@ with filtros_sidebar:
         horizontal=True,
     )
 
+    distribution_label = st.selectbox(
+        "Distribución de errores",
+        ["Normal", "t-Student"],
+        index=0,
+        key="garch_distribution",
+        help=(
+            "La normal es el supuesto clásico de errores. "
+            "La t-Student permite colas más pesadas y suele ajustar mejor rendimientos financieros extremos."
+        ),
+    )
+    distribution = "t" if distribution_label == "t-Student" else "normal"
+
     mostrar_diagnostico = st.checkbox(
         "Mostrar diagnóstico del modelo",
         value=True,
@@ -514,6 +530,7 @@ payload, garch_error = _fetch_garch(
     return_type=return_type,
     mode=modo.lower(),
     forecast_horizon=forecast_horizon,
+    distribution=distribution,
 )
 
 # 1. Título del módulo actualizado
@@ -527,7 +544,8 @@ header_dashboard(
 if modo == "General":
     nota(
         "Este módulo analiza si la volatilidad del activo cambia en el tiempo. "
-        "Los modelos ARCH, GARCH y EGARCH permiten capturar periodos de calma y periodos de alta inestabilidad."
+        "Los modelos ARCH, GARCH y EGARCH permiten capturar periodos de calma y periodos de alta inestabilidad. "
+        "También permite comparar errores normales contra errores t-Student para capturar colas pesadas."
     )
 else:
     nota(
@@ -580,6 +598,7 @@ render_meta_row(
         ("País", selected_asset["country"]),
         ("Horizonte", horizonte),
         ("Retorno", return_type),
+        ("Distribución", distribution_label),
     ]
 )
 
@@ -658,7 +677,8 @@ render_info_card(
     "Comparación de modelos",
     (
         "La comparación entre ARCH, GARCH y EGARCH permite elegir el modelo que mejor representa la dinámica de volatilidad. "
-        "ARCH responde más a choques recientes, GARCH captura persistencia y EGARCH puede representar efectos asimétricos."
+        "ARCH responde más a choques recientes, GARCH captura persistencia y EGARCH puede representar efectos asimétricos. "
+        "La distribución t-Student permite errores con colas más pesadas que la normal."
     ),
 )
 
@@ -690,7 +710,7 @@ with g1:
     # Footer mejorado
     if has_multiple_models:
         plot_card_footer(
-            _forecast_message(payload)
+            "Se comparan ARCH(1), GARCH(1,1) y EGARCH(1,1). ARCH suele reaccionar con picos más bruscos ante shocks puntuales, mientras GARCH y EGARCH tienden a ofrecer trayectorias más estables para lectura comparativa."
         )
     else:
         plot_card_footer(
@@ -717,7 +737,7 @@ with g2:
     st.plotly_chart(fig_forecast, width="stretch")
     # Footer mejorado para forecast
     plot_card_footer(
-        "El pronóstico de volatilidad no predice el precio, sino la magnitud esperada de la variabilidad futura."
+        _forecast_message(payload)
     )
 
 if mostrar_diagnostico:
@@ -730,7 +750,8 @@ if mostrar_diagnostico:
             "Los modelos ARCH/GARCH permiten estudiar volatilidad agrupada: periodos tranquilos tienden a estar seguidos "
             "por periodos tranquilos, y periodos turbulentos por nuevos episodios de alta volatilidad. "
             "ARCH captura choques recientes, GARCH incorpora persistencia de la volatilidad y EGARCH permite capturar "
-            "asimetrías, es decir, que malas noticias y buenas noticias puedan afectar de forma distinta el riesgo."
+            "asimetrías, es decir, que malas noticias y buenas noticias puedan afectar de forma distinta el riesgo. "
+            "Con errores t-Student se permite mayor probabilidad en las colas frente a una normal."
         ),
         caption="Resumen conceptual del comportamiento de la volatilidad condicional.",
     )
@@ -747,5 +768,5 @@ if mostrar_diagnostico:
     compact_help_card(
         "Cómo hacer el diagnóstico",
         _diagnostic_guide(payload),
-    caption="Pasa el cursor sobre el signo de ayuda para ver la guía metodológica.",
+        caption="Pasa el cursor sobre el signo de ayuda para ver la guía metodológica.",
     )
