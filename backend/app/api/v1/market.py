@@ -9,7 +9,6 @@ from app.services.market_service import MarketService
 
 router = APIRouter()
 
-
 @router.get("/prices/{ticker}", summary="Precios históricos por ticker", response_model=PricesResponse)
 async def get_prices(
     ticker: str,
