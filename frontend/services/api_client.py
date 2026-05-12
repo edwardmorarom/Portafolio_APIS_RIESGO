@@ -339,6 +339,18 @@ class ApiClient:
             include_api_key=True,
         )
 
+    # ---------- RoboAdvisor ----------
+    def post_roboadvisor_suggest(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Envía el perfil del cliente y sus activos manuales para recibir 
+        una sugerencia de portafolio híbrido institucional.
+        """
+        return self.post(
+            "/roboadvisor/suggest",
+            json_payload=payload,
+            include_api_key=True,
+        )
+
 
 @st.cache_resource
 def get_api_client() -> ApiClient:
