@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import streamlit as st
 from ui.dashboard_ui import (
     aplicar_estilos_globales,
     render_sidebar_brand,
@@ -15,6 +16,12 @@ def setup_dashboard_page(
     filtros_label: str = "Parámetros Del Módulo",
     filtros_expanded: bool = False,
 ):
+    # --- CAPA DE SEGURIDAD GLOBAL ---
+    # Protege todas las páginas de la carpeta 'pages/'
+    if "logged_in" not in st.session_state or not st.session_state.logged_in:
+        st.switch_page("app.py")
+    # --------------------------------
+
     aplicar_estilos_globales(modo="General")
 
     render_sidebar_brand(
