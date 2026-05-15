@@ -57,10 +57,9 @@ class RoboAdvisorService:
             raise ValueError("Se requieren al menos 2 activos para optimizar un portafolio.")
 
         # 5. Enviar al Optimizador Singleton
-        # Tu Singleton ya está programado para usar MarketClient y descargar 
-        # en tiempo real cualquier ticker que no esté en su memoria.
         end_date = df_base.index[-1].strftime("%Y-%m-%d")
-        start_date = (df_base.index[-1] - timedelta(days=365)).strftime("%Y-%m-%d")
+        # Cambiamos a 5 años (365 * 5 = 1825 días) para aprovechar la base de datos completa
+        start_date = (df_base.index[-1] - timedelta(days=1825)).strftime("%Y-%m-%d")
 
         optimizer = PortfolioOptimizerSingleton(client=self.market_client)
         optimization_result = optimizer.optimize_markowitz(

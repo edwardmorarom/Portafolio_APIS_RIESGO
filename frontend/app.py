@@ -11,7 +11,7 @@ if "logged_in" not in st.session_state:
 
 def verificar_login(username, password):
     try:
-        with open("backend/data/users.json", "r", encoding="utf-8") as f:
+        with open("backend/data/users.json", "r", encoding="utf-8-sig") as f:
             db = json.load(f)
             for u in db["users"]:
                 if u["username"] == username and u["password"] == password:

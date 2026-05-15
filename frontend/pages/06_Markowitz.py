@@ -17,14 +17,16 @@ from ui.dashboard_ui import (
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
 
-
-BASE_PORTFOLIO = [
-    {"name": "Seven & i Holdings", "ticker": "3382.T", "country": "JP"},
-    {"name": "Alimentation Couche-Tard", "ticker": "ATD.TO", "country": "CA"},
-    {"name": "FEMSA", "ticker": "FEMSAUBD.MX", "country": "MX"},
-    {"name": "BP", "ticker": "BP.L", "country": "UK"},
-    {"name": "Carrefour", "ticker": "CA.PA", "country": "FR"},
-]
+# --- PORTAFOLIO DINÁMICO (Conectado al Robo-Advisor) ---
+if "robo_portfolio" not in st.session_state:
+    st.session_state["robo_portfolio"] = [
+        {"name": "Seven & i Holdings", "ticker": "3382.T", "country": "JP"},
+        {"name": "Alimentation Couche-Tard", "ticker": "ATD.TO", "country": "CA"},
+        {"name": "FEMSA", "ticker": "FEMSAUBD.MX", "country": "MX"},
+        {"name": "BP", "ticker": "BP.L", "country": "UK"},
+        {"name": "Carrefour", "ticker": "CA.PA", "country": "FR"},
+    ]
+CURRENT_PORTFOLIO = st.session_state["robo_portfolio"]
 
 RF_FALLBACK_ANNUAL = 0.03
 RF_FALLBACK_TICKER = "^IRX"
@@ -125,12 +127,12 @@ def _weights_editor(
 
         weights_pct: list[float] = []
 
-        for asset in BASE_PORTFOLIO:
+        for asset in CURRENT_PORTFOLIO:
             value = st.number_input(
                 asset["ticker"],
                 min_value=0.0,
                 max_value=100.0,
-                value=20.0,
+                value=100.0 / len(CURRENT_PORTFOLIO) if len(CURRENT_PORTFOLIO) > 0 else 0.0,
                 step=1.0,
                 key=f"{key_prefix}_{asset['ticker']}",
                 format="%.2f",
@@ -175,7 +177,7 @@ def _build_frontier_payload(
     risk_profile: str | None,
 ) -> dict:
     return {
-        "tickers": [a["ticker"] for a in BASE_PORTFOLIO],
+        "tickers": [a["ticker"] for a in CURRENT_PORTFOLIO],
         "start": start,
         "end": end,
         "rf_annual": risk_free_rate,
@@ -325,7 +327,7 @@ def _extract_weights_df(obj: dict | None) -> pd.DataFrame:
 
 def _extract_reference_weights_df(weights: list[float]) -> pd.DataFrame:
     rows = []
-    for asset, weight in zip(BASE_PORTFOLIO, weights):
+    for asset, weight in zip(CURRENT_PORTFOLIO, weights):
         rows.append(
             {
                 "Activo": asset["ticker"],
@@ -683,6 +685,48 @@ with filtros_sidebar:
         disabled=not allow_manual_weights,
     )
 
+    # --- LÓGICA DEL ROBO-ADVISOR HÍBRIDO ---
+    st.markdown("---")
+    st.subheader("🤖 Asistente IA Institucional")
+    
+    num_sugeridos = st.slider("Activos totales deseados", 2, 15, 5, key="robo_num_assets", help="¿De cuántos activos quieres el portafolio final?")
+    
+    if st.button("Generar Sugerencia Robo-Advisor", use_container_state=True):
+        with st.spinner("Consultando reserva institucional y optimizando..."):
+            try:
+                client = get_api_client()
+                
+                # Mapeo del perfil del selectbox al formato del backend
+                robo_profile_map = {
+                    "Sin perfil": "moderado",
+                    "Mínimo riesgo": "conservador",
+                    "Máxima utilidad": "moderado",
+                    "Arriesgado": "agresivo"
+                }
+                robo_profile = robo_profile_map.get(risk_profile_label, "moderado")
+                
+                # Preparamos la petición al backend
+                payload = {
+                    "profile": robo_profile,
+                    "total_assets": num_sugeridos,
+                    "custom_tickers": [a["ticker"] for a in CURRENT_PORTFOLIO]
+                }
+                
+                # Llamamos al nuevo endpoint
+                response = client.post_roboadvisor_suggest(payload)
+                
+                if response and "tickers" in response:
+                    st.success("¡Portafolio híbrido generado!")
+                    # Convertimos los tickers devueltos al formato que usa la página
+                    st.session_state["robo_portfolio"] = [
+                        {"name": t, "ticker": t, "country": "IA"} for t in response["tickers"]
+                    ]
+                    # Forzamos recarga para que dibuje el dashboard con los nuevos activos
+                    st.rerun()
+                    
+            except Exception as e:
+                st.error(f"Error de conexión con la IA: {str(e)}")
+
 risk_profile = _profile_to_backend(risk_profile_label)
 
 start_date, end_date = _resolve_dates(
@@ -790,7 +834,7 @@ selected_df = _extract_weights_df(selected_block)
 reference_df = _extract_reference_weights_df(reference_weights)
 
 observations = _pick_value(payload, "observations", "n_observations", "sample_size")
-n_assets = _pick_value(payload, "n_assets", "num_assets") or len(BASE_PORTFOLIO)
+n_assets = _pick_value(payload, "n_assets", "num_assets") or len(CURRENT_PORTFOLIO)
 
 render_meta_row(
     [
