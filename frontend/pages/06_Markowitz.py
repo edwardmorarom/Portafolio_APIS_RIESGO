@@ -687,11 +687,11 @@ with filtros_sidebar:
 
     # --- LÓGICA DEL ROBO-ADVISOR HÍBRIDO ---
     st.markdown("---")
-    st.subheader("🤖 Asistente IA Institucional")
+    st.subheader("🤖 Perri - Robo-Advisor Cuantitativo")
     
     num_sugeridos = st.slider("Activos totales deseados", 2, 15, 5, key="robo_num_assets", help="¿De cuántos activos quieres el portafolio final?")
     
-    if st.button("Generar Sugerencia Robo-Advisor", use_container_state=True):
+    if st.button("Generar sugerencia con Perri", use_container_width=True):
         with st.spinner("Consultando reserva institucional y optimizando..."):
             try:
                 client = get_api_client()
