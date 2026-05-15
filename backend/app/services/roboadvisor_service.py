@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import os
 import logging
+from pathlib import Path
 from datetime import datetime, timedelta
 from app.services.portfolio_service import PortfolioOptimizerSingleton
 from app.clients.market_client import MarketClient
@@ -11,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 class RoboAdvisorService:
     def __init__(self, market_client: MarketClient):
-        self.cache_file = "roboadvisor_cache.csv"
+        project_root = Path(__file__).resolve().parents[3]
+        self.cache_file = project_root / "roboadvisor_cache.csv"
         self.market_client = market_client
 
     def suggest_hybrid_portfolio(self, profile: str, total_assets: int, custom_tickers: list[str] = None) -> dict:
@@ -28,7 +30,7 @@ class RoboAdvisorService:
         if not os.path.exists(self.cache_file):
             raise ValueError("La reserva base no está lista. Se requiere ejecutar la tarea de actualización de mercado.")
         
-        df_base = pd.read_csv(self.cache_file, index_col=0, parse_dates=True)
+        df_base = pd.read_csv(str(self.cache_file), index_col=0, parse_dates=True)
         returns_base = df_base.pct_change().dropna()
 
         # 2. Clasificar la reserva según el Perfil del Inversor
@@ -70,6 +72,7 @@ class RoboAdvisorService:
 
         return {
             "profile": profile,
+            "tickers": final_tickers,
             "total_assets_optimized": len(final_tickers),
             "system_suggested": selected_auto_tickers,
             "user_custom": custom_tickers,
