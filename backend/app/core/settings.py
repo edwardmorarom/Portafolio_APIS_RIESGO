@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     debug: bool = Field(default=True, description="Activa modo debug")
 
     api_v1_prefix: str = Field(default="/api/v1", description="Prefijo de la API v1")
+    database_url: str = Field(
+        default="sqlite:///./data/portafolio_riesgo.db",
+        description="URL de conexión a la base de datos SQLAlchemy",
+    )
 
     default_start_date: str = Field(default="2021-01-01", description="Fecha inicial por defecto")
     default_end_date: str = Field(default="2026-12-31", description="Fecha final por defecto")
