@@ -457,6 +457,55 @@ class PortfolioService:
 
         return None
 
+    def _select_top_portfolios(
+        self,
+        tickers: list[str],
+        simulated: list[dict],
+        weights_store: list[np.ndarray],
+        top_n: int = 5,
+    ) -> list[dict]:
+        if not simulated or not weights_store:
+            return []
+
+        ranked_rows = []
+
+        for idx, row in enumerate(simulated):
+            if idx >= len(weights_store):
+                continue
+
+            sharpe = row.get("sharpe")
+            annual_return = row.get("return")
+            volatility = row.get("volatility")
+
+            if sharpe is None or annual_return is None or volatility is None:
+                continue
+
+            if not np.isfinite(float(sharpe)):
+                continue
+
+            ranked_rows.append(
+                {
+                    "rank": len(ranked_rows) + 1,
+                    "return": float(annual_return),
+                    "volatility": float(volatility),
+                    "sharpe": float(sharpe),
+                    "weights": self._weights_payload(tickers, weights_store[idx]),
+                }
+            )
+
+        ranked_rows = sorted(
+            ranked_rows,
+            key=lambda item: item["sharpe"],
+            reverse=True,
+        )
+
+        top = ranked_rows[:top_n]
+
+        for i, item in enumerate(top, start=1):
+            item["rank"] = i
+
+        return top
+
     def build_efficient_frontier(
         self,
         tickers: list[str],
@@ -556,6 +605,12 @@ class PortfolioService:
                 effective_tickers,
                 max_sharpe_weights,
                 max_sharpe_metrics,
+            ),
+            "top_portfolios": self._select_top_portfolios(
+                tickers=effective_tickers,
+                simulated=simulated,
+                weights_store=weights_store,
+                top_n=5,
             ),
             "target_return_portfolio": target_portfolio,
             "suggested_profile_portfolio": profile_portfolio,

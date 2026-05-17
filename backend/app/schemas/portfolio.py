@@ -97,6 +97,12 @@ class ProfileSuggestedPortfolio(BaseModel):
     sharpe: float = Field(..., description="Sharpe del portafolio sugerido")
     weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Pesos sugeridos")
 
+class TopPortfolio(BaseModel):
+    rank: int = Field(..., description="Posición dentro del ranking")
+    return_: float = Field(..., alias="return", description="Retorno anualizado")
+    volatility: float = Field(..., description="Volatilidad anualizada")
+    sharpe: float = Field(..., description="Ratio de Sharpe")
+    weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Pesos del portafolio")
 
 class EfficientFrontierResponse(BaseModel):
     tickers: list[str] = Field(..., description="Tickers analizados")
@@ -112,6 +118,10 @@ class EfficientFrontierResponse(BaseModel):
 
     min_variance: OptimalPortfolio = Field(..., description="Portafolio de mínima varianza")
     max_sharpe: OptimalPortfolio = Field(..., description="Portafolio de máximo Sharpe")
+    top_portfolios: list[TopPortfolio] = Field(
+        default_factory=list,
+        description="Ranking de los 5 mejores portafolios por Sharpe",
+    )
     target_return_portfolio: TargetReturnPortfolio | None = Field(
         default=None,
         description="Portafolio asociado a rendimiento objetivo",
