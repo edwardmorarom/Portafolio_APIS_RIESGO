@@ -1,5 +1,6 @@
 from fastapi import Depends
 
+from app.db.database import get_db
 from app.clients.macro_client import MacroClient
 from app.clients.market_client import MarketClient
 from app.core.settings import Settings, get_settings
