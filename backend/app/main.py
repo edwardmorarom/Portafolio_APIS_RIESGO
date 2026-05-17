@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.db.database import init_db
 from app.api.router import api_router
 from app.core.exceptions import AppBaseException
 from app.core.settings import get_settings
@@ -25,6 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.on_event("startup")
+def on_startup() -> None:
+    init_db()
 
 @app.exception_handler(AppBaseException)
 async def app_base_exception_handler(request: Request, exc: AppBaseException) -> JSONResponse:
