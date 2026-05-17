@@ -338,6 +338,41 @@ def _extract_reference_weights_df(weights: list[float]) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("Peso", ascending=False).reset_index(drop=True)
 
 
+
+def _extract_top_portfolios_df(payload: dict) -> pd.DataFrame:
+    top_portfolios = payload.get("top_portfolios", [])
+
+    if not isinstance(top_portfolios, list) or not top_portfolios:
+        return pd.DataFrame()
+
+    rows = []
+
+    for item in top_portfolios:
+        weights = item.get("weights", [])
+        weights_text = ""
+
+        if isinstance(weights, list):
+            weights_text = " | ".join(
+                [
+                    f"{w.get('asset', 'N/D')}: {float(w.get('weight', 0)):.2%}"
+                    for w in weights
+                    if isinstance(w, dict)
+                ]
+            )
+
+        rows.append(
+            {
+                "Ranking": item.get("rank"),
+                "Retorno esperado": _format_pct(item.get("return")),
+                "Volatilidad": _format_pct(item.get("volatility")),
+                "Sharpe": _format_num(item.get("sharpe"), 3),
+                "Pesos": weights_text,
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
 def _extract_corr_df(payload: dict) -> pd.DataFrame:
     for key in ["correlation_matrix", "correlation", "corr_matrix"]:
         val = payload.get(key)
@@ -787,6 +822,7 @@ if not isinstance(payload, dict) or not payload:
 
 frontier_df = _extract_frontier_df(payload)
 simulated_df = _extract_simulated_df(payload)
+top_portfolios_df = _extract_top_portfolios_df(payload)
 corr_df = _extract_corr_df(payload)
 min_var = _extract_min_var(payload)
 max_sharpe = _extract_max_sharpe(payload)
@@ -951,6 +987,29 @@ with tab1:
             "Sharpe máximo",
             _format_num(ms_sharpe, 3),
             subtexto="Mejor eficiencia riesgo-retorno.",
+        )
+
+    seccion("Top 5 portafolios por Sharpe")
+
+    if top_portfolios_df.empty:
+        render_info_card(
+            "Ranking no disponible",
+            "El backend no devolvió el ranking de mejores portafolios para esta simulación.",
+        )
+    else:
+        st.dataframe(
+            top_portfolios_df,
+            width="stretch",
+            hide_index=True,
+        )
+
+        render_info_card(
+            "Lectura del ranking",
+            (
+                "Este ranking muestra las cinco combinaciones simuladas con mejor relación riesgo-retorno, "
+                "ordenadas por ratio de Sharpe. No reemplaza el portafolio de máximo Sharpe calculado por optimización, "
+                "pero sirve como comparación práctica entre alternativas cercanas."
+            ),
         )
 
     seccion("KPIs del módulo")
