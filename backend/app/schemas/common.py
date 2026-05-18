@@ -39,9 +39,30 @@ class ReturnTypeMixin(BaseModel):
 
 class AssetUniverseItem(BaseModel):
     name: str = Field(..., description="Nombre del activo")
-    ticker: str = Field(..., description="Ticker")
-    country: str = Field(..., description="País")
-    default: bool = Field(..., description="Activo predeterminado")
+    ticker: str = Field(..., description="Ticker del activo")
+    country: str = Field(..., description="Pa?s o mercado de referencia")
+    default: bool = Field(default=False, description="Indica si pertenece al portafolio base del proyecto")
+
+    asset_type: str | None = Field(
+        default=None,
+        description="Clase de activo: renta_variable, renta_fija, commodity, etf_sectorial, etf_global o efectivo_o_corto_plazo",
+    )
+    benchmark_ticker: str | None = Field(
+        default=None,
+        description="Benchmark recomendado para comparar el activo seg?n su clase",
+    )
+    benchmark_description: str | None = Field(
+        default=None,
+        description="Descripci?n metodol?gica del benchmark recomendado",
+    )
+    include_in_perri: bool = Field(
+        default=False,
+        description="Indica si el activo est? habilitado para el universo de Perri",
+    )
+    source: str | None = Field(
+        default=None,
+        description="Fuente de origen del activo",
+    )
 
 
 class AssetUniverseResponse(BaseModel):

@@ -14,6 +14,11 @@ class AssetsService:
             "ticker": asset.ticker,
             "country": asset.country or "N/D",
             "default": asset.ticker in default_tickers,
+            "asset_type": asset.asset_type,
+            "benchmark_ticker": asset.benchmark_ticker,
+            "benchmark_description": asset.benchmark_description,
+            "include_in_perri": asset.include_in_perri,
+            "source": asset.source,
         }
 
     def _fallback_assets(self) -> list[dict]:
