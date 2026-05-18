@@ -1,0 +1,153 @@
+{
+  "generated_at_utc": "2026-05-18T15:36:03.425753+00:00",
+  "job": "run_perri_optimization",
+  "history_years": 5,
+  "rf_annual": 0.04,
+  "result": {
+    "status": "ok",
+    "methodology": "Markowitz sobre precios persistidos en SQLite, base USD, universo Perri renta variable y renta fija.",
+    "start": "2021-05-13",
+    "end": "2026-05-12",
+    "history_years": 5,
+    "rf_annual": 0.04,
+    "eligible_assets": 150,
+    "assets_with_valid_returns": 144,
+    "max_candidate_assets": 15,
+    "allowed_asset_types": [
+      "renta_fija",
+      "renta_variable"
+    ],
+    "asset_type_distribution": {
+      "renta_fija": 15,
+      "renta_variable": 135
+    },
+    "min_risk_candidates": [
+      "MUB",
+      "BKLN",
+      "BNDX",
+      "BND",
+      "GOVT",
+      "AGG",
+      "TIP",
+      "SPIP",
+      "VCIT",
+      "HYG",
+      "JNK",
+      "IEF",
+      "LQD",
+      "EMB",
+      "TLT"
+    ],
+    "max_sharpe_candidates": [
+      "NVDA",
+      "AVGO",
+      "LLY",
+      "HSBC",
+      "GE",
+      "WELL",
+      "WMT",
+      "CAT",
+      "COST",
+      "AMD",
+      "GOOGL",
+      "XOM",
+      "TSM",
+      "GS",
+      "RY"
+    ],
+    "min_risk": {
+      "objective": "min_risk",
+      "assets_used": [
+        "MUB",
+        "BKLN",
+        "BNDX",
+        "BND",
+        "GOVT",
+        "AGG",
+        "TIP",
+        "SPIP",
+        "VCIT",
+        "HYG",
+        "JNK",
+        "IEF",
+        "LQD",
+        "EMB",
+        "TLT"
+      ],
+      "observations": 1254,
+      "expected_return_annual": 0.02685437942264951,
+      "volatility_annual": 0.0327647483551589,
+      "sharpe": -0.40121231620204634,
+      "weights": [
+        {
+          "asset": "BKLN",
+          "weight": 0.4205013558961106
+        },
+        {
+          "asset": "MUB",
+          "weight": 0.35855799483288686
+        },
+        {
+          "asset": "BNDX",
+          "weight": 0.22094064927100276
+        }
+      ],
+      "optimization_status": "Optimization terminated successfully"
+    },
+    "max_sharpe": {
+      "objective": "max_sharpe",
+      "assets_used": [
+        "NVDA",
+        "AVGO",
+        "LLY",
+        "HSBC",
+        "GE",
+        "WELL",
+        "WMT",
+        "CAT",
+        "COST",
+        "AMD",
+        "GOOGL",
+        "XOM",
+        "TSM",
+        "GS",
+        "RY"
+      ],
+      "observations": 1254,
+      "expected_return_annual": 0.3577021329573137,
+      "volatility_annual": 0.1647813635017835,
+      "sharpe": 1.928022236288117,
+      "weights": [
+        {
+          "asset": "WMT",
+          "weight": 0.2014068115949712
+        },
+        {
+          "asset": "LLY",
+          "weight": 0.1691687632864724
+        },
+        {
+          "asset": "WELL",
+          "weight": 0.1611606689893944
+        },
+        {
+          "asset": "XOM",
+          "weight": 0.1605368321338667
+        },
+        {
+          "asset": "HSBC",
+          "weight": 0.11146441525573787
+        },
+        {
+          "asset": "AVGO",
+          "weight": 0.09908337462741575
+        },
+        {
+          "asset": "NVDA",
+          "weight": 0.0971791341121413
+        }
+      ],
+      "optimization_status": "Optimization terminated successfully"
+    }
+  }
+}
