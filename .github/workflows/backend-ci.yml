@@ -1,0 +1,44 @@
+﻿name: Backend CI
+
+on:
+  push:
+    branches:
+      - backend
+  pull_request:
+    branches:
+      - backend
+  workflow_dispatch:
+
+jobs:
+  backend-tests:
+    name: Validar backend FastAPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Validar sintaxis del backend
+        run: |
+          python -m compileall backend/app
+
+      - name: Preparar base SQLite para pruebas
+        run: |
+          cd backend
+          python -m app.db.seed_db
+          python -m app.db.import_perri_prices
+          python -m app.jobs.run_perri_optimization
+
+      - name: Ejecutar pruebas de Perri
+        run: |
+          python -m pytest tests/test_perri_latest.py tests/test_perri_optimize.py -q
