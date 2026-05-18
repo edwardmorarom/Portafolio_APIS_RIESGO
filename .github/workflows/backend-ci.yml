@@ -42,3 +42,8 @@ jobs:
       - name: Ejecutar pruebas de Perri
         run: |
           python -m pytest tests/test_perri_latest.py tests/test_perri_optimize.py -q
+
+      - name: Validar build Docker del backend
+        run: |
+          docker compose build backend
+
