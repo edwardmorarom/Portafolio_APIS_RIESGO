@@ -30,8 +30,6 @@ def _read_secret(key: str, default: str | None = None) -> str | None:
 
     value = os.getenv(key, default)
     return str(value) if value is not None else None
-
-
 @st.cache_resource
 def get_api_config() -> ApiConfig:
     base_url = _read_secret("BACKEND_BASE_URL", "http://127.0.0.1:8000")
@@ -340,6 +338,16 @@ class ApiClient:
         )
 
     # ---------- RoboAdvisor ----------
+    # ---------- Perri ----------
+    def get_perri_latest(self) -> dict[str, Any]:
+        """
+        Consulta la ?ltima optimizaci?n institucional precalculada de Perri.
+
+        Este endpoint evita recalcular Markowitz desde el frontend y permite
+        cargar r?pido los portafolios de 1, 3 y 5 a?os para 5 y 10 activos.
+        """
+        return self.get("/perri/latest")
+
     def post_roboadvisor_suggest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
         Envía el perfil del cliente y sus activos manuales para recibir 
