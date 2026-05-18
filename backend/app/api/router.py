@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import alerts, assets, benchmark, capm, decision, garch, help, investor, macro, market, persistence, portfolio, returns_stats, risk, technical, valuation, roboadvisor
+from app.api.v1 import alerts, assets, benchmark, capm, decision, garch, help, investor, macro, market, persistence, portfolio, returns_stats, risk, technical, valuation, roboadvisor, perri
 
 
 api_router = APIRouter() 
@@ -21,3 +21,4 @@ api_router.include_router(garch.router, prefix="/garch", tags=["GARCH"])
 api_router.include_router(valuation.router, prefix="/valuation", tags=["Valoración y Curvas"])
 api_router.include_router(roboadvisor.router, prefix="/roboadvisor", tags=["RoboAdvisor"])
 api_router.include_router(persistence.router, prefix="/persistence", tags=["Persistence"])
+api_router.include_router(perri.router, prefix="/perri", tags=["Perri"])
