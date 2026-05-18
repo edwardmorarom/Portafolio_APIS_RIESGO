@@ -1,0 +1,13 @@
+﻿services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: portafolio-riesgo-backend
+    ports:
+      - "8001:8000"
+    environment:
+      APP_ENV: docker
+      DEBUG: "false"
+      DATABASE_URL: sqlite:///./data/portafolio_riesgo.db
+      ALLOWED_ORIGINS: http://localhost:8501,http://127.0.0.1:8501
