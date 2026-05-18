@@ -23,6 +23,13 @@ class Asset(Base):
     market: Mapped[str | None] = mapped_column(String(80), nullable=True)
     currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
     country: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
+    asset_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    benchmark_ticker: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    benchmark_description: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    include_in_perri: Mapped[bool] = mapped_column(default=False, nullable=False)
+    source: Mapped[str | None] = mapped_column(String(80), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     prices: Mapped[list["Price"]] = relationship(
