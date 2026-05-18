@@ -32,20 +32,36 @@ class Asset(Base):
 
 
 class Price(Base):
+    """
+    Precio histórico diario orientado a análisis de riesgo.
+
+    Se guarda únicamente el cierre:
+    - close_original: cierre en moneda original del activo.
+    - original_currency: moneda original del precio.
+    - fx_rate_to_usd: tasa histórica usada para convertir a USD.
+    - close_usd: cierre convertido a USD.
+    - close: campo de compatibilidad, debe guardar el mismo valor de close_usd.
+    """
+
     __tablename__ = "prices"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     asset_id: Mapped[int] = mapped_column(ForeignKey("assets.id"), index=True, nullable=False)
     date: Mapped[date] = mapped_column(Date, index=True, nullable=False)
 
-    open: Mapped[float | None] = mapped_column(Float, nullable=True)
-    high: Mapped[float | None] = mapped_column(Float, nullable=True)
-    low: Mapped[float | None] = mapped_column(Float, nullable=True)
-    close: Mapped[float] = mapped_column(Float, nullable=False)
-    adj_close: Mapped[float | None] = mapped_column(Float, nullable=True)
-    volume: Mapped[float | None] = mapped_column(Float, nullable=True)
-    currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    close_original: Mapped[float] = mapped_column(Float, nullable=False)
+    original_currency: Mapped[str] = mapped_column(String(10), nullable=False, default="USD")
 
+    fx_ticker: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    fx_rate_to_usd: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+
+    close_usd: Mapped[float] = mapped_column(Float, nullable=False)
+
+    # Compatibilidad temporal con servicios que esperen una columna genérica close.
+    # Metodológicamente debe equivaler a close_usd.
+    close: Mapped[float] = mapped_column(Float, nullable=False)
+
+    source: Mapped[str] = mapped_column(String(50), nullable=False, default="yfinance")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     asset: Mapped["Asset"] = relationship(back_populates="prices")
@@ -53,6 +69,7 @@ class Price(Base):
     __table_args__ = (
         UniqueConstraint("asset_id", "date", name="uq_prices_asset_date"),
         Index("ix_prices_asset_date", "asset_id", "date"),
+        Index("ix_prices_currency", "original_currency"),
     )
 
 
