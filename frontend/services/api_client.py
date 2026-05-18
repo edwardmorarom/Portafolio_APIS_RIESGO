@@ -149,7 +149,7 @@ class ApiClient:
         return self.get("/assets/")
 
     def search_assets(self, query: str) -> dict[str, Any]:
-        return self.get("/assets/search", params={"query": query})
+        return self.get("/assets/search", params={"q": query})
 
     # ---------- Help ----------
     def get_help_catalog(self) -> dict[str, Any]:
