@@ -1,19 +1,30 @@
+﻿from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.db.database import init_db
 from app.api.router import api_router
 from app.core.exceptions import AppBaseException
 from app.core.settings import get_settings
+from app.db.database import init_db
+
 
 settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
 
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     debug=settings.debug,
-    description="Backend del proyecto integrador de teoria del riesgo con FastAPI.",
+    description="Backend del proyecto integrador de teoría del riesgo con FastAPI.",
+    lifespan=lifespan,
 )
 
 allowed_origins = [item.strip() for item in settings.allowed_origins.split(",") if item.strip()]
@@ -26,10 +37,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
 
 @app.exception_handler(AppBaseException)
 async def app_base_exception_handler(request: Request, exc: AppBaseException) -> JSONResponse:
