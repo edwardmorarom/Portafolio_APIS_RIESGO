@@ -234,7 +234,11 @@ def _render_role_card(profile: dict[str, str]):
 
 def _render_financial_card(profile: dict[str, str], asset: dict):
     country = asset.get("country", "N/D")
-    base_tag = "Sí" if asset.get("default") else "No"
+    base_tag = "S?" if asset.get("default") else "No"
+    asset_type = asset.get("asset_type") or "N/D"
+    benchmark_ticker = asset.get("benchmark_ticker") or "N/D"
+    benchmark_description = asset.get("benchmark_description") or "Benchmark no especificado"
+    source = asset.get("source") or "N/D"
 
     st.markdown(
         (
@@ -254,18 +258,24 @@ def _render_financial_card(profile: dict[str, str], asset: dict):
             f'<div style="font-size:0.96rem;line-height:1.65;color:var(--text-soft);'
             f'font-weight:600;margin-bottom:0.85rem;">{safe_text(profile["tesis"])}</div>'
             '<div style="display:flex;flex-wrap:wrap;gap:0.45rem;margin-bottom:0.8rem;">'
-            f'<span class="ui-chip"><strong>País:</strong>&nbsp;{safe_text(country)}</span>'
+            f'<span class="ui-chip"><strong>Pa?s:</strong>&nbsp;{safe_text(country)}</span>'
             f'<span class="ui-chip"><strong>Activo base:</strong>&nbsp;{base_tag}</span>'
-            '<span class="ui-chip"><strong>Perfil:</strong>&nbsp;Diversificación internacional</span>'
+            f'<span class="ui-chip"><strong>Clase:</strong>&nbsp;{safe_text(asset_type)}</span>'
+            f'<span class="ui-chip"><strong>Benchmark:</strong>&nbsp;{safe_text(benchmark_ticker)}</span>'
+            f'<span class="ui-chip"><strong>Fuente:</strong>&nbsp;{safe_text(source)}</span>'
             '</div>'
             f'<div style="font-size:0.92rem;line-height:1.58;color:var(--text-soft);font-weight:600;">'
             f'<strong>Riesgo:</strong> {safe_text(profile["riesgo"])}<br>'
+            f'<strong>Benchmark metodol?gico:</strong> {safe_text(benchmark_description)}<br>'
             f'<strong>Lectura de portafolio:</strong> {safe_text(profile["lectura"])}'
             '</div>'
             '</div>'
         ),
         unsafe_allow_html=True,
     )
+
+
+
 
 
 def _render_asset_block(asset: dict, modo: str):
