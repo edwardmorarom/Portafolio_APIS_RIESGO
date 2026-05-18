@@ -524,6 +524,18 @@ with tab_activos:
     extra_assets = [a for a in assets if a.get("default") is not True]
     countries = sorted({a.get("country", "N/D") for a in assets})
 
+    perri_assets = [a for a in assets if a.get("include_in_perri") is True]
+
+    by_asset_type: dict[str, int] = {}
+    by_benchmark: dict[str, int] = {}
+
+    for asset in assets:
+        asset_type = asset.get("asset_type") or "sin_clasificar"
+        benchmark = asset.get("benchmark_ticker") or "sin_benchmark"
+
+        by_asset_type[asset_type] = by_asset_type.get(asset_type, 0) + 1
+        by_benchmark[benchmark] = by_benchmark.get(benchmark, 0) + 1
+
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
@@ -564,6 +576,20 @@ with tab_activos:
             ("Moneda metodológica", "USD"),
             ("Modo", modo),
             ("Fuente", "API backend /assets"),
+        ]
+    )
+
+    render_meta_row(
+        [
+            ("Activos habilitados para Perri", str(len(perri_assets))),
+            (
+                "Clases de activo",
+                " · ".join([f"{k}: {v}" for k, v in sorted(by_asset_type.items())]),
+            ),
+            (
+                "Benchmarks metodológicos",
+                " · ".join([f"{k}: {v}" for k, v in sorted(by_benchmark.items())]),
+            ),
         ]
     )
 
