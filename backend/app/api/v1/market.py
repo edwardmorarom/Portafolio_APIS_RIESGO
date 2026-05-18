@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
 
-from app.core.dependencies import get_market_service
+from app.core.dependencies import get_db, get_market_service
 from app.schemas.market import PricePoint, PricesResponse, ReturnPoint, ReturnsResponse
 from app.services.market_service import MarketService
 
 router = APIRouter()
+
 
 @router.get("/prices/{ticker}", summary="Precios históricos por ticker", response_model=PricesResponse)
 async def get_prices(
@@ -15,13 +17,15 @@ async def get_prices(
     start: str = Query(default="2021-01-01"),
     end: str = Query(default="2026-12-31"),
     service: MarketService = Depends(get_market_service),
+    db: Session = Depends(get_db),
 ) -> PricesResponse:
-    df = service.get_prices(ticker=ticker, start=start, end=end)
+    df = service.get_prices(ticker=ticker, start=start, end=end, db=db)
 
     if df.empty:
         raise HTTPException(status_code=404, detail=f"No se encontraron precios para {ticker}")
 
     records: list[PricePoint] = []
+
     for idx, row in df.iterrows():
         records.append(
             PricePoint(
@@ -43,7 +47,7 @@ async def get_prices(
         ticker=ticker.upper(),
         start=start,
         end=end,
-        message="Precios descargados correctamente",
+        message="Precios consultados correctamente desde SQLite o proveedor externo",
         data=records,
     )
 
@@ -54,13 +58,15 @@ async def get_returns(
     start: str = Query(default="2021-01-01"),
     end: str = Query(default="2026-12-31"),
     service: MarketService = Depends(get_market_service),
+    db: Session = Depends(get_db),
 ) -> ReturnsResponse:
-    df = service.get_returns(ticker=ticker, start=start, end=end)
+    df = service.get_returns(ticker=ticker, start=start, end=end, db=db)
 
     if df.empty:
         raise HTTPException(status_code=404, detail=f"No se encontraron rendimientos para {ticker}")
 
     records: list[ReturnPoint] = []
+
     for idx, row in df.iterrows():
         records.append(
             ReturnPoint(
