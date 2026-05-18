@@ -146,6 +146,32 @@ def expected_fx_ticker(currency: str) -> str | None:
     return fx_map.get(currency)
 
 
+def recommended_benchmark(asset_type: str) -> str:
+    benchmark_map = {
+        "renta_variable": "ACWI",
+        "etf_global": "ACWI",
+        "etf_sectorial": "SPY",
+        "renta_fija": "AGG",
+        "efectivo_o_corto_plazo": "SHY",
+        "commodity": "PDBC",
+    }
+
+    return benchmark_map.get(asset_type, "ACWI")
+
+
+def benchmark_description(asset_type: str) -> str:
+    description_map = {
+        "renta_variable": "MSCI ACWI ETF como referencia global de renta variable internacional.",
+        "etf_global": "MSCI ACWI ETF como referencia global para exposición accionaria diversificada.",
+        "etf_sectorial": "SPY como referencia amplia del mercado accionario estadounidense.",
+        "renta_fija": "AGG como referencia agregada de bonos investment grade en USD.",
+        "efectivo_o_corto_plazo": "SHY como referencia de bonos del Tesoro de corto plazo.",
+        "commodity": "PDBC como referencia amplia de materias primas.",
+    }
+
+    return description_map.get(asset_type, "Benchmark global de referencia.")
+
+
 def build_perri_universe() -> dict:
     if not CACHE_PATH.exists():
         raise FileNotFoundError(
@@ -159,14 +185,18 @@ def build_perri_universe() -> dict:
 
     for ticker in tickers:
         currency = expected_currency(ticker)
+        asset_type = classify_asset(ticker)
+        benchmark = recommended_benchmark(asset_type)
 
         assets.append(
             {
                 "ticker": ticker,
                 "name": ticker,
-                "tipo_activo": classify_asset(ticker),
+                "tipo_activo": asset_type,
                 "moneda_origen": currency,
                 "fx_ticker": expected_fx_ticker(currency),
+                "benchmark_ticker": benchmark,
+                "benchmark_descripcion": benchmark_description(asset_type),
                 "incluir_en_perri": True,
                 "fuente": "roboadvisor_cache.csv",
             }
@@ -184,6 +214,11 @@ def build_perri_universe() -> dict:
         "classification_policy": (
             "Clasificación inicial por listas explícitas de tickers para ETFs de renta fija, "
             "commodities, ETFs sectoriales, ETFs globales y renta variable."
+        ),
+        "benchmark_policy": (
+            "Cada activo tiene un benchmark recomendado según su clase. "
+            "Los portafolios mixtos deben compararse contra un benchmark compuesto ponderado "
+            "por la asignación a renta variable, renta fija, commodities y liquidez."
         ),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source_file": "roboadvisor_cache.csv",
