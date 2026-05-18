@@ -76,3 +76,27 @@ class AssetsService:
             "total_matches": len(results),
             "assets": results,
         }
+
+    def summarize_assets(self, db: Session) -> dict:
+        assets = list(db.scalars(select(Asset)))
+
+        by_asset_type: dict[str, int] = {}
+        by_benchmark: dict[str, int] = {}
+        perri_assets = 0
+
+        for asset in assets:
+            asset_type = asset.asset_type or "sin_clasificar"
+            benchmark = asset.benchmark_ticker or "sin_benchmark"
+
+            by_asset_type[asset_type] = by_asset_type.get(asset_type, 0) + 1
+            by_benchmark[benchmark] = by_benchmark.get(benchmark, 0) + 1
+
+            if asset.include_in_perri:
+                perri_assets += 1
+
+        return {
+            "total_assets": len(assets),
+            "perri_assets": perri_assets,
+            "by_asset_type": dict(sorted(by_asset_type.items())),
+            "by_benchmark": dict(sorted(by_benchmark.items())),
+        }

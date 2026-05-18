@@ -39,3 +39,11 @@ async def search_assets(
         total_matches=result["total_matches"],
         assets=[AssetUniverseItem(**item) for item in result["assets"]],
     )
+
+
+@router.get("/summary", summary="Resumen metodológico del universo de activos")
+async def summarize_assets(
+    service: AssetsService = Depends(get_assets_service),
+    db: Session = Depends(get_db),
+) -> dict:
+    return service.summarize_assets(db=db)
