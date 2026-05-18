@@ -11,11 +11,9 @@ sys.path.insert(0, str(BACKEND_DIR))
 from app.main import app  # noqa: E402
 
 
-client = TestClient(app)
-
-
 def test_perri_latest_returns_precalculated_optimization():
-    response = client.get("/api/v1/perri/latest")
+    with TestClient(app) as client:
+        response = client.get("/api/v1/perri/latest")
 
     assert response.status_code == 200
 

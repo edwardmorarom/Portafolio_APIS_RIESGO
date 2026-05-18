@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from collections.abc import Generator
 from pathlib import Path
@@ -11,38 +11,52 @@ from app.core.settings import get_settings
 
 settings = get_settings()
 
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+
 
 class Base(DeclarativeBase):
     """Base declarativa para todos los modelos ORM del proyecto."""
     pass
 
 
-def _ensure_sqlite_parent_dir(database_url: str) -> None:
+def _resolve_sqlite_url(database_url: str) -> str:
     """
-    Crea la carpeta del archivo SQLite si la URL usa sqlite:///ruta.db.
-    Evita errores cuando la carpeta data/ todavía no existe.
+    Resuelve rutas SQLite relativas contra la carpeta backend/.
+
+    Esto evita que la base cambie dependiendo de si el comando se ejecuta desde:
+    - la raíz del proyecto
+    - backend/
+    - pytest
+    - GitHub Actions
     """
     if not database_url.startswith("sqlite:///"):
-        return
+        return database_url
 
-    db_path = database_url.replace("sqlite:///", "", 1)
+    db_path_raw = database_url.replace("sqlite:///", "", 1)
 
-    if db_path == ":memory:":
-        return
+    if db_path_raw == ":memory:":
+        return database_url
 
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    db_path = Path(db_path_raw)
+
+    if not db_path.is_absolute():
+        db_path = BACKEND_DIR / db_path
+
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    return f"sqlite:///{db_path.as_posix()}"
 
 
-_ensure_sqlite_parent_dir(settings.database_url)
+DATABASE_URL = _resolve_sqlite_url(settings.database_url)
 
 connect_args = (
     {"check_same_thread": False}
-    if settings.database_url.startswith("sqlite")
+    if DATABASE_URL.startswith("sqlite")
     else {}
 )
 
 engine = create_engine(
-    settings.database_url,
+    DATABASE_URL,
     connect_args=connect_args,
     pool_pre_ping=True,
 )
