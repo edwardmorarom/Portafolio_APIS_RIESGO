@@ -22,6 +22,11 @@ BASE_ASSETS = [
         "market": "Tokyo Stock Exchange",
         "currency": "JPY",
         "country": "Japan",
+        "asset_type": "renta_variable",
+        "benchmark_ticker": "ACWI",
+        "benchmark_description": "MSCI ACWI ETF como referencia global de renta variable internacional.",
+        "include_in_perri": True,
+        "source": "base_assets",
     },
     {
         "ticker": "ATD.TO",
@@ -30,6 +35,11 @@ BASE_ASSETS = [
         "market": "Toronto Stock Exchange",
         "currency": "CAD",
         "country": "Canada",
+        "asset_type": "renta_variable",
+        "benchmark_ticker": "ACWI",
+        "benchmark_description": "MSCI ACWI ETF como referencia global de renta variable internacional.",
+        "include_in_perri": True,
+        "source": "base_assets",
     },
     {
         "ticker": "FEMSAUBD.MX",
@@ -38,6 +48,11 @@ BASE_ASSETS = [
         "market": "Mexican Stock Exchange",
         "currency": "MXN",
         "country": "Mexico",
+        "asset_type": "renta_variable",
+        "benchmark_ticker": "ACWI",
+        "benchmark_description": "MSCI ACWI ETF como referencia global de renta variable internacional.",
+        "include_in_perri": True,
+        "source": "base_assets",
     },
     {
         "ticker": "BP.L",
@@ -46,6 +61,11 @@ BASE_ASSETS = [
         "market": "London Stock Exchange",
         "currency": "GBP",
         "country": "United Kingdom",
+        "asset_type": "renta_variable",
+        "benchmark_ticker": "ACWI",
+        "benchmark_description": "MSCI ACWI ETF como referencia global de renta variable internacional.",
+        "include_in_perri": True,
+        "source": "base_assets",
     },
     {
         "ticker": "CA.PA",
@@ -54,6 +74,11 @@ BASE_ASSETS = [
         "market": "Euronext Paris",
         "currency": "EUR",
         "country": "France",
+        "asset_type": "renta_variable",
+        "benchmark_ticker": "ACWI",
+        "benchmark_description": "MSCI ACWI ETF como referencia global de renta variable internacional.",
+        "include_in_perri": True,
+        "source": "base_assets",
     },
 ]
 
@@ -75,13 +100,31 @@ def _load_perri_universe() -> list[dict[str, Any]]:
     return assets
 
 
+def _upsert_asset(db, payload: dict[str, Any]) -> str:
+    ticker = str(payload["ticker"]).strip().upper()
+    existing = db.scalar(select(Asset).where(Asset.ticker == ticker))
+
+    if existing is None:
+        db.add(Asset(**payload))
+        return "inserted"
+
+    existing.name = payload.get("name")
+    existing.sector = payload.get("sector")
+    existing.market = payload.get("market")
+    existing.currency = payload.get("currency")
+    existing.country = payload.get("country")
+    existing.asset_type = payload.get("asset_type")
+    existing.benchmark_ticker = payload.get("benchmark_ticker")
+    existing.benchmark_description = payload.get("benchmark_description")
+    existing.include_in_perri = bool(payload.get("include_in_perri", False))
+    existing.source = payload.get("source")
+
+    return "updated"
+
+
 def seed_base_assets() -> tuple[int, int]:
     """
     Inserta o actualiza los 5 activos base del proyecto.
-
-    Retorna:
-    - insertados
-    - actualizados
     """
     init_db()
 
@@ -90,20 +133,12 @@ def seed_base_assets() -> tuple[int, int]:
 
     with SessionLocal() as db:
         for item in BASE_ASSETS:
-            ticker = item["ticker"]
-            existing = db.scalar(select(Asset).where(Asset.ticker == ticker))
+            status = _upsert_asset(db, item)
 
-            if existing is None:
-                db.add(Asset(**item))
+            if status == "inserted":
                 inserted += 1
-                continue
-
-            existing.name = item["name"]
-            existing.sector = item["sector"]
-            existing.market = item["market"]
-            existing.currency = item["currency"]
-            existing.country = item["country"]
-            updated += 1
+            else:
+                updated += 1
 
         db.commit()
 
@@ -113,11 +148,7 @@ def seed_base_assets() -> tuple[int, int]:
 def seed_perri_assets() -> tuple[int, int]:
     """
     Inserta o actualiza los activos del universo oficial de Perri.
-
     Usa backend/data/perri_universe.json como fuente de verdad.
-    Retorna:
-    - insertados
-    - actualizados
     """
     init_db()
 
@@ -140,21 +171,19 @@ def seed_perri_assets() -> tuple[int, int]:
                 "market": source,
                 "currency": currency,
                 "country": "Global / US-listed",
+                "asset_type": asset_type,
+                "benchmark_ticker": item.get("benchmark_ticker"),
+                "benchmark_description": item.get("benchmark_descripcion"),
+                "include_in_perri": bool(item.get("incluir_en_perri", True)),
+                "source": source,
             }
 
-            existing = db.scalar(select(Asset).where(Asset.ticker == ticker))
+            status = _upsert_asset(db, payload)
 
-            if existing is None:
-                db.add(Asset(**payload))
+            if status == "inserted":
                 inserted += 1
-                continue
-
-            existing.name = payload["name"]
-            existing.sector = payload["sector"]
-            existing.market = payload["market"]
-            existing.currency = payload["currency"]
-            existing.country = payload["country"]
-            updated += 1
+            else:
+                updated += 1
 
         db.commit()
 
