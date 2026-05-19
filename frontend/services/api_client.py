@@ -30,6 +30,14 @@ def _read_secret(key: str, default: str | None = None) -> str | None:
 
     value = os.getenv(key, default)
     return str(value) if value is not None else None
+    # ---------- Machine Learning ----------
+    def predict_ml_return(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post(
+            "/ml/predict",
+            json_payload=payload,
+            include_api_key=True,
+        )
+
 @st.cache_resource
 def get_api_config() -> ApiConfig:
     base_url = _read_secret("BACKEND_BASE_URL", "http://127.0.0.1:8000")
@@ -359,6 +367,14 @@ class ApiClient:
             include_api_key=True,
         )
 
+
+    # ---------- Machine Learning ----------
+    def predict_ml_return(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post(
+            "/ml/predict",
+            json_payload=payload,
+            include_api_key=True,
+        )
 
 @st.cache_resource
 def get_api_client() -> ApiClient:
