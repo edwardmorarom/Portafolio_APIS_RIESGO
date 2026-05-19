@@ -277,4 +277,63 @@ CHATBOT_KNOWLEDGE_BASE = {
         ],
     },
 
+
+    "kyc": {
+        "keywords": [
+            "kyc",
+            "perfil de riesgo",
+            "inversionista",
+            "horizonte",
+            "preferencias",
+            "conservador",
+            "moderado",
+            "agresivo",
+            "tolerancia al riesgo"
+        ],
+        "title": "KYC y perfil del inversionista",
+        "source_type": "modulo",
+        "reference": "Proyecto Integrador Riesgo USTA: modulo InvestorService.",
+        "general": (
+            "El KYC financiero permite identificar el perfil del inversionista antes de recomendar un portafolio. "
+            "En el proyecto se consideran perfiles conservador, moderado y agresivo junto con horizonte y tolerancia al riesgo."
+        ),
+        "estadistico": (
+            "Metodologicamente, el perfil del inversionista condiciona la interpretacion de volatilidad, VaR, CVaR, drawdown y asignacion de pesos. "
+            "Perfiles conservadores priorizan menor volatilidad y perfiles agresivos aceptan mayor dispersion."
+        ),
+        "followups": [
+            "Que diferencia hay entre perfil conservador y agresivo?",
+            "Como afecta el horizonte al riesgo?",
+            "Como se conecta KYC con Markowitz?"
+        ],
+    },
+
+    "roboadvisor": {
+        "keywords": [
+            "roboadvisor",
+            "asesor automatico",
+            "portafolio sugerido",
+            "perfil conservador",
+            "perfil moderado",
+            "perfil agresivo",
+            "recomendacion automatizada"
+        ],
+        "title": "RoboAdvisor",
+        "source_type": "modulo",
+        "reference": "Proyecto Integrador Riesgo USTA: modulo RoboAdvisorService.",
+        "general": (
+            "El RoboAdvisor genera recomendaciones automatizadas de portafolios segun perfil de riesgo y activos disponibles. "
+            "En el proyecto considera perfiles como conservador, moderado y agresivo para orientar la sugerencia."
+        ),
+        "estadistico": (
+            "El RoboAdvisor combina perfilamiento financiero y optimizacion de portafolios. "
+            "Las recomendaciones deben validarse con metricas como Sharpe, VaR, CVaR y drawdown."
+        ),
+        "followups": [
+            "Como usa el RoboAdvisor el perfil de riesgo?",
+            "Que metricas validan una recomendacion automatizada?",
+            "Cual es la diferencia entre RoboAdvisor y Perri?"
+        ],
+    },
+
 }
