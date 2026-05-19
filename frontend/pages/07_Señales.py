@@ -247,7 +247,7 @@ def _render_signal_card(alert: dict):
                 border:1px solid {badge_color}30;
                 font-size:0.76rem;
                 font-weight:900;
-                letter-spacing:0.03em;
+                letter-spacing:0;
                 text-transform:uppercase;
             ">
                 {status}
@@ -276,7 +276,7 @@ def _render_signal_card(alert: dict):
                 border-radius: 14px;
                 padding: 0.65rem 0.75rem;
             ">
-                <div style="font-size:0.74rem;color:#64748B;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;">
+                <div style="font-size:0.74rem;color:#64748B;font-weight:800;text-transform:uppercase;letter-spacing:0;">
                     Fecha
                 </div>
                 <div style="font-size:0.86rem;color:#0F172A;font-weight:700;margin-top:0.18rem;">
@@ -290,7 +290,7 @@ def _render_signal_card(alert: dict):
                 border-radius: 14px;
                 padding: 0.65rem 0.75rem;
             ">
-                <div style="font-size:0.74rem;color:#64748B;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;">
+                <div style="font-size:0.74rem;color:#64748B;font-weight:800;text-transform:uppercase;letter-spacing:0;">
                     Valor
                 </div>
                 <div style="font-size:0.86rem;color:#0F172A;font-weight:700;margin-top:0.18rem;">
@@ -516,7 +516,7 @@ plot_card_header(
     modo=modo,
     caption="Útil para sustentar qué activo concentra más activaciones y cuál permanece estable.",
 )
-st.dataframe(summary_df, width="stretch", hide_index=True)
+st.dataframe(summary_df, use_container_width=True, hide_index=True)
 
 plot_card_footer(
     "Una lectura neutral no es un error del modelo. Significa que, bajo los umbrales configurados, "

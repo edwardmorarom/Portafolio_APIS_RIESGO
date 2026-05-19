@@ -505,14 +505,14 @@ plot_card_header(
 
 clean_view = st.checkbox("Vista limpia", value=False, key="macro_benchmark_clean_chart")
 fig = _build_base100_chart(benchmark_payload, modo=modo, clean_view=clean_view)
-st.plotly_chart(fig, width="stretch")
+st.plotly_chart(fig, use_container_width=True)
 
 plot_card_footer(
     "Si la línea del portafolio queda por encima del benchmark, tuvo mejor desempeño acumulado. "
     "Si queda por debajo, el benchmark global fue superior durante el periodo."
 )
 
-st.dataframe(_comparison_table(benchmark_payload), width="stretch", hide_index=True)
+st.dataframe(_comparison_table(benchmark_payload), use_container_width=True, hide_index=True)
 
 seccion("Interpretación")
 

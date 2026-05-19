@@ -568,7 +568,7 @@ recent_df = recent_df.rename(
         "log_return": "Log-retorno",
     }
 )
-st.dataframe(recent_df, width="stretch")
+st.dataframe(recent_df, use_container_width=True)
 
 seccion("Pruebas de normalidad")
 
@@ -643,7 +643,7 @@ with g1:
         show_hist=show_hist,
         show_normal=show_normal,
     )
-    st.plotly_chart(fig_hist, width="stretch")
+    st.plotly_chart(fig_hist, use_container_width=True)
     plot_card_footer(
         "Observa si la distribución se concentra cerca de cero o si presenta colas amplias, "
         "lo que puede indicar episodios de variación más fuerte."
@@ -669,7 +669,7 @@ with g2:
         modo=modo,
         horizontal=horizontal_box,
     )
-    st.plotly_chart(fig_box, width="stretch")
+    st.plotly_chart(fig_box, use_container_width=True)
     plot_card_footer(
         "El boxplot resume mediana, dispersión y valores atípicos. "
         "Una caja amplia o muchos outliers suele asociarse con mayor inestabilidad en los rendimientos."
@@ -688,7 +688,7 @@ plot_card_header(
 )
 
 fig_qq = _build_qq_figure(qq_df, modo=modo)
-st.plotly_chart(fig_qq, width="stretch")
+st.plotly_chart(fig_qq, use_container_width=True)
 
 plot_card_footer(
     "Cuando los puntos se separan de la línea diagonal, especialmente en las colas, "

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
+from typing import Any
+
 import streamlit as st
 
 from ui.theme import safe_text
@@ -32,12 +35,14 @@ def render_info_card(title: str, body: str):
     )
 
 
-def render_meta_row(items: list[tuple[str, str]]):
+def render_meta_row(items: Mapping[str, Any] | Iterable[tuple[str, Any]]):
     if not items:
         return
 
+    pairs = items.items() if isinstance(items, Mapping) else items
+
     html_parts = []
-    for label, value in items:
+    for label, value in pairs:
         html_parts.append(
             f'<span class="ui-chip"><strong>{safe_text(label)}:</strong>&nbsp;{safe_text(value)}</span>'
         )

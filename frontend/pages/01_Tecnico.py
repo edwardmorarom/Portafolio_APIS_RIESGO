@@ -777,7 +777,7 @@ fig_price = _plot_price_ma(
     show_sma=show_sma,
     show_ema=show_ema,
 )
-st.plotly_chart(fig_price, width="stretch")
+st.plotly_chart(fig_price, use_container_width=True)
 plot_card_footer(_interpret_trend(close_now, sma_now, ema_now))
 
 g1, g2 = st.columns(2, gap="large")
@@ -802,7 +802,7 @@ with g1:
         for trace in fig_rsi.data:
             trace.visible = "legendonly"
 
-    st.plotly_chart(fig_rsi, width="stretch")
+    st.plotly_chart(fig_rsi, use_container_width=True)
     plot_card_footer(_interpret_rsi(rsi_now))
 
 with g2:
@@ -833,7 +833,7 @@ with g2:
         show_up=show_boll_up,
         show_low=show_boll_low,
     )
-    st.plotly_chart(fig_boll, width="stretch")
+    st.plotly_chart(fig_boll, use_container_width=True)
     plot_card_footer(_interpret_bollinger(close_now, bb_low_now, bb_up_now))
 
 g3, g4 = st.columns(2, gap="large")
@@ -870,7 +870,7 @@ with g3:
         show_hist=show_hist,
     )
 
-    st.plotly_chart(fig_macd, width="stretch")
+    st.plotly_chart(fig_macd, use_container_width=True)
 
     plot_card_footer(
         _interpret_macd(macd_now, macd_signal_now, macd_hist_now)
@@ -911,7 +911,7 @@ with g4:
         elif "%d" in name:
             trace.visible = True if show_stoch_d else "legendonly"
 
-    st.plotly_chart(fig_stoch, width="stretch")
+    st.plotly_chart(fig_stoch, use_container_width=True)
 
     plot_card_footer(
         _interpret_stochastic(stoch_k_now, stoch_d_now)
@@ -946,4 +946,4 @@ if modo == "Estadístico":
     recent_df["date"] = recent_df["date"].dt.strftime("%Y-%m-%d")
 
     with st.expander("Ver tabla", expanded=False):
-        st.dataframe(recent_df, width="stretch")
+        st.dataframe(recent_df, use_container_width=True)

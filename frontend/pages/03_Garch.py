@@ -684,9 +684,9 @@ render_info_card(
 
 if modo == "General":
     with st.expander("Ver comparación completa de modelos", expanded=False):
-        st.dataframe(comparison_df, width="stretch", hide_index=True)
+        st.dataframe(comparison_df, use_container_width=True, hide_index=True)
 else:
-    st.dataframe(comparison_df, width="stretch", hide_index=True)
+    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
 
 seccion("Volatilidad y pronóstico")
 
@@ -705,7 +705,7 @@ with g1:
         modo=modo,
         caption="Permite identificar periodos de calma y periodos de volatilidad elevada.",
     )
-    st.plotly_chart(fig_vol, width="stretch")
+    st.plotly_chart(fig_vol, use_container_width=True)
     
     # Footer mejorado
     if has_multiple_models:
@@ -734,7 +734,7 @@ with g2:
         modo=modo,
         clean_view=False,
     )
-    st.plotly_chart(fig_forecast, width="stretch")
+    st.plotly_chart(fig_forecast, use_container_width=True)
     # Footer mejorado para forecast
     plot_card_footer(
         _forecast_message(payload)
@@ -763,7 +763,7 @@ if mostrar_diagnostico:
         caption="La tabla resume el ajuste y la caja inferior te ayuda a defenderlo metodológicamente.",
     )
 
-    st.dataframe(diagnostics_df, width="stretch", hide_index=True)
+    st.dataframe(diagnostics_df, use_container_width=True, hide_index=True)
 
     compact_help_card(
         "Cómo hacer el diagnóstico",
