@@ -1,4 +1,4 @@
-# Documentación técnica del Proyecto Portafolio Riesgo USTA
+﻿# Documentación técnica del Proyecto Portafolio Riesgo USTA
 
 **Versión documental:** 2026-05-18  
 **Repositorio:** `portafolio-riesgo`  
@@ -1993,3 +1993,61 @@ Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/api/v1/perri/optimize?
 9. Diseñar admin dashboard.
 10. Fortalecer login y roles.
 11. Implementar ML Singleton predictivo real.
+---
+
+## 20. Chatbot experto backend
+
+El backend ya incluye una primera versión funcional del chatbot experto del proyecto.
+
+### 20.1 Archivos implementados
+
+``` text
+backend/app/api/v1/chatbot.py
+backend/app/schemas/chatbot.py
+backend/app/services/chatbot_service.py
+backend/app/clients/llm_client.py
+tests/test_chatbot.py
+tests/test_chatbot_llm_client.py
+```
+
+### 20.2 Endpoint disponible
+
+``` text
+POST /api/v1/chatbot/ask
+```
+
+### 20.3 Flujo técnico
+
+``` text
+POST /api/v1/chatbot/ask
+        ↓
+ChatbotQuestionRequest
+        ↓
+ChatbotService
+        ↓
+Base local controlada
+        ↓
+LLMClient opcional
+        ↓
+ChatbotAnswerResponse
+```
+
+### 20.4 Estado actual
+
+- El chatbot responde preguntas soportadas sobre VaR, CVaR, CAPM, Markowitz, GARCH, Perri, Nelson-Siegel y Black-Scholes.
+- El motor experto local es el comportamiento por defecto.
+- LLMClient queda preparado como punto de extensión para conectar IA real en una etapa posterior.
+- No hay llamadas externas activas mientras el proveedor esté configurado en modo local.
+- El frontend del chatbot queda pendiente para el final, según la prioridad actual del proyecto.
+
+### 20.5 Configuración relacionada
+
+La configuración futura para IA se maneja mediante variables de entorno y no debe quemar claves en código:
+
+``` text
+llm_provider
+llm_model
+llm_api_key
+llm_base_url
+```
+
