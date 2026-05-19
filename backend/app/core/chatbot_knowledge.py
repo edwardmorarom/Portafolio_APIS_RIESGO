@@ -98,57 +98,106 @@ CHATBOT_KNOWLEDGE_BASE = {
         ],
     },
     "markowitz": {
-        "keywords": ["markowitz", "frontera eficiente", "sharpe", "mínima varianza", "minima varianza", "portafolio"],
+        "keywords": [
+            "markowitz",
+            "frontera eficiente",
+            "sharpe",
+            "minima varianza",
+            "m?nima varianza",
+            "maximo sharpe",
+            "m?ximo sharpe",
+            "portafolio",
+            "covarianza",
+            "correlacion",
+            "correlaci?n",
+            "diversificacion",
+            "diversificaci?n",
+        ],
         "title": "Markowitz y frontera eficiente",
         "source_type": "modulo",
-        "reference": "Backend PortfolioService: frontera eficiente, mínimo riesgo y máximo Sharpe.",
+        "reference": "Proyecto Integrador Riesgo USTA: modulo PortfolioService y frontera eficiente.",
         "general": (
-            "Markowitz busca construir portafolios eficientes combinando retorno esperado, volatilidad y diversificación. "
-            "La frontera eficiente muestra combinaciones donde no se puede obtener más retorno sin asumir más riesgo."
+            "Markowitz permite construir portafolios eficientes combinando retorno esperado, volatilidad y diversificacion. "
+            "La frontera eficiente muestra portafolios donde no se puede aumentar retorno sin asumir mas riesgo. "
+            "En el proyecto se identifican portafolios como minima varianza, maximo Sharpe, portafolio objetivo y portafolio sugerido por perfil."
         ),
         "estadistico": (
-            "El módulo usa rendimientos históricos para estimar medias, matriz de covarianzas y correlaciones. "
-            "Con esa información simula portafolios y optimiza mínima varianza y máximo Sharpe."
+            "Estadisticamente, Markowitz usa rendimientos historicos para estimar medias, volatilidades, matriz de covarianzas "
+            "y matriz de correlaciones. Con esos insumos simula portafolios y optimiza pesos bajo restricciones. "
+            "El Sharpe compara exceso de retorno frente a la tasa libre de riesgo por unidad de volatilidad."
         ),
         "followups": [
-            "¿Qué significa estar sobre la frontera eficiente?",
-            "¿Por qué la diversificación reduce riesgo?",
+            "Que significa estar sobre la frontera eficiente?",
+            "Por que la diversificacion reduce riesgo?",
+            "Como se compara Markowitz contra Perri?",
         ],
     },
     "garch": {
-        "keywords": ["garch", "arch", "egarch", "volatilidad condicional", "heterocedasticidad"],
+        "keywords": [
+            "garch",
+            "arch",
+            "egarch",
+            "volatilidad condicional",
+            "heterocedasticidad",
+            "aic",
+            "bic",
+            "residuos",
+            "pronostico",
+            "pron?stico",
+        ],
         "title": "ARCH / GARCH / EGARCH",
         "source_type": "modulo",
-        "reference": "Backend GarchService: comparación ARCH, GARCH y EGARCH por AIC/BIC.",
+        "reference": "Proyecto Integrador Riesgo USTA: modulo GarchService para volatilidad condicional.",
         "general": (
-            "Los modelos ARCH/GARCH permiten modelar volatilidad cambiante en el tiempo. "
-            "Son útiles cuando los rendimientos presentan periodos de alta y baja volatilidad agrupada."
+            "Los modelos ARCH, GARCH y EGARCH sirven para estudiar volatilidad financiera cambiante en el tiempo. "
+            "Son utiles cuando los rendimientos presentan agrupamientos de volatilidad: periodos tranquilos seguidos de periodos turbulentos. "
+            "En el proyecto se usan para diagnosticar y pronosticar volatilidad condicional."
         ),
         "estadistico": (
-            "El backend compara ARCH(1), GARCH(1,1) y EGARCH(1,1), selecciona el mejor modelo por AIC "
-            "y reporta diagnóstico de residuos y pronóstico de volatilidad."
+            "Estadisticamente, GARCH modela la varianza condicional como funcion de choques pasados y volatilidad pasada. "
+            "El backend compara ARCH, GARCH y EGARCH usando criterios como AIC y BIC, revisa diagnosticos de residuos "
+            "y genera pronosticos de volatilidad."
         ),
         "followups": [
-            "¿Por qué se usa GARCH en series financieras?",
-            "¿Qué significa volatilidad condicional?",
+            "Por que se usa GARCH en series financieras?",
+            "Que significa volatilidad condicional?",
+            "Como se interpreta AIC y BIC en GARCH?",
         ],
     },
     "perri": {
-        "keywords": ["perri", "umbrales", "institucional", "5 activos", "10 activos", "15 activos"],
+        "keywords": [
+            "perri",
+            "umbrales",
+            "institucional",
+            "5 activos",
+            "10 activos",
+            "15 activos",
+            "1y",
+            "3y",
+            "5y",
+            "min_risk",
+            "max_sharpe",
+            "max_return",
+            "seleccion exacta",
+            "selecci?n exacta",
+        ],
         "title": "Perri institucional",
         "source_type": "metodologia",
-        "reference": "Backend PerriOptimizerService: portafolios exactos por tamaño, horizonte y objetivo.",
+        "reference": "Proyecto Integrador Riesgo USTA: PerriOptimizerService y JSON precalculado institucional.",
         "general": (
-            "Perri es la referencia institucional del proyecto. Calcula portafolios exactos de 5, 10 y 15 activos "
-            "para horizontes de 1, 3 y 5 años, usando objetivos de mínimo riesgo, máximo Sharpe y máxima rentabilidad."
+            "Perri es la referencia institucional del proyecto para comparar portafolios. "
+            "Calcula portafolios exactos de 5, 10 y 15 activos para horizontes de 1, 3 y 5 anos. "
+            "Sus objetivos son minimo riesgo, maximo Sharpe y maxima rentabilidad, representados como min_risk, max_sharpe y max_return."
         ),
         "estadistico": (
-            "Perri usa precios persistidos en SQLite, construye retornos por horizonte, selecciona candidatos "
-            "y optimiza pesos bajo restricciones de suma, peso mínimo y peso máximo por activo."
+            "Perri usa precios persistidos en SQLite, construye retornos por horizonte, selecciona candidatos y optimiza pesos. "
+            "La comparacion Markowitz contra Perri permite revisar si el portafolio del usuario supera o no los umbrales institucionales "
+            "en retorno, volatilidad y Sharpe para el mismo tamano y horizonte."
         ),
         "followups": [
-            "¿Cómo se compara Markowitz contra Perri?",
-            "¿Qué significa selección exacta en Perri?",
+            "Como se compara Markowitz contra Perri?",
+            "Que significa seleccion exacta en Perri?",
+            "Que representan min_risk, max_sharpe y max_return?",
         ],
     },
     "black_scholes": {
