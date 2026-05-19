@@ -41,7 +41,7 @@ jobs:
 
       - name: Ejecutar pruebas de Perri
         run: |
-          python -m pytest tests/test_chatbot.py tests/test_chatbot_llm_client.py tests/test_chatbot_scope.py tests/test_chatbot_financial_topics.py tests/test_perri_latest.py tests/test_perri_optimize.py tests/test_perri_horizons.py tests/test_portfolio_perri_comparison.py -q
+          python -m pytest tests/test_chatbot.py tests/test_chatbot_llm_client.py tests/test_chatbot_scope.py tests/test_chatbot_financial_topics.py tests/test_chatbot_risk_knowledge.py tests/test_perri_latest.py tests/test_perri_optimize.py tests/test_perri_horizons.py tests/test_portfolio_perri_comparison.py -q
 
       - name: Validar build Docker del backend
         run: |
