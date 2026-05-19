@@ -18,6 +18,7 @@ from app.api.v1 import (
     portfolio,
     returns_stats,
     risk,
+    stress,
     roboadvisor,
     technical,
     valuation,
@@ -46,4 +47,7 @@ api_router.include_router(persistence.router, prefix="/persistence", tags=["Pers
 api_router.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
 
 api_router.include_router(ml.router, tags=["Machine Learning"])
+
+
+api_router.include_router(stress.router, prefix="/stress", tags=["Stress Testing"])
 
