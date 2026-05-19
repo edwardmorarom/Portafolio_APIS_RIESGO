@@ -15,40 +15,31 @@ class PerriOptimizerService:
     """
     Optimizador institucional de Perri.
 
-    Lee precios persistidos en SQLite y calcula portafolios automáticos por:
-    - Horizonte: 1, 3 y 5 años.
-    - Tamaño: 5 y 10 activos.
-    - Objetivo: mínimo riesgo, máxima rentabilidad, balanceado y máximo Sharpe.
+    Calcula portafolios exactos de 5, 10 y 15 activos para:
+    - Menor riesgo.
+    - Máximo Sharpe.
+    - Máxima rentabilidad.
 
-    Cada portafolio incluye:
-    - Retorno esperado anual.
-    - Volatilidad anual.
-    - Sharpe.
-    - Beta del portafolio.
-    - Alpha anual del portafolio.
-    - Benchmark usado.
-    - Pesos por activo.
-    - Distribución de pesos por clase de activo.
+    Los resultados sirven como umbrales de comparación para el módulo Markowitz.
     """
 
     ALLOWED_ASSET_TYPES = {"renta_variable", "renta_fija"}
     HORIZONS = (1, 3, 5)
     PORTFOLIO_SIZES = (5, 10, 15)
+    OBJECTIVES = ("min_risk", "max_sharpe", "max_return")
     BENCHMARK_CANDIDATES = ("ACWI", "SPY")
 
     def __init__(
         self,
-        max_candidate_assets: int = 15,
         min_observations: int = 200,
         trading_days: int = 252,
-        max_weight: float = 0.35,
-        min_visible_weight: float = 0.005,
+        min_weight_per_asset: float = 0.01,
+        max_weight_per_asset: float = 0.35,
     ) -> None:
-        self.max_candidate_assets = max_candidate_assets
         self.min_observations = min_observations
         self.trading_days = trading_days
-        self.max_weight = max_weight
-        self.min_visible_weight = min_visible_weight
+        self.min_weight_per_asset = min_weight_per_asset
+        self.max_weight_per_asset = max_weight_per_asset
 
     def _get_end_date(self, db: Session, end: str | None) -> pd.Timestamp:
         if end is not None:
@@ -121,9 +112,7 @@ class PerriOptimizerService:
         }
 
         series = pd.Series(data, name=asset.ticker).sort_index()
-        series = pd.to_numeric(series, errors="coerce").dropna()
-
-        return series
+        return pd.to_numeric(series, errors="coerce").dropna()
 
     def _to_returns(self, close: pd.Series) -> pd.Series:
         if close.empty:
@@ -151,7 +140,6 @@ class PerriOptimizerService:
                 start_date=start_date,
                 end_date=end_date,
             )
-
             returns = self._to_returns(close)
 
             if len(returns) >= self.min_observations:
@@ -221,25 +209,44 @@ class PerriOptimizerService:
 
         return metrics
 
+    def _candidate_sets(self, metrics: pd.DataFrame, portfolio_size: int) -> dict[str, list[str]]:
+        size = int(portfolio_size)
+
+        if len(metrics) < size:
+            raise ValueError(
+                f"No hay suficientes activos válidos para construir un portafolio exacto de {size} activos."
+            )
+
+        return {
+            "min_risk": (
+                metrics.sort_values("volatility_annual", ascending=True)
+                .head(size)["ticker"]
+                .tolist()
+            ),
+            "max_sharpe": (
+                metrics.sort_values("sharpe", ascending=False)
+                .head(size)["ticker"]
+                .tolist()
+            ),
+            "max_return": (
+                metrics.sort_values("expected_return_annual", ascending=False)
+                .head(size)["ticker"]
+                .tolist()
+            ),
+        }
+
     def _build_aligned_returns_matrix(
         self,
         tickers: list[str],
         returns_by_asset: dict[str, pd.Series],
     ) -> pd.DataFrame:
-        selected = [
-            returns_by_asset[ticker]
-            for ticker in tickers
-            if ticker in returns_by_asset
-        ]
+        selected = [returns_by_asset[ticker] for ticker in tickers if ticker in returns_by_asset]
 
-        if not selected:
-            raise ValueError("No hay series seleccionadas para construir matriz de retornos.")
+        if len(selected) != len(tickers):
+            raise ValueError("No todas las series seleccionadas están disponibles.")
 
         matrix = pd.concat(selected, axis=1).dropna()
         matrix = matrix.replace([np.inf, -np.inf], np.nan).dropna()
-
-        if matrix.empty:
-            raise ValueError("La matriz alineada de rendimientos quedó vacía.")
 
         if len(matrix) < self.min_observations:
             raise ValueError(
@@ -336,101 +343,6 @@ class PerriOptimizerService:
             "benchmark_return_annual": benchmark_return_annual,
         }
 
-    def _normalize_for_score(self, values: pd.Series, higher_is_better: bool = True) -> pd.Series:
-        clean = pd.to_numeric(values, errors="coerce").replace([np.inf, -np.inf], np.nan)
-
-        if clean.dropna().empty:
-            return pd.Series(0.0, index=values.index)
-
-        min_value = float(clean.min())
-        max_value = float(clean.max())
-
-        if np.isclose(min_value, max_value):
-            return pd.Series(0.5, index=values.index)
-
-        normalized = (clean - min_value) / (max_value - min_value)
-
-        if not higher_is_better:
-            normalized = 1.0 - normalized
-
-        return normalized.fillna(0.0)
-
-    def _rank_balanced_candidates(self, metrics: pd.DataFrame) -> list[str]:
-        scored = metrics.copy()
-
-        scored["return_score"] = self._normalize_for_score(
-            scored["expected_return_annual"],
-            higher_is_better=True,
-        )
-        scored["risk_score"] = self._normalize_for_score(
-            scored["volatility_annual"],
-            higher_is_better=False,
-        )
-        scored["sharpe_score"] = self._normalize_for_score(
-            scored["sharpe"],
-            higher_is_better=True,
-        )
-
-        scored["balanced_score"] = (
-            0.40 * scored["sharpe_score"]
-            + 0.35 * scored["return_score"]
-            + 0.25 * scored["risk_score"]
-        )
-
-        return scored.sort_values("balanced_score", ascending=False)["ticker"].tolist()
-
-    def _candidate_sets(
-        self,
-        metrics: pd.DataFrame,
-        portfolio_size: int,
-    ) -> dict[str, list[str]]:
-        size = int(portfolio_size)
-
-        min_risk = (
-            metrics.sort_values("volatility_annual", ascending=True)
-            .head(size)["ticker"]
-            .tolist()
-        )
-
-        max_return = (
-            metrics.sort_values("expected_return_annual", ascending=False)
-            .head(size)["ticker"]
-            .tolist()
-        )
-
-        max_sharpe = (
-            metrics.sort_values("sharpe", ascending=False)
-            .head(size)["ticker"]
-            .tolist()
-        )
-
-        ranked_balanced = self._rank_balanced_candidates(metrics)
-
-        # Balanceado: fuerza una canasta candidata mixta.
-        # Toma activos defensivos de min_risk y activos rentables/eficientes del ranking balanceado.
-        defensive_slots = max(1, int(round(size * 0.4)))
-        growth_slots = size - defensive_slots
-
-        balanced: list[str] = []
-
-        for ticker in min_risk[:defensive_slots]:
-            if ticker not in balanced:
-                balanced.append(ticker)
-
-        for ticker in ranked_balanced:
-            if ticker not in balanced:
-                balanced.append(ticker)
-
-            if len(balanced) >= defensive_slots + growth_slots:
-                break
-
-        return {
-            "min_risk": min_risk,
-            "max_return": max_return,
-            "max_sharpe": max_sharpe,
-            "balanced": balanced[:size],
-        }
-
     def _distribution_by_asset_type(
         self,
         tickers: list[str],
@@ -447,7 +359,7 @@ class PerriOptimizerService:
 
     def _weights_payload(self, tickers: list[str], weights: np.ndarray) -> list[dict[str, float | str]]:
         cleaned = np.asarray(weights, dtype=float)
-        cleaned[np.abs(cleaned) < 1e-8] = 0.0
+        cleaned[np.abs(cleaned) < 1e-10] = 0.0
 
         total = float(cleaned.sum())
         if total > 0:
@@ -459,7 +371,6 @@ class PerriOptimizerService:
                 "weight": float(cleaned[i]),
             }
             for i in range(len(tickers))
-            if float(cleaned[i]) >= self.min_visible_weight
         ]
 
         return sorted(payload, key=lambda item: float(item["weight"]), reverse=True)
@@ -472,12 +383,15 @@ class PerriOptimizerService:
         asset_type_by_ticker: dict[str, str | None],
         benchmark_ticker: str | None,
         benchmark_returns: pd.Series,
-        volatility_cap: float | None = None,
-        min_fixed_income_weight: float | None = None,
-        max_equity_weight: float | None = None,
     ) -> dict:
         tickers = list(returns_matrix.columns)
         num_assets = len(tickers)
+
+        if num_assets * self.min_weight_per_asset > 1:
+            raise ValueError("El peso mínimo por activo hace inviable la suma de pesos.")
+
+        if num_assets * self.max_weight_per_asset < 1:
+            raise ValueError("El peso máximo por activo hace inviable la suma de pesos.")
 
         mean_daily = returns_matrix.mean()
         cov_daily = returns_matrix.cov()
@@ -493,65 +407,19 @@ class PerriOptimizerService:
             if objective_name == "min_risk":
                 return float(metrics["volatility_annual"])
 
+            if objective_name == "max_sharpe":
+                return -float(metrics["sharpe"])
+
             if objective_name == "max_return":
                 return -float(metrics["expected_return_annual"])
-
-            if objective_name in {"max_sharpe", "balanced"}:
-                return -float(metrics["sharpe"])
 
             raise ValueError(f"Objetivo no soportado: {objective_name}")
 
         constraints = [{"type": "eq", "fun": lambda weights: np.sum(weights) - 1.0}]
-
-        if volatility_cap is not None:
-            constraints.append(
-                {
-                    "type": "ineq",
-                    "fun": lambda weights: float(
-                        volatility_cap
-                        - self._portfolio_metrics(
-                            weights=weights,
-                            mean_daily=mean_daily,
-                            cov_daily=cov_daily,
-                            rf_annual=rf_annual,
-                        )["volatility_annual"]
-                    ),
-                }
-            )
-
-        fixed_income_indexes = [
-            index
-            for index, ticker in enumerate(tickers)
-            if asset_type_by_ticker.get(ticker) == "renta_fija"
-        ]
-
-        equity_indexes = [
-            index
-            for index, ticker in enumerate(tickers)
-            if asset_type_by_ticker.get(ticker) == "renta_variable"
-        ]
-
-        if min_fixed_income_weight is not None and fixed_income_indexes:
-            constraints.append(
-                {
-                    "type": "ineq",
-                    "fun": lambda weights: float(
-                        np.sum(weights[fixed_income_indexes]) - min_fixed_income_weight
-                    ),
-                }
-            )
-
-        if max_equity_weight is not None and equity_indexes:
-            constraints.append(
-                {
-                    "type": "ineq",
-                    "fun": lambda weights: float(
-                        max_equity_weight - np.sum(weights[equity_indexes])
-                    ),
-                }
-            )
-
-        bounds = tuple((0.0, self.max_weight) for _ in range(num_assets))
+        bounds = tuple(
+            (self.min_weight_per_asset, self.max_weight_per_asset)
+            for _ in range(num_assets)
+        )
         init_guess = np.repeat(1.0 / num_assets, num_assets)
 
         result = minimize(
@@ -562,28 +430,12 @@ class PerriOptimizerService:
             constraints=constraints,
         )
 
-        fallback_used = False
-
-        if not result.success and volatility_cap is not None:
-            fallback_used = True
-            constraints = [{"type": "eq", "fun": lambda weights: np.sum(weights) - 1.0}]
-            result = minimize(
-                objective,
-                init_guess,
-                method="SLSQP",
-                bounds=bounds,
-                constraints=constraints,
-            )
-
         if not result.success:
             raise ValueError(f"No fue posible optimizar {objective_name}: {result.message}")
 
         weights = np.asarray(result.x, dtype=float)
-        weights[np.abs(weights) < 1e-8] = 0.0
-
-        total_weight = float(weights.sum())
-        if total_weight > 0:
-            weights = weights / total_weight
+        weights[np.abs(weights) < 1e-10] = 0.0
+        weights = weights / float(weights.sum())
 
         metrics = self._portfolio_metrics(
             weights=weights,
@@ -600,16 +452,13 @@ class PerriOptimizerService:
             rf_annual=rf_annual,
         )
 
-        visible_weights = self._weights_payload(tickers=tickers, weights=weights)
-        selected_weight_sum = float(sum(item["weight"] for item in visible_weights))
+        weights_payload = self._weights_payload(tickers=tickers, weights=weights)
 
         return {
             "objective": objective_name,
-            "max_assets_allowed": int(num_assets),
-            "portfolio_size": int(len(visible_weights)),
-            "selected_assets_count": int(len(visible_weights)),
-            "selected_weight_sum": selected_weight_sum,
-            "min_visible_weight": float(self.min_visible_weight),
+            "portfolio_size": int(num_assets),
+            "selected_assets_count": int(len(weights_payload)),
+            "selection_mode": "exact",
             "assets_used": tickers,
             "observations": int(len(returns_matrix)),
             "expected_return_annual": metrics["expected_return_annual"],
@@ -622,23 +471,16 @@ class PerriOptimizerService:
             "benchmark_return_annual": capm["benchmark_return_annual"],
             "constraints": {
                 "long_only": True,
-                "max_weight": float(self.max_weight),
-                "min_visible_weight": float(self.min_visible_weight),
-                "volatility_cap": float(volatility_cap) if volatility_cap is not None else None,
-                "min_fixed_income_weight": (
-                    float(min_fixed_income_weight) if min_fixed_income_weight is not None else None
-                ),
-                "max_equity_weight": (
-                    float(max_equity_weight) if max_equity_weight is not None else None
-                ),
-                "fallback_without_volatility_cap": fallback_used,
+                "exact_assets": int(num_assets),
+                "min_weight_per_asset": float(self.min_weight_per_asset),
+                "max_weight_per_asset": float(self.max_weight_per_asset),
             },
             "weight_distribution_by_asset_type": self._distribution_by_asset_type(
                 tickers=tickers,
                 weights=weights,
                 asset_type_by_ticker=asset_type_by_ticker,
             ),
-            "weights": visible_weights,
+            "weights": weights_payload,
             "optimization_status": str(result.message),
         }
 
@@ -657,64 +499,30 @@ class PerriOptimizerService:
             portfolio_size=portfolio_size,
         )
 
-        matrices = {
-            objective: self._build_aligned_returns_matrix(
+        portfolios = {}
+
+        for objective_name, tickers in candidates.items():
+            matrix = self._build_aligned_returns_matrix(
                 tickers=tickers,
                 returns_by_asset=returns_by_asset,
             )
-            for objective, tickers in candidates.items()
-        }
 
-        min_risk = self._optimize_once(
-            returns_matrix=matrices["min_risk"],
-            rf_annual=rf_annual,
-            objective_name="min_risk",
-            asset_type_by_ticker=asset_type_by_ticker,
-            benchmark_ticker=benchmark_ticker,
-            benchmark_returns=benchmark_returns,
-        )
-
-        max_return = self._optimize_once(
-            returns_matrix=matrices["max_return"],
-            rf_annual=rf_annual,
-            objective_name="max_return",
-            asset_type_by_ticker=asset_type_by_ticker,
-            benchmark_ticker=benchmark_ticker,
-            benchmark_returns=benchmark_returns,
-        )
-
-        max_sharpe = self._optimize_once(
-            returns_matrix=matrices["max_sharpe"],
-            rf_annual=rf_annual,
-            objective_name="max_sharpe",
-            asset_type_by_ticker=asset_type_by_ticker,
-            benchmark_ticker=benchmark_ticker,
-            benchmark_returns=benchmark_returns,
-        )
-
-        balanced_volatility_cap = (
-            min_risk["volatility_annual"] + max_sharpe["volatility_annual"]
-        ) / 2.0
-
-        balanced = self._optimize_once(
-            returns_matrix=matrices["balanced"],
-            rf_annual=rf_annual,
-            objective_name="balanced",
-            asset_type_by_ticker=asset_type_by_ticker,
-            benchmark_ticker=benchmark_ticker,
-            benchmark_returns=benchmark_returns,
-            volatility_cap=balanced_volatility_cap,
-            min_fixed_income_weight=0.30,
-            max_equity_weight=0.70,
-        )
+            portfolios[objective_name] = self._optimize_once(
+                returns_matrix=matrix,
+                rf_annual=rf_annual,
+                objective_name=objective_name,
+                asset_type_by_ticker=asset_type_by_ticker,
+                benchmark_ticker=benchmark_ticker,
+                benchmark_returns=benchmark_returns,
+            )
 
         return {
             "portfolio_size": int(portfolio_size),
+            "selection_mode": "exact",
             "candidates": candidates,
-            "min_risk": min_risk,
-            "max_return": max_return,
-            "balanced": balanced,
-            "max_sharpe": max_sharpe,
+            "min_risk": portfolios["min_risk"],
+            "max_sharpe": portfolios["max_sharpe"],
+            "max_return": portfolios["max_return"],
         }
 
     def _optimize_for_horizon(
@@ -804,15 +612,14 @@ class PerriOptimizerService:
         if primary_horizon_key not in horizons:
             primary_horizon_key = "5y"
 
-        primary = horizons[primary_horizon_key]["portfolio_sizes"]["10"]
+        primary = horizons[primary_horizon_key]["portfolio_sizes"]["15"]
 
         return {
             "status": "ok",
             "methodology": (
                 "Markowitz sobre precios persistidos en SQLite, base USD, universo Perri "
-                "renta variable y renta fija. Calcula horizontes 1, 3 y 5 años para "
-                "portafolios de 5 y 10 activos, incluyendo beta y alpha frente al "
-                "benchmark disponible en SQLite."
+                "renta variable y renta fija. Calcula portafolios exactos de 5, 10 y 15 "
+                "activos para menor riesgo, máximo Sharpe y máxima rentabilidad."
             ),
             "requested_history_years": int(history_years),
             "history_years": int(history_years),
@@ -820,10 +627,11 @@ class PerriOptimizerService:
             "eligible_assets": int(len(assets)),
             "allowed_asset_types": sorted(self.ALLOWED_ASSET_TYPES),
             "portfolio_sizes": list(self.PORTFOLIO_SIZES),
+            "objectives": list(self.OBJECTIVES),
             "horizon_keys": list(horizons.keys()),
             "benchmark_candidates": list(self.BENCHMARK_CANDIDATES),
-            "max_weight": float(self.max_weight),
-            "min_visible_weight": float(self.min_visible_weight),
+            "min_weight_per_asset": float(self.min_weight_per_asset),
+            "max_weight_per_asset": float(self.max_weight_per_asset),
             "asset_type_distribution": {
                 asset_type: list(asset_type_by_ticker.values()).count(asset_type)
                 for asset_type in sorted(set(asset_type_by_ticker.values()))
@@ -835,7 +643,6 @@ class PerriOptimizerService:
             "start": horizons[primary_horizon_key]["start"],
             "end": horizons[primary_horizon_key]["end"],
             "min_risk": primary["min_risk"],
-            "max_return": primary["max_return"],
-            "balanced": primary["balanced"],
             "max_sharpe": primary["max_sharpe"],
+            "max_return": primary["max_return"],
         }
