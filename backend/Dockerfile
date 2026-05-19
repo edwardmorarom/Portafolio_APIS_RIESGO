@@ -1,7 +1,10 @@
-﻿FROM python:3.11-slim
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV APP_ENV=production
+ENV DEBUG=false
+ENV DATABASE_URL=sqlite:///./data/portafolio_riesgo.db
 
 WORKDIR /app
 
@@ -14,6 +17,9 @@ COPY backend /app/backend
 COPY roboadvisor_cache.csv /app/roboadvisor_cache.csv
 
 WORKDIR /app/backend
+
+RUN python -m app.db.seed_db \
+    && python -m app.db.import_perri_prices
 
 EXPOSE 8000
 
