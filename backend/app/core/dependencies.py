@@ -106,9 +106,9 @@ def get_alerts_service(client: MarketClient = Depends(get_market_client)) -> Ale
 def get_garch_service(client: MarketClient = Depends(get_market_client)) -> GarchService:
     return GarchService(client=client)
 
-def get_chatbot_service() -> ChatbotService:
-    return ChatbotService()
-
-
 def get_llm_client(settings: Settings = Depends(get_app_settings)) -> LLMClient:
     return LLMClient(settings=settings)
+
+
+def get_chatbot_service(llm_client: LLMClient = Depends(get_llm_client)) -> ChatbotService:
+    return ChatbotService(llm_client=llm_client)

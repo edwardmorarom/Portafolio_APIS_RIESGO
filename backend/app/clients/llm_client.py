@@ -12,19 +12,14 @@ class LLMClient:
     - Lee configuración desde Settings.
     - Permite detectar si el modo IA está habilitado.
     - Mantiene el modo local como fallback seguro.
-
-    Uso futuro:
-    - Conectar OpenAI, Azure OpenAI, Gemini u otro proveedor compatible.
-    - Enviar contexto controlado desde la base de conocimiento.
-    - Evitar quemar claves en código.
     """
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.provider = settings.LLM_PROVIDER.strip().lower()
-        self.model = settings.LLM_MODEL.strip()
-        self.api_key = settings.LLM_API_KEY
-        self.base_url = settings.LLM_BASE_URL
+        self.provider = settings.llm_provider.strip().lower()
+        self.model = settings.llm_model.strip()
+        self.api_key = settings.llm_api_key
+        self.base_url = settings.llm_base_url
 
     def is_enabled(self) -> bool:
         return self.provider != "local" and bool(self.api_key)

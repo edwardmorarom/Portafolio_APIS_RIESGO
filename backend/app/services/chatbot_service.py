@@ -2,16 +2,18 @@
 
 import re
 
+from app.clients.llm_client import LLMClient
+
 
 class ChatbotService:
     """
     Servicio base del chatbot experto en teoría del riesgo.
 
-    Esta primera versión funciona como motor experto local:
-    - Detecta temas financieros por palabras clave.
-    - Responde con conocimiento controlado del proyecto.
-    - Devuelve fuentes internas.
-    - Queda preparado para conectar un proveedor IA/LLM después.
+    Esta versión:
+    - Mantiene motor experto local como fallback seguro.
+    - Recibe LLMClient por inyección de dependencias.
+    - Solo usa IA real si LLMClient está habilitado y retorna respuesta.
+    - Evita llamadas externas cuando LLM_PROVIDER=local.
     """
 
     KNOWLEDGE_BASE = {
@@ -164,6 +166,9 @@ class ChatbotService:
         },
     }
 
+    def __init__(self, llm_client: LLMClient | None = None) -> None:
+        self.llm_client = llm_client
+
     def _normalize(self, text: str) -> str:
         value = text.strip().lower()
         value = re.sub(r"\s+", " ", value)
@@ -184,6 +189,15 @@ class ChatbotService:
                     detected.append(topic)
 
         return detected
+
+    def _build_llm_context(self, topic: str, payload: dict, local_answer: str) -> str:
+        return (
+            f"Tema detectado: {topic}\n"
+            f"Fuente interna: {payload['title']}\n"
+            f"Tipo de fuente: {payload['source_type']}\n"
+            f"Referencia: {payload['reference']}\n"
+            f"Respuesta base local: {local_answer}"
+        )
 
     def answer_question(
         self,
@@ -223,7 +237,23 @@ class ChatbotService:
         selected_topic = topics[0]
         payload = self.KNOWLEDGE_BASE[selected_topic]
 
-        answer = payload["estadistico"] if normalized_mode == "estadistico" else payload["general"]
+        local_answer = payload["estadistico"] if normalized_mode == "estadistico" else payload["general"]
+        answer = local_answer
+
+        if self.llm_client is not None:
+            context = self._build_llm_context(
+                topic=selected_topic,
+                payload=payload,
+                local_answer=local_answer,
+            )
+            llm_answer = self.llm_client.generate_answer(
+                question=normalized_question,
+                context=context,
+                mode=normalized_mode,
+            )
+
+            if llm_answer:
+                answer = llm_answer
 
         sources = [
             {
