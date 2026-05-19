@@ -65,22 +65,36 @@ CHATBOT_KNOWLEDGE_BASE = {
         ],
     },
     "capm": {
-        "keywords": ["capm", "beta", "alpha", "alfa", "retorno esperado", "mercado"],
+        "keywords": [
+            "capm",
+            "beta",
+            "alpha",
+            "alfa",
+            "r2",
+            "r cuadrado",
+            "retorno esperado",
+            "mercado",
+            "benchmark",
+            "tasa libre de riesgo",
+        ],
         "title": "CAPM",
         "source_type": "modulo",
-        "reference": "Backend CAPM: beta, alpha, retorno esperado y R².",
+        "reference": "Proyecto Integrador Riesgo USTA: modulo CAPM por activo y por portafolio.",
         "general": (
-            "El CAPM relaciona el retorno esperado de un activo con su exposición al mercado. "
-            "La beta mide sensibilidad frente al benchmark: menor que 1 suele indicar comportamiento defensivo, "
-            "cercana a 1 comportamiento similar al mercado y mayor que 1 mayor agresividad."
+            "El CAPM explica el retorno esperado de un activo o portafolio a partir de su exposicion al mercado. "
+            "La beta mide sensibilidad frente al benchmark: una beta menor que 1 suele indicar comportamiento defensivo, "
+            "una beta cercana a 1 indica comportamiento similar al mercado y una beta mayor que 1 indica mayor agresividad. "
+            "El alpha permite evaluar si el activo o portafolio obtuvo un rendimiento adicional frente a lo esperado por el modelo."
         ),
         "estadistico": (
-            "En el proyecto, CAPM estima beta mediante covarianza entre el activo y el benchmark dividida "
-            "por la varianza del benchmark. También calcula alpha, R² y retorno esperado usando tasa libre de riesgo."
+            "Estadisticamente, CAPM estima beta como la covarianza entre los rendimientos del activo y del benchmark dividida "
+            "por la varianza del benchmark. El modelo tambien calcula alpha, R2 y retorno esperado usando la tasa libre de riesgo "
+            "y la prima de mercado. En el proyecto se usa para analizar activos individuales y portafolios."
         ),
         "followups": [
-            "¿Cómo se interpreta una beta mayor que 1?",
-            "¿Qué significa alpha positivo en CAPM?",
+            "Como se interpreta una beta mayor que 1?",
+            "Que significa un alpha positivo en CAPM?",
+            "Para que sirve el R2 en una regresion CAPM?",
         ],
     },
     "markowitz": {
