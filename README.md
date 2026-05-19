@@ -1,64 +1,74 @@
-# Portafolio Riesgo USTA
+﻿# Portafolio Riesgo USTA
 
-Backend FastAPI y dashboard Streamlit para análisis integral de portafolios financieros, teoría del riesgo, valoración, optimización y automatización institucional de Perri.
+Backend FastAPI y dashboard Streamlit para analisis integral de portafolios financieros, teoria del riesgo, valoracion de activos, optimizacion, Machine Learning, RoboAdvisor, KYC, stress testing y automatizacion institucional Perri.
 
-El proyecto permite consultar activos, precios históricos, rendimientos, indicadores técnicos, VaR/CVaR, CAPM, Markowitz, GARCH, señales técnicas, análisis macroeconómico, benchmark, RoboAdvisor y optimización automática de portafolios con persistencia en SQLite.
+El proyecto permite consultar activos, precios historicos, rendimientos, indicadores tecnicos, VaR/CVaR, CAPM, Markowitz, GARCH, senales tecnicas, analisis macroeconomico, benchmark, renta fija, opciones, stress testing, Machine Learning y RoboAdvisor con persistencia en SQLite.
 
 ---
 
 ## 1. Objetivo del proyecto
 
-Construir una arquitectura modular y reproducible para analizar portafolios financieros internacionales desde una perspectiva cuantitativa, estadística y de riesgo.
+Construir una arquitectura modular, reproducible y desplegable para analizar portafolios financieros internacionales desde una perspectiva cuantitativa, estadistica y de riesgo.
 
-El sistema está dividido en dos capas principales:
+El sistema esta dividido en dos capas principales:
 
-- **Backend FastAPI**: concentra lógica financiera, validación, persistencia, servicios de negocio, endpoints, jobs, automatización y pruebas.
-- **Frontend Streamlit**: consume la API y presenta módulos visuales para interpretación financiera y toma de decisiones.
+- Backend FastAPI: concentra logica financiera, validacion, persistencia, servicios de negocio, endpoints, jobs, automatizacion, Machine Learning, Docker, CI/CD y pruebas.
+- Frontend Streamlit: consume la API y presenta modulos visuales para interpretacion financiera y toma de decisiones.
 
 ---
 
-## 2. Estado técnico actual
+## 2. Estado tecnico actual
 
 El proyecto incluye actualmente:
 
 - FastAPI modular.
 - Streamlit modular.
-- Pydantic y Pydantic Settings.
+- Pydantic v2.
+- Pydantic Settings.
 - SQLAlchemy 2.x.
 - SQLite local.
 - Persistencia de activos.
-- Persistencia de precios históricos.
+- Persistencia de precios historicos.
 - Lectura de precios desde SQLite con fallback a proveedor externo.
 - Universo Perri institucional.
-- Optimización automática de Perri con horizontes exactos `1y`, `3y` y `5y`.
-- Portafolios Perri exactos de `5`, `10` y `15` activos.
-- Objetivos Perri `min_risk`, `max_sharpe` y `max_return`.
-- Job para guardar la última optimización en JSON.
+- Optimizacion automatica de Perri con horizontes 1y, 3y y 5y.
+- Portafolios Perri de 5, 10 y 15 activos.
+- Objetivos Perri: min_risk, max_sharpe y max_return.
+- Job para guardar la ultima optimizacion en JSON.
 - GitHub Actions para CI.
-- GitHub Actions programado para actualización de Perri.
+- GitHub Actions programado para actualizacion de Perri.
 - Dockerfile del backend.
-- `docker-compose.yml`.
-- Tests con `pytest` y `TestClient`.
-- Nelson-Siegel.
-- Black-Scholes.
+- docker-compose.yml.
+- Tests con pytest y TestClient.
+- Machine Learning con train, joblib, Singleton y endpoint predictivo.
+- Modelo ML persistido en backend/app/ml/model.joblib.
+- Endpoints /api/v1/ml/status y /api/v1/ml/predict.
+- Nelson-Siegel para curva de rendimiento.
+- Metricas de bono: precio, duracion Macaulay, duracion modificada y convexidad.
+- Black-Scholes para opciones europeas.
+- Cinco Greeks: delta, gamma, vega, theta y rho.
+- Paridad put-call validada por test.
+- Stress testing con shocks de tasa, mercado y volatilidad.
 - CAPM.
 - Markowitz.
 - VaR/CVaR.
+- Backtesting Kupiec.
 - GARCH.
+- Macro y benchmark.
 - RoboAdvisor.
-- Dashboard Streamlit.
-- Login básico.
+- Login basico.
 - KYC / preferencias de inversionista.
+- Dashboard Streamlit con paginas 0 a 12.
 
 Pendiente o parcial:
 
-- ML Singleton predictivo real con endpoint `/predict`.
+- Deploy final backend.
+- Deploy final frontend.
+- Chatbot con IA externa integrada.
 - Admin dashboard completo.
-- Reportes PDF.
 - Roles robustos.
-- Deploy PaaS final.
-- Más pruebas unitarias por módulo.
-- Validación final del runtime Docker con `/health`.
+- Reportes PDF.
+- Informe ejecutivo final.
 
 ---
 
@@ -76,20 +86,22 @@ portafolio-riesgo/
 │   │   ├── db/
 │   │   ├── domain/
 │   │   ├── jobs/
+│   │   ├── ml/
 │   │   ├── schemas/
 │   │   ├── services/
 │   │   └── main.py
 │   ├── data/
 │   ├── requirements.txt
-│   ├── runtime.txt
-│   ├── update_cache.py
 │   └── Dockerfile
 ├── frontend/
+│   ├── .streamlit/
+│   ├── assets/
 │   ├── pages/
 │   ├── services/
 │   ├── ui/
 │   ├── app.py
-│   └── config.py
+│   ├── config.py
+│   └── requirements.txt
 ├── tests/
 ├── docs/
 ├── .github/workflows/
@@ -97,14 +109,13 @@ portafolio-riesgo/
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
-├── requirements.txt
 ├── roboadvisor_cache.csv
 └── README.md
 ```
 
 ---
 
-## 4. Tecnologías principales
+## 4. Tecnologias principales
 
 ### Backend
 
@@ -120,6 +131,8 @@ portafolio-riesgo/
 - scipy.
 - yfinance.
 - arch.
+- scikit-learn.
+- joblib.
 - pytest.
 - httpx.
 
@@ -128,6 +141,7 @@ portafolio-riesgo/
 - Streamlit.
 - Plotly.
 - pandas.
+- numpy.
 - requests.
 
 ### DevOps
@@ -135,26 +149,30 @@ portafolio-riesgo/
 - Docker.
 - Docker Compose.
 - GitHub Actions.
+- Streamlit Cloud para frontend.
+- Render o Railway sugerido para backend.
 
 ---
 
 ## 5. Arquitectura del backend
 
-El backend está organizado por responsabilidades.
+El backend esta organizado por responsabilidades:
 
 ```text
 backend/app/
 ├── api/          # Routers FastAPI
 ├── clients/      # Clientes externos: mercado y macro
-├── core/         # Configuración, seguridad, excepciones, dependencias
+├── core/         # Configuracion, seguridad, excepciones y dependencias
 ├── db/           # SQLAlchemy, modelos, seeders e importadores
+├── domain/       # Constantes o reglas de dominio
 ├── jobs/         # Jobs ejecutables manualmente o por GitHub Actions
+├── ml/           # Entrenamiento, modelo joblib y predictor Singleton
 ├── schemas/      # Contratos Pydantic
-├── services/     # Lógica de negocio y modelos financieros
+├── services/     # Logica de negocio y modelos financieros
 └── main.py       # Entrada principal FastAPI
 ```
 
-Regla de diseño:
+Regla de diseno:
 
 ```text
 Routers reciben y responden.
@@ -178,13 +196,13 @@ backend/app/main.py
 
 Responsabilidades:
 
-- Crear instancia `FastAPI`.
+- Crear instancia FastAPI.
 - Configurar CORS.
-- Inicializar SQLite mediante `lifespan`.
+- Inicializar SQLite mediante lifespan.
 - Registrar manejador de excepciones.
-- Registrar endpoint raíz.
+- Registrar endpoint raiz.
 - Registrar health check.
-- Montar `api_router`.
+- Montar api_router.
 
 Endpoints base:
 
@@ -193,77 +211,48 @@ GET /
 GET /health
 ```
 
-La inicialización de base de datos usa:
+Documentacion local:
 
 ```text
-init_db()
+http://127.0.0.1:8000/docs
+http://127.0.0.1:8000/redoc
 ```
-
-Esto crea las tablas SQLAlchemy al iniciar la aplicación.
 
 ---
 
-## 7. Configuración
+## 7. Variables de entorno
 
-Archivo:
-
-```text
-backend/app/core/settings.py
-```
-
-Clase principal:
-
-```python
-class Settings(BaseSettings)
-```
+Usar `.env.example` como plantilla.
 
 Variables principales:
 
-```env
-APP_NAME=Portafolio Riesgo API
-APP_VERSION=0.1.0
-APP_ENV=dev
-DEBUG=true
-API_V1_PREFIX=/api/v1
-DATABASE_URL=sqlite:///./data/portafolio_riesgo.db
-DEFAULT_START_DATE=2021-01-01
-DEFAULT_END_DATE=2026-12-31
-GLOBAL_BENCHMARK=ACWI
-DEFAULT_BASE_CURRENCY=USD
-FRED_API_KEY=
-FRONTEND_BASE_URL=http://localhost:8501
-ALLOWED_ORIGINS=http://localhost:8501,http://127.0.0.1:8501
-MIN_OBS_VAR=60
-MIN_OBS_CAPM=60
-MIN_OBS_PORTFOLIO=60
-```
-
-El proyecto usa `get_settings()` con cache para evitar recrear configuración en cada request.
-
----
-
-## 8. Variables de entorno
-
-Crear `.env` desde `.env.example`.
-
-En PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-Copy-Item .env backend\.env
-```
-
-No subir `.env` al repositorio.
-
----
-
-## 9. Routers disponibles
-
-Todos los routers se registran en:
-
 ```text
-backend/app/api/router.py
+APP_ENV
+DEBUG
+DATABASE_URL
+ALLOWED_ORIGINS
+INTERNAL_API_KEY
+FRED_API_KEY
+ALPHAVANTAGE_API_KEY
+BACKEND_BASE_URL
+BACKEND_API_PREFIX
+BACKEND_TIMEOUT_SECONDS
 ```
+
+En Streamlit Cloud, configurar secrets:
+
+```toml
+BACKEND_BASE_URL = "URL_PUBLICA_BACKEND"
+BACKEND_API_PREFIX = "/api/v1"
+BACKEND_TIMEOUT_SECONDS = "30"
+INTERNAL_API_KEY = "valor_seguro"
+```
+
+No subir archivos `.env` ni `frontend/.streamlit/secrets.toml`.
+
+---
+
+## 8. Routers disponibles
 
 Prefijo general:
 
@@ -289,14 +278,17 @@ Routers principales:
 /api/v1/alerts
 /api/v1/garch
 /api/v1/valuation
+/api/v1/stress
+/api/v1/ml
 /api/v1/roboadvisor
 /api/v1/perri
 /api/v1/persistence
+/api/v1/chatbot
 ```
 
 ---
 
-## 10. Endpoints principales
+## 9. Endpoints relevantes
 
 ### Root y health
 
@@ -305,106 +297,30 @@ GET /
 GET /health
 ```
 
-### Assets
+### Machine Learning
 
 ```text
-GET /api/v1/assets/
-GET /api/v1/assets/search?q={query}
-GET /api/v1/assets/summary
+GET  /api/v1/ml/status
+POST /api/v1/ml/predict
 ```
 
-### Market
-
-```text
-GET /api/v1/market/prices/{ticker}
-GET /api/v1/market/returns/{ticker}
-```
-
-### Technical
-
-```text
-GET /api/v1/technical/indicators/{ticker}
-```
-
-### Returns Stats
-
-```text
-GET /api/v1/returns-stats/summary/{ticker}
-```
-
-### GARCH
-
-```text
-GET /api/v1/garch/{ticker}
-```
-
-### CAPM
-
-```text
-GET /api/v1/capm/{ticker}
-POST /api/v1/capm/portfolio
-```
-
-### Risk
-
-```text
-POST /api/v1/risk/var
-```
-
-### Portfolio
-
-```text
-POST /api/v1/portfolio/efficient-frontier
-```
-
-### Benchmark
-
-```text
-POST /api/v1/benchmark/compare
-```
-
-### Macro
-
-```text
-GET /api/v1/macro/
-GET /api/v1/macro/fx-spot/{base_currency}
-```
-
-### Decision
-
-```text
-POST /api/v1/decision/panel
-```
-
-### Investor
-
-```text
-POST /api/v1/investor/preferences
-```
-
-### Help
-
-```text
-GET /api/v1/help/catalog
-```
-
-### Alerts
-
-```text
-GET /api/v1/alerts/{ticker}
-```
-
-### Valuation
+### Renta fija
 
 ```text
 POST /api/v1/valuation/nelson-siegel
+POST /api/v1/valuation/bond-metrics
+```
+
+### Opciones
+
+```text
 POST /api/v1/valuation/black-scholes
 ```
 
-### RoboAdvisor
+### Stress testing
 
 ```text
-POST /api/v1/roboadvisor/suggest
+POST /api/v1/stress/scenario
 ```
 
 ### Perri
@@ -414,64 +330,17 @@ GET /api/v1/perri/latest
 GET /api/v1/perri/optimize
 ```
 
-### Persistence
+### RoboAdvisor
 
 ```text
-GET /api/v1/persistence/health
+POST /api/v1/roboadvisor/suggest
 ```
 
 ---
 
-## 11. Inyección de dependencias
+## 10. Persistencia con SQLAlchemy y SQLite
 
-Archivo:
-
-```text
-backend/app/core/dependencies.py
-```
-
-El proyecto usa `Depends` para conectar endpoints con servicios y clientes.
-
-Ejemplo de flujo:
-
-```text
-Endpoint FastAPI
-    ↓ Depends(get_market_service)
-MarketService
-    ↓ Depends(get_market_client)
-MarketClient
-    ↓ Depends(get_app_settings)
-Settings
-```
-
-Dependencias relevantes:
-
-```python
-get_app_settings()
-get_market_client()
-get_macro_client()
-get_market_service()
-get_technical_service()
-get_risk_service()
-get_portfolio_service()
-get_macro_service()
-get_capm_service()
-get_decision_service()
-get_investor_service()
-get_assets_service()
-get_benchmark_service()
-get_help_service()
-get_returns_stats_service()
-get_alerts_service()
-get_garch_service()
-get_db()
-```
-
----
-
-## 12. Persistencia con SQLAlchemy y SQLite
-
-Archivos:
+Archivos principales:
 
 ```text
 backend/app/db/database.py
@@ -480,26 +349,13 @@ backend/app/db/seed_db.py
 backend/app/db/import_perri_prices.py
 ```
 
-### database.py
-
-Responsabilidades:
-
-- Crear `Base`.
-- Resolver ruta estable de SQLite.
-- Crear `engine`.
-- Crear `SessionLocal`.
-- Exponer `get_db()`.
-- Exponer `init_db()`.
-
 La ruta SQLite se resuelve de forma estable a:
 
 ```text
 backend/data/portafolio_riesgo.db
 ```
 
-### models.py
-
-Modelos actuales:
+Modelos relevantes:
 
 ```text
 Asset
@@ -508,13 +364,7 @@ Portfolio
 PredictionLog
 ```
 
-Relación principal:
-
-```text
-Asset 1 ─── N Price
-```
-
-La tabla `prices` guarda:
+La tabla prices guarda informacion metodologica como:
 
 ```text
 close_original
@@ -528,139 +378,9 @@ source
 
 ---
 
-## 13. Universo de activos
+## 11. Perri institucional
 
-El proyecto tiene activos base y universo Perri.
-
-Archivos relacionados:
-
-```text
-backend/app/core/assets_registry.py
-backend/app/db/build_perri_universe.py
-backend/app/db/seed_db.py
-backend/data/perri_universe.json
-```
-
-El universo Perri clasifica activos por:
-
-```text
-renta_variable
-renta_fija
-commodity
-etf_global
-etf_sectorial
-efectivo_o_corto_plazo
-```
-
-También conserva metadata metodológica:
-
-```text
-moneda_origen
-fx_ticker
-benchmark_ticker
-benchmark_description
-include_in_perri
-source
-```
-
----
-
-## 14. Precios históricos
-
-Fuente actual:
-
-```text
-roboadvisor_cache.csv
-```
-
-Importador:
-
-```text
-backend/app/db/import_perri_prices.py
-```
-
-Flujo:
-
-```text
-roboadvisor_cache.csv
-        ↓
-import_perri_prices.py
-        ↓
-tabla prices
-        ↓
-MarketService
-        ↓
-/api/v1/market/prices/{ticker}
-```
-
-El sistema guarda cierre original y cierre convertido a USD. En el universo actual, la mayoría de activos de Perri se trabajan en USD, por lo que:
-
-```text
-fx_rate_to_usd = 1.0
-close_usd = close_original
-```
-
----
-
-## 15. MarketService
-
-Archivo:
-
-```text
-backend/app/services/market_service.py
-```
-
-Responsabilidad:
-
-- Consultar precios desde SQLite primero.
-- Usar `MarketClient` como respaldo si no hay datos persistidos.
-- Calcular rendimientos simples y logarítmicos.
-
-Flujo:
-
-```text
-GET /api/v1/market/prices/{ticker}
-        ↓
-MarketService.get_prices()
-        ↓
-_get_prices_from_db()
-        ↓
-Asset + Price
-        ↓
-Fallback a MarketClient si no hay datos
-```
-
----
-
-## 16. Conversión a USD
-
-El proyecto trabaja con USD como moneda base metodológica.
-
-En el flujo externo, `MarketClient` convierte precios internacionales a USD usando metadata de activo y series FX cuando corresponde.
-
-Campos relevantes:
-
-```text
-Currency
-BaseCurrency
-FxTicker
-FxRateToUSD
-```
-
-En SQLite se conserva:
-
-```text
-original_currency
-fx_ticker
-fx_rate_to_usd
-close_usd
-```
-
----
-
-## 17. Perri institucional
-
-Perri es el componente institucional de optimización automática construido sobre SQLite.
+Perri es el componente institucional de optimizacion automatica construido sobre SQLite.
 
 Archivos:
 
@@ -671,304 +391,113 @@ backend/app/jobs/run_perri_optimization.py
 backend/data/perri_latest_optimization.json
 ```
 
-### PerriOptimizerService
-
 Responsabilidades:
 
 - Leer activos elegibles desde SQLite.
-- Filtrar renta variable y renta fija.
-- Construir retornos históricos.
-- Seleccionar candidatos.
+- Filtrar activos por clase.
+- Construir retornos historicos.
 - Optimizar portafolios exactos de 5, 10 y 15 activos.
-- Calcular horizontes exactos de 1, 3 y 5 años.
-- Optimizar tres objetivos: `min_risk`, `max_sharpe` y `max_return`.
-- Generar métricas de retorno esperado, volatilidad, Sharpe, beta, alpha y distribución por clase de activo.
-
-Métodos principales:
-
-```python
-_get_end_date()
-_window_for_horizon()
-_load_eligible_assets()
-_load_close_series()
-_build_returns_by_asset()
-_individual_metrics()
-_candidate_sets()
-_build_aligned_returns_matrix()
-_portfolio_metrics()
-_capm_metrics()
-_optimize_once()
-_optimize_for_size()
-_optimize_for_horizon()
-run_optimization()
-```
-
-### Endpoints Perri
-
-```text
-GET /api/v1/perri/latest
-GET /api/v1/perri/optimize
-```
-
-`/latest` devuelve el JSON precalculado.
-
-`/optimize` recalcula desde SQLite.
-
-### Job Perri
-
-Archivo:
-
-```text
-backend/app/jobs/run_perri_optimization.py
-```
-
-Genera:
-
-```text
-backend/data/perri_latest_optimization.json
-```
-
-Flujo:
-
-```text
-seed_db
-    ↓
-import_perri_prices
-    ↓
-run_perri_optimization
-    ↓
-perri_latest_optimization.json
-```
+- Calcular horizontes de 1, 3 y 5 anos.
+- Optimizar min_risk, max_sharpe y max_return.
+- Generar metricas de retorno esperado, volatilidad, Sharpe, beta, alpha y distribucion por clase de activo.
 
 ---
 
-## 18. Modelos financieros implementados
+## 12. Modelos financieros implementados
 
 ### Markowitz
-
-Archivo:
-
-```text
-backend/app/services/portfolio_service.py
-```
 
 Incluye:
 
 - Frontera eficiente.
-- Portafolio de mínima varianza.
-- Portafolio de máximo Sharpe.
-- Matriz de correlación.
+- Portafolio de minima varianza.
+- Portafolio de maximo Sharpe.
+- Matriz de correlacion.
 - Portafolio objetivo.
 - Ranking de portafolios.
 
 ### CAPM
 
-Archivo:
-
-```text
-backend/app/services/capm_service.py
-```
-
 Incluye:
 
 - Beta.
 - Alpha.
-- R².
+- R cuadrado.
 - Retorno esperado.
 - CAPM por activo.
 - CAPM por portafolio.
 
 ### VaR/CVaR
 
-Archivo:
-
-```text
-backend/app/services/risk_service.py
-```
-
 Incluye:
 
-- VaR histórico.
-- VaR paramétrico.
+- VaR historico.
+- VaR parametrico.
 - VaR Monte Carlo.
 - CVaR.
 - Test de Kupiec.
 
 ### GARCH
 
-Archivo:
-
-```text
-backend/app/services/garch_service.py
-```
-
 Incluye:
 
 - ARCH.
 - GARCH.
 - EGARCH.
-- Comparación por AIC/BIC.
-- Diagnóstico.
-- Pronóstico de volatilidad.
+- Comparacion AIC/BIC.
+- Diagnostico.
+- Pronostico de volatilidad.
 
-### Nelson-Siegel
+### Nelson-Siegel y renta fija
 
-Archivo:
+Incluye:
 
-```text
-backend/app/services/yield_service.py
-```
-
-Endpoint:
-
-```text
-POST /api/v1/valuation/nelson-siegel
-```
+- Curva Nelson-Siegel.
+- Precio teorico de bono.
+- Duracion Macaulay.
+- Duracion modificada.
+- Convexidad.
 
 ### Black-Scholes
 
-Archivo:
+Incluye:
 
-```text
-backend/app/services/option_service.py
-```
+- Precio teorico de call y put.
+- Delta.
+- Gamma.
+- Vega.
+- Theta.
+- Rho.
+- Validacion de paridad put-call.
 
-Endpoint:
+### Stress testing
 
-```text
-POST /api/v1/valuation/black-scholes
-```
+Incluye:
 
----
+- Shock de tasa.
+- Shock de mercado.
+- Multiplicador de volatilidad.
+- Retorno estresado.
+- Volatilidad estresada.
+- VaR estresado.
+- Perdida estimada.
+- Valor del portafolio bajo stress.
+- Severidad.
 
-## 19. Schemas y validadores Pydantic
+### Machine Learning
 
-Ubicación:
+Incluye:
 
-```text
-backend/app/schemas/
-```
-
-El proyecto usa:
-
-```python
-@field_validator(...)
-@model_validator(...)
-```
-
-Validaciones principales:
-
-- Tickers.
-- Pesos.
-- Suma de pesos.
-- Tipo de retorno.
-- Moneda base.
-- Perfil de riesgo.
-- Distribución.
-- Horizonte de inversión.
-- Alias enviados desde frontend.
-
-Ejemplos de schemas:
-
-```text
-portfolio.py
-risk.py
-capm.py
-benchmark.py
-investor.py
-garch.py
-returns_stats.py
-common.py
-market.py
-valuation.py
-```
+- Script de entrenamiento.
+- Modelo joblib.
+- Predictor Singleton.
+- Endpoint de estado.
+- Endpoint de prediccion.
+- Tests de carga y prediccion.
 
 ---
 
-## 20. Seguridad básica
-
-Archivo:
-
-```text
-backend/app/core/security.py
-```
-
-Función:
-
-```python
-require_internal_api_key()
-```
-
-Se usa en endpoints sensibles con:
-
-```python
-Depends(require_internal_api_key)
-```
-
-Módulos protegidos o parcialmente protegidos:
-
-```text
-benchmark
-capm portfolio
-decision
-portfolio
-risk
-```
-
----
-
-## 21. Manejo de errores
-
-Archivos:
-
-```text
-backend/app/core/error_catalog.py
-backend/app/core/exceptions.py
-```
-
-Excepciones principales:
-
-```text
-AppBaseException
-InvalidDateRangeError
-FutureDateError
-InvalidApiKeyError
-TickerNotFoundError
-InsufficientObsVarError
-InsufficientObsCapmError
-InsufficientObsPortfolioError
-ExternalApiFailureError
-```
-
-`main.py` registra un handler global para `AppBaseException`.
-
----
-
-## 22. Decoradores
-
-Archivo:
-
-```text
-backend/app/core/decorators.py
-```
-
-Decorador actual:
-
-```python
-log_execution_time(func)
-```
-
-Se usa para medir tiempo de ejecución en funciones sensibles, especialmente llamadas de mercado.
-
----
-
-## 23. Frontend Streamlit
-
-Ubicación:
-
-```text
-frontend/
-```
+## 13. Frontend Streamlit
 
 Estructura:
 
@@ -980,7 +509,7 @@ frontend/services/api_client.py
 frontend/ui/
 ```
 
-### Módulos del dashboard
+Paginas del dashboard:
 
 ```text
 0_Contextualizacion.py
@@ -990,148 +519,126 @@ frontend/ui/
 04_Capm.py
 05_Var_Cvar.py
 06_Markowitz.py
-07_Señales.py
+07_Senales.py
 08_Macro_Benchmark.py
+09_Renta_Fija.py
+10_Opciones.py
+11_Stress_Testing.py
+12_Machine_Learning.py
 ```
-
-### ApiClient
-
-Archivo:
-
-```text
-frontend/services/api_client.py
-```
-
-Centraliza llamadas al backend.
 
 ---
 
-## 24. Módulos del dashboard
+## 14. Modulos del dashboard
 
-### Módulo 0 - Contextualización
+### Modulo 0 - Contextualizacion
 
-Muestra universo de activos, activos base, activos ampliados, metadata de Perri, clase de activo, benchmark metodológico, fuente, tasa libre de riesgo y benchmark global.
+Muestra universo de activos, activos base, activos ampliados, metadata de Perri, clase de activo, benchmark metodologico, fuente, tasa libre de riesgo y benchmark global.
 
-### Módulo 1 - Técnico
+### Modulo 1 - Tecnico
 
-Incluye precio, SMA, EMA, RSI, Bollinger, MACD y estocástico.
+Incluye precio, SMA, EMA, RSI, Bollinger, MACD y estocastico.
 
-### Módulo 2 - Rendimientos
+### Modulo 2 - Rendimientos
 
-Incluye rendimientos simples y logarítmicos, estadísticas descriptivas, histograma, boxplot, Q-Q plot y pruebas de normalidad.
+Incluye rendimientos simples y logaritmicos, estadisticas descriptivas, histograma, boxplot, Q-Q plot y pruebas de normalidad.
 
-### Módulo 3 - GARCH
+### Modulo 3 - GARCH
 
-Incluye ARCH, GARCH, EGARCH, diagnóstico y pronóstico.
+Incluye ARCH, GARCH, EGARCH, diagnostico y pronostico.
 
-### Módulo 4 - CAPM
+### Modulo 4 - CAPM
 
-Incluye beta, alpha, R², p-value y retorno esperado.
+Incluye beta, alpha, R cuadrado, p-value y retorno esperado.
 
-### Módulo 5 - VaR/CVaR
+### Modulo 5 - VaR/CVaR
 
-Incluye VaR histórico, paramétrico, Monte Carlo, CVaR, riesgo monetario y backtesting.
+Incluye VaR historico, parametrico, Monte Carlo, CVaR, riesgo monetario y backtesting.
 
-### Módulo 6 - Markowitz
+### Modulo 6 - Markowitz
 
-Incluye frontera eficiente, mínima varianza, máximo Sharpe, retorno objetivo, matriz de correlación y perfiles.
+Incluye frontera eficiente, minima varianza, maximo Sharpe, retorno objetivo, matriz de correlacion y perfiles.
 
-### Módulo 7 - Señales
+### Modulo 7 - Senales
 
-Incluye señales técnicas por RSI, MACD, Bollinger, medias móviles y estocástico.
+Incluye senales tecnicas por RSI, MACD, Bollinger, medias moviles y estocastico.
 
-### Módulo 8 - Macro y Benchmark
+### Modulo 8 - Macro y Benchmark
 
-Incluye tasa libre de riesgo, inflación si existe FRED, FX spot, comparación contra benchmark, alpha de Jensen, tracking error, information ratio y drawdown.
+Incluye tasa libre de riesgo, FX spot, comparacion contra benchmark, alpha de Jensen, tracking error, information ratio y drawdown.
+
+### Modulo 9 - Renta Fija
+
+Incluye Nelson-Siegel, curva de tasas, precio de bono, duracion y convexidad.
+
+### Modulo 10 - Opciones
+
+Incluye Black-Scholes, precio teorico, cinco Greeks, payoff y analisis de sensibilidad.
+
+### Modulo 11 - Stress Testing
+
+Incluye escenarios adversos, perdida estimada, valor estresado, severidad y comparacion grafica.
+
+### Modulo 12 - Machine Learning
+
+Incluye estado del modelo, prediccion de retorno esperado y sensibilidad por volatilidad.
 
 ---
 
-## 25. Tests
+## 15. Tests
 
-Ubicación:
-
-```text
-tests/
-```
-
-Tests actuales:
-
-```text
-tests/test_perri_latest.py
-tests/test_perri_optimize.py
-tests/test_perri_horizons.py
-```
-
-Ejecutar:
+Ejecutar toda la suite:
 
 ```powershell
-python -m pytest tests/test_perri_latest.py tests/test_perri_optimize.py tests/test_perri_horizons.py -q
+$env:PYTHONPATH="backend"
+python -m pytest tests -v
 ```
 
-Validan:
+Validaciones actuales:
 
-- `/api/v1/perri/latest`.
-- `/api/v1/perri/optimize`.
-- JSON precalculado.
-- Optimización desde SQLite.
-- Horizontes exactos `1y`, `3y` y `5y`.
-- Tamaños exactos de portafolio `5`, `10` y `15`.
-- Objetivos `min_risk`, `max_sharpe` y `max_return`.
-- Modo de selección `exact`.
-- Pesos de portafolio.
-- Volatilidades no negativas.
-- Suma de pesos cercana a 1.
+- Chatbot.
+- Perri.
+- Portfolio/Perri comparison.
+- Machine Learning.
+- Renta fija.
+- Opciones.
+- Stress testing.
+- Riesgo.
+- CAPM.
+- Markowitz.
+- GARCH.
+- Nelson-Siegel.
+- Black-Scholes.
+- KYC/RoboAdvisor.
 
 ---
 
-## 26. GitHub Actions
+## 16. GitHub Actions
 
-Ubicación:
+Workflow principal:
 
 ```text
-.github/workflows/
+.github/workflows/backend-ci.yml
 ```
 
-Workflows actuales:
+Valida:
+
+- Instalacion de dependencias.
+- Compilacion del backend.
+- Entrenamiento del modelo ML base.
+- Preparacion de SQLite/Perri.
+- Ejecucion de tests.
+- Build Docker del backend.
+
+Workflow programado Perri:
 
 ```text
-backend-ci.yml
-perri-scheduled-update.yml
-```
-
-### Backend CI
-
-Ejecuta:
-
-- Instalación de dependencias.
-- `compileall` del backend.
-- Preparación de SQLite.
-- Importación de precios.
-- Optimización Perri.
-- Tests de Perri.
-
-### Actualización automática Perri
-
-Ejecuta dos veces al día:
-
-```text
-04:30 Colombia = 09:30 UTC
-17:30 Colombia = 22:30 UTC
-```
-
-Flujo:
-
-```text
-seed_db
-import_perri_prices
-run_perri_optimization
-validar JSON
-commit automático del JSON actualizado
+.github/workflows/perri-scheduled-update.yml
 ```
 
 ---
 
-## 27. Docker
+## 17. Docker
 
 Archivos:
 
@@ -1153,202 +660,178 @@ Levantar backend:
 docker compose up backend
 ```
 
+Puerto local Docker:
+
+```text
+http://127.0.0.1:8001
+```
+
 Probar health:
 
 ```powershell
-Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/health"
-```
-
-Resultado esperado:
-
-```text
-status : ok
-env    : docker
+Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8001/health"
 ```
 
 ---
 
-## 28. Instalación local
+## 18. Instalacion local
 
-### 1. Clonar repositorio
+Clonar repositorio:
 
-```bash
+```powershell
 git clone https://github.com/edwardmorarom/Portafolio_APIS_RIESGO.git
 cd Portafolio_APIS_RIESGO
 ```
 
-### 2. Crear entorno virtual
+Crear entorno virtual:
 
 ```powershell
 python -m venv .venv
 ```
 
-### 3. Activar entorno virtual
+Activar entorno virtual:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-### 4. Instalar dependencias
-
-Desde la raíz:
+Instalar backend:
 
 ```powershell
-pip install -r requirements.txt
+pip install -r backend
+equirements.txt
 ```
 
-O desde backend:
+Instalar frontend:
 
 ```powershell
-cd backend
-pip install -r requirements.txt
+pip install -r frontend
+equirements.txt
 ```
-
-Recomendación: usar Python 3.11 para evitar incompatibilidades de paquetes científicos.
 
 ---
 
-## 29. Ejecución local
+## 19. Ejecucion local
 
-### Backend
+Backend:
 
 ```powershell
-cd C:\Users\edwar\Desktop\portafolio-riesgo\backend
-uvicorn app.main:app --reload
+$env:PYTHONPATH="backend"
+uvicorn app.main:app --reload --app-dir backend
 ```
 
-Swagger:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Health:
-
-```text
-http://127.0.0.1:8000/health
-```
-
-### Frontend
-
-Desde la raíz:
+Frontend:
 
 ```powershell
 streamlit run frontend/app.py
 ```
 
-URL:
-
-```text
-http://localhost:8501
-```
-
 ---
 
-## 30. Preparación de datos Perri
+## 20. Preparacion de datos Perri
 
-Desde `backend`:
+Desde la raiz:
 
 ```powershell
-cd C:\Users\edwar\Desktop\portafolio-riesgo\backend
-
+$env:PYTHONPATH="backend"
 python -m app.db.seed_db
 python -m app.db.import_perri_prices
 python -m app.jobs.run_perri_optimization
 ```
 
-Esto deja lista:
+---
 
-```text
-backend/data/perri_latest_optimization.json
+## 21. Validacion rapida
+
+```powershell
+$env:PYTHONPATH="backend"
+python -m compileall backendpp
+python -m compileall frontend
+python -m pytest tests -v
 ```
 
 ---
 
-## 31. Validación rápida
-
-Desde la raíz:
-
-```powershell
-python -m compileall backend\app
-python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py tests\test_perri_horizons.py -q
-```
-
-Desde backend:
-
-```powershell
-uvicorn app.main:app --reload
-```
-
-Probar:
-
-```powershell
-Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/api/v1/perri/latest"
-Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/api/v1/perri/optimize?history_years=5&rf_annual=0.04"
-```
-
----
-
-## 32. Archivos que no deben versionarse
-
-El `.gitignore` excluye bases locales y archivos sensibles.
+## 22. Archivos que no deben versionarse
 
 No subir:
 
 ```text
 .env
+backend/.env
+frontend/.streamlit/secrets.toml
 *.db
 *.sqlite
 *.sqlite3
-backend/data/*.db
-data/*.db
 .venv/
 .pytest_cache/
 __pycache__/
 ```
 
-Sí se deben subir:
+Si subir:
 
 ```text
 .gitignore
 .env.example
-backend/data/perri_universe.json
-backend/data/perri_latest_optimization.json
+frontend/requirements.txt
+backend/requirements.txt
 docs/
 .github/workflows/
 ```
 
 ---
 
-## 33. Documentación complementaria
+## 23. Documentacion complementaria
 
-Documentos recomendados dentro de `docs/`:
+Documentos recomendados:
 
 ```text
-docs/00_snapshot_codigo_actual.md
 docs/01_arquitectura_tecnica.md
+docs/02_endpoints_backend_frontend.md
 ```
-
-`00_snapshot_codigo_actual.md` sirve como inventario técnico generado desde el código.
-
-`01_arquitectura_tecnica.md` explica la arquitectura, módulos, dependencias, decoradores y relaciones internas.
 
 ---
 
-## 34. Buenas prácticas del proyecto
+## 24. Deploy
+
+Backend sugerido:
+
+- Render.
+- Railway.
+- Docker en servidor.
+
+Frontend sugerido:
+
+- Streamlit Cloud.
+
+Flujo recomendado:
+
+```text
+Editar codigo local
+git add .
+git commit
+git push origin backend
+redeploy automatico en plataforma conectada
+```
+
+---
+
+## 25. Buenas practicas del proyecto
 
 Antes de cada commit:
 
 ```powershell
 git status
-python -m compileall backend\app
-python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py tests\test_perri_horizons.py -q
+python -m compileall backendpp
+python -m compileall frontend
+$env:PYTHONPATH="backend"
+python -m pytest tests -v
 ```
 
-Patrón recomendado:
+Patron recomendado:
 
 ```text
-1. Revisar estado real del código.
+1. Revisar estado real del codigo.
 2. Hacer un cambio puntual.
 3. Compilar.
 4. Probar endpoint o script.
@@ -1360,36 +843,36 @@ Patrón recomendado:
 
 ---
 
-## 35. Comandos Git frecuentes
+## 26. Comandos Git frecuentes
 
 ```powershell
 git status
 git add <archivo>
-git commit -m "mensaje: descripción clara del cambio"
+git commit -m "mensaje claro"
 git push origin backend
 ```
 
-Ejemplo profesional:
+Ejemplo:
 
 ```powershell
-git add README.md docs/01_arquitectura_tecnica.md
-git commit -m "docs: actualiza documentación técnica de Perri" `
-           -m "Documenta los horizontes 1y, 3y y 5y, los tamaños exactos de 5, 10 y 15 activos, y los objetivos min_risk, max_sharpe y max_return." `
-           -m "Alinea README y arquitectura técnica con los tests actuales de Perri."
+git add README.md
+git commit -m "Actualiza README del proyecto" -m "Documenta arquitectura, endpoints, modulos, despliegue, validacion y estado tecnico actual."
 git push origin backend
 ```
 
 ---
 
-## 36. Autores
+## 27. Autores
 
 - Edward Mora.
 - Juan P. Vargas.
 
 ---
 
-## 37. Nota metodológica
+## 28. Nota metodologica
 
-El proyecto trabaja sobre una moneda base común, USD, para evitar errores metodológicos al comparar activos internacionales. Los precios históricos se conservan con información de moneda original, tasa FX y cierre convertido.
+El proyecto trabaja sobre una moneda base comun, USD, para evitar errores metodologicos al comparar activos internacionales.
 
-La optimización institucional de Perri usa precios persistidos en SQLite, no cálculos improvisados en frontend. Esto permite reproducibilidad, automatización y trazabilidad.
+Perri usa precios persistidos en SQLite, no calculos improvisados en frontend. Esto permite reproducibilidad, automatizacion y trazabilidad.
+
+Machine Learning se implementa como componente backend reproducible mediante entrenamiento, persistencia del modelo y consumo por endpoint.
