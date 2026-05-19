@@ -1,4 +1,4 @@
-﻿name: Backend CI
+name: Backend CI
 
 on:
   push:
@@ -29,19 +29,31 @@ jobs:
           pip install -r backend/requirements.txt
 
       - name: Validar sintaxis del backend
+        env:
+          PYTHONPATH: backend
         run: |
           python -m compileall backend/app
 
+      - name: Entrenar modelo ML base
+        env:
+          PYTHONPATH: backend
+        run: |
+          python backend/app/ml/train.py
+
       - name: Preparar base SQLite para pruebas
+        env:
+          PYTHONPATH: backend
         run: |
           cd backend
           python -m app.db.seed_db
           python -m app.db.import_perri_prices
           python -m app.jobs.run_perri_optimization
 
-      - name: Ejecutar pruebas de Perri
+      - name: Ejecutar pruebas del backend
+        env:
+          PYTHONPATH: backend
         run: |
-          python -m pytest tests/test_chatbot.py tests/test_chatbot_llm_client.py tests/test_chatbot_scope.py tests/test_chatbot_financial_topics.py tests/test_chatbot_risk_knowledge.py tests/test_chatbot_capm_knowledge.py tests/test_chatbot_markowitz_perri_knowledge.py tests/test_chatbot_garch_knowledge.py tests/test_chatbot_black_scholes_knowledge.py tests/test_chatbot_nelson_siegel_knowledge.py tests/test_chatbot_kyc_roboadvisor_knowledge.py tests/test_perri_latest.py tests/test_perri_optimize.py tests/test_perri_horizons.py tests/test_portfolio_perri_comparison.py -q
+          python -m pytest tests -q
 
       - name: Validar build Docker del backend
         run: |
