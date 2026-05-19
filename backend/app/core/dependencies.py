@@ -3,6 +3,7 @@
 from app.db.database import get_db
 from app.clients.macro_client import MacroClient
 from app.clients.market_client import MarketClient
+from app.clients.llm_client import LLMClient
 from app.core.settings import Settings, get_settings
 from app.services.decision_service import DecisionService
 from app.services.macro_service import MacroService
@@ -107,3 +108,7 @@ def get_garch_service(client: MarketClient = Depends(get_market_client)) -> Garc
 
 def get_chatbot_service() -> ChatbotService:
     return ChatbotService()
+
+
+def get_llm_client(settings: Settings = Depends(get_app_settings)) -> LLMClient:
+    return LLMClient(settings=settings)
