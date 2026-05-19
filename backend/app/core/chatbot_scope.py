@@ -1,71 +1,14 @@
 ﻿from __future__ import annotations
 
-FINANCIAL_MODULES = {
-    "var",
-    "cvar",
-    "capm",
-    "markowitz",
-    "garch",
-    "perri",
-    "black_scholes",
-    "nelson_siegel",
-    "risk",
-    "portfolio",
-    "valuation",
-    "benchmark",
-    "macro",
-    "investor",
-    "roboadvisor",
-}
+from app.core.chatbot_financial_topics import (
+    get_financial_keywords,
+    get_financial_modules,
+    get_financial_topic_keys,
+)
 
-FINANCIAL_KEYWORDS = {
-    "activo",
-    "activos",
-    "acciones",
-    "alpha",
-    "alfa",
-    "benchmark",
-    "beta",
-    "black-scholes",
-    "bonos",
-    "capm",
-    "cartera",
-    "cvar",
-    "drawdown",
-    "eficiente",
-    "egarch",
-    "expected shortfall",
-    "financiero",
-    "frontera eficiente",
-    "garch",
-    "inversion",
-    "inversión",
-    "inversionista",
-    "kyc",
-    "macro",
-    "markowitz",
-    "mercado",
-    "monte carlo",
-    "nelson",
-    "opciones",
-    "perri",
-    "portafolio",
-    "rentabilidad",
-    "retorno",
-    "riesgo",
-    "roboadvisor",
-    "sharpe",
-    "tasa libre de riesgo",
-    "tasas",
-    "teoria del riesgo",
-    "teoría del riesgo",
-    "umbral",
-    "umbrales",
-    "var",
-    "value at risk",
-    "valor en riesgo",
-    "volatilidad",
-}
+FINANCIAL_MODULES = get_financial_modules()
+FINANCIAL_KEYWORDS = get_financial_keywords()
+FINANCIAL_TOPICS = set(get_financial_topic_keys())
 
 FINANCIAL_SCOPE_MESSAGE = (
     "Esta pregunta está fuera del alcance financiero del chatbot experto. "
