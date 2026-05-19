@@ -39,3 +39,18 @@ class OptionValuationResponse(BaseModel):
     price: float
     greeks: Greeks
     params: Dict[str, float]
+
+# --- ESQUEMAS PARA BONOS ---
+
+class BondMetricsRequest(BaseModel):
+    face_value: float = Field(..., gt=0)
+    coupon_rate: float = Field(..., ge=0)
+    maturity_years: int = Field(..., gt=0)
+    market_yield: float = Field(..., ge=0)
+
+
+class BondMetricsResponse(BaseModel):
+    price: float
+    duration: float
+    modified_duration: float
+    convexity: float

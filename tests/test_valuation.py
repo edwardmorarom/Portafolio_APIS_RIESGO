@@ -118,3 +118,23 @@ def test_black_scholes_put_call_parity():
     parity_value = 100 - 100 * __import__("math").exp(-0.05 * 1)
 
     assert abs((call_price - put_price) - parity_value) < 1e-6
+
+def test_bond_metrics_endpoint():
+    response = client.post(
+        "/api/v1/valuation/bond-metrics",
+        json={
+            "face_value": 1000,
+            "coupon_rate": 0.05,
+            "maturity_years": 5,
+            "market_yield": 0.04,
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["price"] > 0
+    assert data["duration"] > 0
+    assert data["modified_duration"] > 0
+    assert data["convexity"] > 0
