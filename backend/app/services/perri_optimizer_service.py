@@ -33,7 +33,7 @@ class PerriOptimizerService:
 
     ALLOWED_ASSET_TYPES = {"renta_variable", "renta_fija"}
     HORIZONS = (1, 3, 5)
-    PORTFOLIO_SIZES = (5, 10)
+    PORTFOLIO_SIZES = (5, 10, 15)
     BENCHMARK_CANDIDATES = ("ACWI", "SPY")
 
     def __init__(
@@ -42,11 +42,13 @@ class PerriOptimizerService:
         min_observations: int = 200,
         trading_days: int = 252,
         max_weight: float = 0.35,
+        min_visible_weight: float = 0.005,
     ) -> None:
         self.max_candidate_assets = max_candidate_assets
         self.min_observations = min_observations
         self.trading_days = trading_days
         self.max_weight = max_weight
+        self.min_visible_weight = min_visible_weight
 
     def _get_end_date(self, db: Session, end: str | None) -> pd.Timestamp:
         if end is not None:
@@ -457,6 +459,7 @@ class PerriOptimizerService:
                 "weight": float(cleaned[i]),
             }
             for i in range(len(tickers))
+            if float(cleaned[i]) >= self.min_visible_weight
         ]
 
         return sorted(payload, key=lambda item: float(item["weight"]), reverse=True)
@@ -597,9 +600,16 @@ class PerriOptimizerService:
             rf_annual=rf_annual,
         )
 
+        visible_weights = self._weights_payload(tickers=tickers, weights=weights)
+        selected_weight_sum = float(sum(item["weight"] for item in visible_weights))
+
         return {
             "objective": objective_name,
-            "portfolio_size": int(num_assets),
+            "max_assets_allowed": int(num_assets),
+            "portfolio_size": int(len(visible_weights)),
+            "selected_assets_count": int(len(visible_weights)),
+            "selected_weight_sum": selected_weight_sum,
+            "min_visible_weight": float(self.min_visible_weight),
             "assets_used": tickers,
             "observations": int(len(returns_matrix)),
             "expected_return_annual": metrics["expected_return_annual"],
@@ -613,6 +623,7 @@ class PerriOptimizerService:
             "constraints": {
                 "long_only": True,
                 "max_weight": float(self.max_weight),
+                "min_visible_weight": float(self.min_visible_weight),
                 "volatility_cap": float(volatility_cap) if volatility_cap is not None else None,
                 "min_fixed_income_weight": (
                     float(min_fixed_income_weight) if min_fixed_income_weight is not None else None
@@ -627,7 +638,7 @@ class PerriOptimizerService:
                 weights=weights,
                 asset_type_by_ticker=asset_type_by_ticker,
             ),
-            "weights": self._weights_payload(tickers=tickers, weights=weights),
+            "weights": visible_weights,
             "optimization_status": str(result.message),
         }
 
@@ -812,6 +823,7 @@ class PerriOptimizerService:
             "horizon_keys": list(horizons.keys()),
             "benchmark_candidates": list(self.BENCHMARK_CANDIDATES),
             "max_weight": float(self.max_weight),
+            "min_visible_weight": float(self.min_visible_weight),
             "asset_type_distribution": {
                 asset_type: list(asset_type_by_ticker.values()).count(asset_type)
                 for asset_type in sorted(set(asset_type_by_ticker.values()))

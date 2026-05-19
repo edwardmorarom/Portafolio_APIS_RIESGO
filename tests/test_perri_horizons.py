@@ -29,7 +29,7 @@ def test_perri_latest_contains_horizons_sizes_and_balanced_portfolios():
         horizon_block = result["horizons"][horizon]
         assert "portfolio_sizes" in horizon_block
 
-        for size in ["5", "10"]:
+        for size in ["5", "10", "15"]:
             assert size in horizon_block["portfolio_sizes"]
 
             size_block = horizon_block["portfolio_sizes"][size]
@@ -39,17 +39,21 @@ def test_perri_latest_contains_horizons_sizes_and_balanced_portfolios():
 
                 portfolio = size_block[objective]
 
-                assert portfolio["portfolio_size"] == int(size)
+                assert portfolio["max_assets_allowed"] == int(size)
+                assert 1 <= portfolio["selected_assets_count"] <= int(size)
+                assert portfolio["portfolio_size"] == portfolio["selected_assets_count"]
+                assert len(portfolio["weights"]) == portfolio["selected_assets_count"]
                 assert portfolio["expected_return_annual"] is not None
                 assert portfolio["volatility_annual"] >= 0
                 assert portfolio["sharpe"] is not None
                 assert "beta" in portfolio
                 assert "alpha_annual" in portfolio
                 assert "benchmark_ticker" in portfolio
-                assert len(portfolio["weights"]) == int(size)
-
                 weight_sum = sum(item["weight"] for item in portfolio["weights"])
-                assert 0.99 <= weight_sum <= 1.01
+                assert 0.90 <= weight_sum <= 1.01
+
+                for item in portfolio["weights"]:
+                    assert item["weight"] >= portfolio["min_visible_weight"]
 
     balanced_5y_10 = result["horizons"]["5y"]["portfolio_sizes"]["10"]["balanced"]
     distribution = balanced_5y_10["weight_distribution_by_asset_type"]
