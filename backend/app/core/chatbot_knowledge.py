@@ -201,39 +201,80 @@ CHATBOT_KNOWLEDGE_BASE = {
         ],
     },
     "black_scholes": {
-        "keywords": ["black-scholes", "black scholes", "opción", "opciones", "call", "put", "griegas"],
+        "keywords": [
+            "black-scholes",
+            "black scholes",
+            "opcion",
+            "opci?n",
+            "opciones",
+            "call",
+            "put",
+            "griegas",
+            "delta",
+            "gamma",
+            "vega",
+            "theta",
+            "rho",
+            "strike",
+            "volatilidad implicita",
+            "volatilidad impl?cita",
+        ],
         "title": "Black-Scholes",
         "source_type": "modulo",
-        "reference": "Backend OptionService: valoración de opciones y griegas.",
+        "reference": "Proyecto Integrador Riesgo USTA: OptionService para valoracion de opciones y griegas.",
         "general": (
-            "Black-Scholes permite valorar opciones financieras tipo call o put usando precio spot, strike, "
-            "tiempo al vencimiento, tasa libre de riesgo y volatilidad."
+            "Black-Scholes es un modelo usado para valorar opciones financieras tipo call y put. "
+            "Utiliza variables como precio spot del activo, precio de ejercicio o strike, tiempo al vencimiento, "
+            "tasa libre de riesgo y volatilidad. En el proyecto se usa para calcular precio teorico de opciones "
+            "y sensibilidades conocidas como griegas."
         ),
         "estadistico": (
-            "El modelo calcula el precio teórico de la opción y griegas como delta, gamma y vega, "
-            "que miden sensibilidad del precio frente a cambios en el activo subyacente y la volatilidad."
+            "Estadisticamente, Black-Scholes asume un comportamiento lognormal del precio del subyacente y usa "
+            "la distribucion normal acumulada para estimar el valor teorico de una opcion europea. "
+            "Las griegas miden sensibilidad: delta frente al precio del subyacente, gamma frente al cambio de delta, "
+            "vega frente a volatilidad, theta frente al paso del tiempo y rho frente a la tasa de interes."
         ),
         "followups": [
-            "¿Qué mide delta en Black-Scholes?",
-            "¿Qué representa vega en una opción?",
+            "Que significa delta en Black-Scholes?",
+            "Que mide vega en una opcion?",
+            "Cual es la diferencia entre una opcion call y una put?",
         ],
     },
     "nelson_siegel": {
-        "keywords": ["nelson", "siegel", "curva de tasas", "yield curve", "tasas"],
+        "keywords": [
+            "nelson",
+            "siegel",
+            "nelson-siegel",
+            "curva de tasas",
+            "yield curve",
+            "tasas",
+            "estructura temporal",
+            "beta0",
+            "beta1",
+            "beta2",
+            "tau",
+            "nivel",
+            "pendiente",
+            "curvatura",
+        ],
         "title": "Nelson-Siegel",
         "source_type": "modulo",
-        "reference": "Backend YieldService: ajuste de curva de tasas.",
+        "reference": "Proyecto Integrador Riesgo USTA: YieldService para ajuste de curva de tasas.",
         "general": (
-            "Nelson-Siegel modela la curva de tasas usando componentes de nivel, pendiente y curvatura. "
-            "Sirve para representar la estructura temporal de tasas de interés."
+            "Nelson-Siegel es un modelo para representar la curva de tasas de interes a diferentes vencimientos. "
+            "Resume la estructura temporal mediante componentes de nivel, pendiente y curvatura. "
+            "En el proyecto se usa para ajustar una curva teorica a tasas observadas por vencimiento."
         ),
         "estadistico": (
-            "El backend ajusta los parámetros tau, beta0, beta1 y beta2 minimizando el error cuadrático "
-            "entre tasas observadas y tasas estimadas por la curva."
+            "El modelo estima parametros beta0, beta1, beta2 y tau. beta0 representa el nivel de largo plazo, "
+            "beta1 captura la pendiente de corto plazo, beta2 representa la curvatura y tau controla la velocidad "
+            "de decaimiento de los factores. El ajuste busca minimizar el error entre tasas observadas y tasas estimadas."
         ),
         "followups": [
-            "¿Qué significa beta0 en Nelson-Siegel?",
-            "¿Para qué sirve modelar la curva de tasas?",
+            "Que representa beta0 en Nelson-Siegel?",
+            "Para que sirve modelar la curva de tasas?",
+            "Que significan nivel, pendiente y curvatura?",
         ],
     },
+
 }
