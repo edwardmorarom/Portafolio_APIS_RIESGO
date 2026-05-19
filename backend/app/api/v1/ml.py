@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException
+﻿from fastapi import APIRouter, HTTPException
 
 from app.ml.predictor import MODEL_VERSION, MLPredictor
 from app.schemas.ml_schema import MLPredictionRequest, MLPredictionResponse
 
 
-router = APIRouter(prefix="/ml", tags=["Machine Learning"])
+router = APIRouter(tags=["Machine Learning"])
 
 predictor = MLPredictor()
 
