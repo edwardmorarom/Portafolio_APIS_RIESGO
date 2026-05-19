@@ -2,41 +2,66 @@
 
 CHATBOT_KNOWLEDGE_BASE = {
     "var": {
-        "keywords": ["var", "value at risk", "valor en riesgo", "riesgo extremo"],
+        "keywords": ["var", "value at risk", "valor en riesgo", "riesgo extremo", "percentil", "cuantil"],
         "title": "VaR / Value at Risk",
         "source_type": "teoria",
-        "reference": "Teoría del riesgo: medición de pérdidas potenciales bajo un nivel de confianza.",
+        "reference": "Proyecto Integrador Riesgo USTA: modulo VaR, CVaR y backtesting Kupiec.",
         "general": (
-            "El VaR estima la pérdida máxima esperada de un portafolio durante un horizonte determinado "
-            "y con un nivel de confianza específico. Por ejemplo, un VaR al 95% indica que, bajo las "
-            "condiciones del modelo, solo el 5% de los escenarios deberían superar esa pérdida."
+            "El VaR estima la perdida maxima esperada de un portafolio para un horizonte y un nivel de confianza. "
+            "Por ejemplo, un VaR diario al 95% indica que, bajo el modelo usado, el 5% de los dias podrian presentar "
+            "perdidas superiores a ese umbral. En el proyecto se trabaja con VaR parametrico, historico y Monte Carlo."
         ),
         "estadistico": (
-            "Estadísticamente, el VaR corresponde a un cuantil de la distribución de pérdidas. "
-            "En el proyecto se calcula por métodos histórico, paramétrico y Monte Carlo, lo que permite "
-            "comparar supuestos empíricos, distribucionales y simulados."
+            "Estadisticamente, el VaR es un cuantil de la distribucion de perdidas o de rendimientos negativos. "
+            "El metodo parametrico depende de supuestos distribucionales, el historico usa percentiles empiricos y "
+            "Monte Carlo simula escenarios para estimar la cola de perdidas."
         ),
         "followups": [
-            "¿Cómo se interpreta el VaR histórico?",
-            "¿Cuál es la diferencia entre VaR y CVaR?",
+            "Cual es la diferencia entre VaR historico, parametrico y Monte Carlo?",
+            "Como se interpreta un VaR al 95%?",
+            "Como se valida el VaR con Kupiec?",
         ],
     },
     "cvar": {
-        "keywords": ["cvar", "expected shortfall", "cola", "pérdida esperada"],
+        "keywords": ["cvar", "expected shortfall", "cola", "perdida esperada", "p?rdida esperada", "riesgo de cola"],
         "title": "CVaR / Expected Shortfall",
         "source_type": "teoria",
-        "reference": "Teoría del riesgo: pérdida esperada condicional en la cola.",
+        "reference": "Proyecto Integrador Riesgo USTA: CVaR como medida complementaria de riesgo de cola.",
         "general": (
-            "El CVaR mide la pérdida promedio cuando ya se superó el umbral del VaR. "
-            "Es útil porque no solo indica un punto crítico, sino la severidad esperada en los peores escenarios."
+            "El CVaR mide la perdida promedio en los peores escenarios, es decir, cuando la perdida ya supero el VaR. "
+            "Por eso complementa al VaR: no solo marca un umbral, sino que estima que tan severas pueden ser las perdidas "
+            "dentro de la cola."
         ),
         "estadistico": (
-            "El CVaR es una esperanza condicional sobre la cola de la distribución de pérdidas. "
-            "A diferencia del VaR, incorpora la magnitud de las pérdidas extremas más allá del cuantil."
+            "El CVaR es una esperanza condicional sobre la cola de la distribucion. Si el VaR identifica el cuantil critico, "
+            "el CVaR promedia las observaciones o simulaciones que quedan mas alla de ese cuantil. Esto lo hace mas informativo "
+            "cuando existen colas pesadas o eventos extremos."
         ),
         "followups": [
-            "¿Por qué CVaR puede ser más conservador que VaR?",
-            "¿Cómo se usa CVaR en gestión de portafolios?",
+            "Por que CVaR puede ser mas conservador que VaR?",
+            "Como se interpreta el CVaR en una grafica de perdidas?",
+            "Que diferencia hay entre riesgo de umbral y riesgo de cola?",
+        ],
+    },
+    "kupiec": {
+        "keywords": ["kupiec", "backtesting", "excedencias", "violaciones", "lr_pof", "proportion of failures"],
+        "title": "Backtesting de Kupiec",
+        "source_type": "teoria",
+        "reference": "Proyecto Integrador Riesgo USTA: test de Kupiec para validar la proporcion de fallas del VaR.",
+        "general": (
+            "El test de Kupiec valida si la cantidad de veces que las perdidas reales superan el VaR es coherente con "
+            "el nivel de confianza elegido. Si hay demasiadas excedencias, el modelo puede estar subestimando el riesgo; "
+            "si hay muy pocas, puede estar siendo demasiado conservador."
+        ),
+        "estadistico": (
+            "Kupiec, o prueba de proporcion de fallas, compara la tasa observada de violaciones contra la tasa esperada. "
+            "Para un VaR al 95%, se espera aproximadamente un 5% de excedencias. El estadistico LR_POF se compara contra "
+            "una distribucion chi-cuadrado con 1 grado de libertad."
+        ),
+        "followups": [
+            "Que significa que el test de Kupiec rechace el VaR?",
+            "Cuando un VaR subestima el riesgo?",
+            "Por que conviene aplicar Kupiec a varios metodos de VaR?",
         ],
     },
     "capm": {

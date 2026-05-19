@@ -3,53 +3,58 @@
 CHATBOT_FINANCIAL_TOPIC_CATALOG = {
     "var": {
         "label": "VaR",
-        "description": "Valor en riesgo, pérdida máxima esperada bajo un nivel de confianza.",
-        "keywords": ["var", "value at risk", "valor en riesgo", "riesgo extremo"],
+        "description": "Valor en riesgo, perdida maxima esperada bajo un nivel de confianza.",
+        "keywords": ["var", "value at risk", "valor en riesgo", "riesgo extremo", "percentil", "cuantil"],
     },
     "cvar": {
         "label": "CVaR",
-        "description": "Pérdida esperada condicional cuando se supera el VaR.",
-        "keywords": ["cvar", "expected shortfall", "cola", "pérdida esperada"],
+        "description": "Perdida esperada condicional cuando se supera el VaR.",
+        "keywords": ["cvar", "expected shortfall", "cola", "perdida esperada", "pérdida esperada", "riesgo de cola"],
+    },
+    "kupiec": {
+        "label": "Backtesting de Kupiec",
+        "description": "Prueba de proporcion de fallas para validar excedencias del VaR.",
+        "keywords": ["kupiec", "backtesting", "excedencias", "violaciones", "lr_pof", "proportion of failures"],
     },
     "capm": {
         "label": "CAPM",
-        "description": "Modelo de valoración de activos basado en beta, alpha y retorno esperado.",
+        "description": "Modelo de valoracion de activos basado en beta, alpha y retorno esperado.",
         "keywords": ["capm", "beta", "alpha", "alfa", "retorno esperado", "mercado"],
     },
     "markowitz": {
         "label": "Markowitz",
-        "description": "Optimización de portafolios, frontera eficiente, mínima varianza y máximo Sharpe.",
-        "keywords": ["markowitz", "frontera eficiente", "sharpe", "mínima varianza", "minima varianza", "portafolio"],
+        "description": "Optimizacion de portafolios, frontera eficiente, minima varianza y maximo Sharpe.",
+        "keywords": ["markowitz", "frontera eficiente", "sharpe", "minima varianza", "mínima varianza", "portafolio"],
     },
     "garch": {
         "label": "GARCH",
-        "description": "Modelación de volatilidad condicional con ARCH, GARCH y EGARCH.",
+        "description": "Modelacion de volatilidad condicional con ARCH, GARCH y EGARCH.",
         "keywords": ["garch", "arch", "egarch", "volatilidad condicional", "heterocedasticidad"],
     },
     "perri": {
         "label": "Perri institucional",
-        "description": "Optimización institucional con portafolios exactos por tamaño, horizonte y objetivo.",
+        "description": "Optimizacion institucional con portafolios exactos por tamano, horizonte y objetivo.",
         "keywords": ["perri", "umbrales", "institucional", "5 activos", "10 activos", "15 activos"],
     },
     "black_scholes": {
         "label": "Black-Scholes",
-        "description": "Valoración de opciones financieras y cálculo de griegas.",
-        "keywords": ["black-scholes", "black scholes", "opción", "opciones", "call", "put", "griegas"],
+        "description": "Valoracion de opciones financieras y calculo de griegas.",
+        "keywords": ["black-scholes", "black scholes", "opcion", "opción", "opciones", "call", "put", "griegas"],
     },
     "nelson_siegel": {
         "label": "Nelson-Siegel",
-        "description": "Modelación de curva de tasas mediante nivel, pendiente y curvatura.",
+        "description": "Modelacion de curva de tasas mediante nivel, pendiente y curvatura.",
         "keywords": ["nelson", "siegel", "curva de tasas", "yield curve", "tasas"],
     },
     "benchmark": {
         "label": "Benchmark",
-        "description": "Comparación de portafolio contra referencia de mercado.",
+        "description": "Comparacion de portafolio contra referencia de mercado.",
         "keywords": ["benchmark", "tracking error", "information ratio", "alpha de jensen", "drawdown"],
     },
     "macro_financiero": {
         "label": "Macro financiero",
-        "description": "Tasa libre de riesgo, inflación, FX y variables macro aplicadas al análisis financiero.",
-        "keywords": ["macro", "macroeconomía financiera", "tasa libre de riesgo", "inflación", "fx", "tipo de cambio"],
+        "description": "Tasa libre de riesgo, inflacion, FX y variables macro aplicadas al analisis financiero.",
+        "keywords": ["macro", "macroeconomia financiera", "macroeconomía financiera", "tasa libre de riesgo", "inflacion", "inflación", "fx", "tipo de cambio"],
     },
     "kyc": {
         "label": "KYC / perfil inversionista",
@@ -58,8 +63,8 @@ CHATBOT_FINANCIAL_TOPIC_CATALOG = {
     },
     "roboadvisor": {
         "label": "RoboAdvisor",
-        "description": "Sugerencia automatizada de portafolios según perfil y activos.",
-        "keywords": ["roboadvisor", "asesor automático", "portafolio sugerido", "perfil conservador", "perfil agresivo"],
+        "description": "Sugerencia automatizada de portafolios segun perfil y activos.",
+        "keywords": ["roboadvisor", "asesor automatico", "asesor automático", "portafolio sugerido", "perfil conservador", "perfil agresivo"],
     },
 }
 
@@ -83,6 +88,7 @@ CHATBOT_ALLOWED_FINANCIAL_KEYWORDS = {
     "cartera",
     "correlacion",
     "correlación",
+    "diversificacion",
     "diversificación",
     "financiero",
     "inversion",
@@ -95,6 +101,9 @@ CHATBOT_ALLOWED_FINANCIAL_KEYWORDS = {
     "teoria del riesgo",
     "teoría del riesgo",
     "volatilidad",
+    "backtesting",
+    "excedencias",
+    "violaciones",
 }
 
 
