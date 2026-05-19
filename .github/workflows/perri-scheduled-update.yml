@@ -59,10 +59,29 @@ jobs:
           assert result["assets_with_valid_returns"] > 0
           assert "min_risk" in result
           assert "max_sharpe" in result
+          assert "max_return" in result
+          assert result["horizon_keys"] == ["1y", "3y", "5y"]
+          assert result["portfolio_sizes"] == [5, 10, 15]
+          assert result["objectives"] == ["min_risk", "max_sharpe", "max_return"]
+
+          horizons = result["horizons"]
+
+          for horizon in result["horizon_keys"]:
+              for size in result["portfolio_sizes"]:
+                  size_payload = horizons[horizon]["portfolio_sizes"][str(size)]
+
+                  for objective in result["objectives"]:
+                      portfolio = size_payload[objective]
+                      assert portfolio["selection_mode"] == "exact"
+                      assert portfolio["selected_assets_count"] == size
+                      assert len(portfolio["weights"]) == size
 
           print("OK: JSON Perri validado")
           print("Activos elegibles:", result["eligible_assets"])
           print("Activos con retornos válidos:", result["assets_with_valid_returns"])
+          print("Horizontes:", ", ".join(result["horizon_keys"]))
+          print("Tamaños exactos:", result["portfolio_sizes"])
+          print("Objetivos:", ", ".join(result["objectives"]))
           print("Sharpe máximo:", result["max_sharpe"]["sharpe"])
           PY
 
@@ -79,3 +98,4 @@ jobs:
             git commit -m "actualiza: optimización automática de Perri"
             git push origin backend
           fi
+
