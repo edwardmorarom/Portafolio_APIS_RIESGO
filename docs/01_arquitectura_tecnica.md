@@ -1204,6 +1204,7 @@ Responsabilidad:
 
 - `/latest`: devolver JSON precalculado.
 - `/optimize`: recalcular optimización desde SQLite.
+- Exponer portafolios institucionales exactos por horizonte, tamaño y objetivo.
 
 Dependencia:
 
@@ -1322,12 +1323,25 @@ run_optimization()
 /api/v1/perri/optimize
 ```
 
-El servicio calcula:
+El servicio calcula portafolios institucionales exactos para:
 
-```text
-Portafolio de mínimo riesgo
-Portafolio de máximo Sharpe
-```
+Objetivos:
+
+- Portafolio de mínimo riesgo (`min_risk`).
+- Portafolio de máximo Sharpe (`max_sharpe`).
+- Portafolio de máxima rentabilidad (`max_return`).
+
+Tamaños exactos:
+
+- 5 activos.
+- 10 activos.
+- 15 activos.
+
+Horizontes:
+
+- 1 año (`1y`).
+- 3 años (`3y`).
+- 5 años (`5y`).
 
 Universo usado actualmente:
 
@@ -1411,6 +1425,7 @@ get_macro_snapshot()
 post_benchmark_compare()
 get_decision_panel()
 validate_investor_preferences()
+get_perri_latest()
 post_roboadvisor_suggest()
 ```
 
@@ -1459,12 +1474,6 @@ Páginas actuales:
 
 ### 11.1 Contextualización
 
-Archivo:
-
-```text
-frontend/pages/0_Contextualizacion.py
-```
-
 Consume:
 
 ```text
@@ -1473,17 +1482,7 @@ Consume:
 /api/v1/help/catalog
 ```
 
-Muestra:
-
-- Activos base.
-- Activos ampliados.
-- Metadata de Perri.
-- Clase de activo.
-- Benchmark metodológico.
-- Fuente.
-- Resumen de universo.
-
----
+Muestra activos base, activos ampliados, metadata de Perri, clase de activo, benchmark metodológico, fuente y resumen de universo.
 
 ### 11.2 Técnico
 
@@ -1494,17 +1493,7 @@ Consume:
 /api/v1/market/prices/{ticker}
 ```
 
-Muestra:
-
-- Precio.
-- SMA.
-- EMA.
-- RSI.
-- Bollinger.
-- MACD.
-- Estocástico.
-
----
+Muestra precio, SMA, EMA, RSI, Bollinger, MACD y estocástico.
 
 ### 11.3 Rendimientos
 
@@ -1515,16 +1504,7 @@ Consume:
 /api/v1/market/returns/{ticker}
 ```
 
-Muestra:
-
-- Rendimientos.
-- Estadísticas.
-- Histograma.
-- Boxplot.
-- Q-Q plot.
-- Pruebas de normalidad.
-
----
+Muestra rendimientos, estadísticas, histograma, boxplot, Q-Q plot y pruebas de normalidad.
 
 ### 11.4 GARCH
 
@@ -1534,16 +1514,7 @@ Consume:
 /api/v1/garch/{ticker}
 ```
 
-Muestra:
-
-- ARCH.
-- GARCH.
-- EGARCH.
-- Comparación de modelos.
-- Volatilidad condicional.
-- Pronóstico.
-
----
+Muestra ARCH, GARCH, EGARCH, comparación de modelos, volatilidad condicional y pronóstico.
 
 ### 11.5 CAPM
 
@@ -1554,15 +1525,7 @@ Consume:
 /api/v1/capm/portfolio
 ```
 
-Muestra:
-
-- Beta.
-- Alpha.
-- R².
-- CAPM por activo.
-- CAPM por portafolio.
-
----
+Muestra beta, alpha, R², CAPM por activo y CAPM por portafolio.
 
 ### 11.6 VaR y CVaR
 
@@ -1572,15 +1535,7 @@ Consume:
 /api/v1/risk/var
 ```
 
-Muestra:
-
-- VaR.
-- CVaR.
-- Métodos histórico, paramétrico y Monte Carlo.
-- Riesgo monetario.
-- Kupiec.
-
----
+Muestra VaR, CVaR, métodos histórico, paramétrico y Monte Carlo, riesgo monetario y Kupiec.
 
 ### 11.7 Markowitz
 
@@ -1590,16 +1545,7 @@ Consume:
 /api/v1/portfolio/efficient-frontier
 ```
 
-Muestra:
-
-- Frontera eficiente.
-- Portafolio de mínima varianza.
-- Portafolio de máximo Sharpe.
-- Matriz de correlación.
-- Perfil sugerido.
-- Portafolios top.
-
----
+Muestra frontera eficiente, mínima varianza, máximo Sharpe, matriz de correlación, perfil sugerido y portafolios top.
 
 ### 11.8 Señales
 
@@ -1609,14 +1555,7 @@ Consume:
 /api/v1/alerts/{ticker}
 ```
 
-Muestra:
-
-- Señales técnicas.
-- Compra.
-- Venta.
-- Neutralidad.
-
----
+Muestra señales técnicas de compra, venta o neutralidad.
 
 ### 11.9 Macro y Benchmark
 
@@ -1628,15 +1567,7 @@ Consume:
 /api/v1/benchmark/compare
 ```
 
-Muestra:
-
-- Tasa libre de riesgo.
-- Inflación si existe FRED.
-- FX spot.
-- Benchmark ACWI.
-- Alpha.
-- Tracking error.
-- Information Ratio.
+Muestra tasa libre de riesgo, inflación si existe FRED, FX spot, benchmark ACWI, alpha, tracking error e information ratio.
 
 ---
 
@@ -1653,6 +1584,7 @@ Tests actuales:
 ```text
 tests/test_perri_latest.py
 tests/test_perri_optimize.py
+tests/test_perri_horizons.py
 ```
 
 ### 12.1 test_perri_latest.py
@@ -1672,6 +1604,7 @@ Comprueba:
 - Activos elegibles.
 - Pesos de mínimo riesgo.
 - Pesos de máximo Sharpe.
+- Pesos de máxima rentabilidad.
 - Volatilidades no negativas.
 
 ---
@@ -1691,8 +1624,27 @@ Comprueba:
 - `rf_annual = 0.04`.
 - Existe `min_risk`.
 - Existe `max_sharpe`.
+- Existe `max_return`.
 - Objetivos correctos.
 - Suma de pesos cercana a 1.
+
+---
+
+### 12.3 test_perri_horizons.py
+
+Valida:
+
+```text
+GET /api/v1/perri/latest
+```
+
+Comprueba que el JSON precalculado de Perri contenga:
+
+- Horizontes exactos: `1y`, `3y`, `5y`.
+- Tamaños exactos de portafolio: `5`, `10`, `15`.
+- Objetivos exactos: `min_risk`, `max_sharpe`, `max_return`.
+- Modo de selección `exact`.
+- Cantidad de activos seleccionados igual al tamaño solicitado.
 
 Los tests usan:
 
@@ -1930,7 +1882,9 @@ VaR/CVaR
 Markowitz
 GARCH
 RoboAdvisor
-Perri institucional
+Perri institucional con 1y, 3y, 5y
+Perri institucional con 5, 10 y 15 activos exactos
+Perri institucional con min_risk, max_sharpe y max_return
 KYC / preferencias de inversionista
 Login básico en frontend
 Dashboard Streamlit
@@ -1986,7 +1940,7 @@ python -m app.jobs.run_perri_optimization
 
 ```powershell
 cd C:\Users\edwar\Desktop\portafolio-riesgo
-python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py -q
+python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py tests\test_perri_horizons.py -q
 ```
 
 ### 17.5 Docker
@@ -2030,11 +1984,12 @@ Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/api/v1/perri/optimize?
 
 1. Validar `docker compose up backend` y `/health`.
 2. Guardar archivos Docker en Git.
-3. Actualizar `README.md`.
-4. Crear frontend específico para `/api/v1/perri/latest`.
-5. Ampliar tests a `market`, `assets` y `persistence`.
-6. Revisar `GitHub Actions` en la pestaña Actions.
-7. Crear reportes PDF.
-8. Diseñar admin dashboard.
-9. Fortalecer login y roles.
-10. Implementar ML Singleton predictivo real.
+3. Integrar en backend la comparación de Markowitz contra umbrales Perri exactos.
+4. Diseñar backend del chatbot experto.
+5. Crear frontend específico para `/api/v1/perri/latest` al final.
+6. Ampliar tests a `market`, `assets` y `persistence`.
+7. Revisar `GitHub Actions` en la pestaña Actions.
+8. Crear reportes PDF.
+9. Diseñar admin dashboard.
+10. Fortalecer login y roles.
+11. Implementar ML Singleton predictivo real.

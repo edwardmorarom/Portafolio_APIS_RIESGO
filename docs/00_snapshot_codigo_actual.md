@@ -1,2360 +1,3255 @@
-# Snapshot técnico actual del Proyecto Portafolio Riesgo USTA
-
-Generado: 2026-05-18T15:31:50
-
-## Git
-
-```text
-On branch backend
-Your branch is up to date with 'origin/backend'.
-
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-	.dockerignore
-	backend/Dockerfile
-	docker-compose.yml
-	docs/
-
-nothing added to commit but untracked files present (use "git add" to track)
-```
-
-## Estructura detectada
-
-```text
-.devcontainer/devcontainer.json
-.env.example
-.github/workflows/backend-ci.yml
-.github/workflows/perri-scheduled-update.yml
-.vscode/settings.json
-backend/app/__init__.py
-backend/app/api/__init__.py
-backend/app/api/router.py
-backend/app/api/v1/__init__.py
-backend/app/api/v1/alerts.py
-backend/app/api/v1/assets.py
-backend/app/api/v1/benchmark.py
-backend/app/api/v1/capm.py
-backend/app/api/v1/decision.py
-backend/app/api/v1/garch.py
-backend/app/api/v1/help.py
-backend/app/api/v1/investor.py
-backend/app/api/v1/macro.py
-backend/app/api/v1/market.py
-backend/app/api/v1/perri.py
-backend/app/api/v1/persistence.py
-backend/app/api/v1/portfolio.py
-backend/app/api/v1/returns_stats.py
-backend/app/api/v1/risk.py
-backend/app/api/v1/roboadvisor.py
-backend/app/api/v1/technical.py
-backend/app/api/v1/valuation.py
-backend/app/clients/__init__.py
-backend/app/clients/macro_client.py
-backend/app/clients/market_client.py
-backend/app/core/__init__.py
-backend/app/core/assets_registry.py
-backend/app/core/decorators.py
-backend/app/core/dependencies.py
-backend/app/core/error_catalog.py
-backend/app/core/exceptions.py
-backend/app/core/help_catalog.py
-backend/app/core/market_utils.py
-backend/app/core/security.py
-backend/app/core/settings.py
-backend/app/db/__init__.py
-backend/app/db/build_perri_universe.py
-backend/app/db/database.py
-backend/app/db/import_perri_prices.py
-backend/app/db/models.py
-backend/app/db/seed_db.py
-backend/app/domain/__init__.py
-backend/app/jobs/__init__.py
-backend/app/jobs/run_perri_optimization.py
-backend/app/main.py
-backend/app/schemas/__init__.py
-backend/app/schemas/alerts.py
-backend/app/schemas/benchmark.py
-backend/app/schemas/capm.py
-backend/app/schemas/common.py
-backend/app/schemas/decision.py
-backend/app/schemas/error.py
-backend/app/schemas/garch.py
-backend/app/schemas/help.py
-backend/app/schemas/investor.py
-backend/app/schemas/macro.py
-backend/app/schemas/market.py
-backend/app/schemas/portfolio.py
-backend/app/schemas/returns_stats.py
-backend/app/schemas/risk.py
-backend/app/schemas/technical.py
-backend/app/schemas/valuation.py
-backend/app/services/__init__.py
-backend/app/services/alerts_service.py
-backend/app/services/assets_service.py
-backend/app/services/benchmark_service.py
-backend/app/services/capm_service.py
-backend/app/services/decision_service.py
-backend/app/services/garch_service.py
-backend/app/services/help_service.py
-backend/app/services/investor_service.py
-backend/app/services/macro_service.py
-backend/app/services/market_service.py
-backend/app/services/option_service.py
-backend/app/services/perri_optimizer_service.py
-backend/app/services/portfolio_service.py
-backend/app/services/returns_stats_service.py
-backend/app/services/risk_service.py
-backend/app/services/roboadvisor_service.py
-backend/app/services/technical_service.py
-backend/app/services/yield_service.py
-backend/data/perri_latest_optimization.json
-backend/data/perri_universe.json
-backend/data/users.json
-backend/requirements.txt
-backend/runtime.txt
-backend/update_cache.py
-docker-compose.yml
-docs/generar_snapshot_codigo.py
-frontend/.streamlit/secrets.toml
-frontend/app.py
-frontend/config.py
-frontend/pages/01_Tecnico.py
-frontend/pages/02_Rendimientos.py
-frontend/pages/03_Garch.py
-frontend/pages/04_Capm.py
-frontend/pages/05_Var_Cvar.py
-frontend/pages/06_Markowitz.py
-frontend/pages/07_Señales.py
-frontend/pages/08_Macro_Benchmark.py
-frontend/pages/0_Contextualizacion.py
-frontend/services/api_client.py
-frontend/ui/__init__.py
-frontend/ui/cards.py
-frontend/ui/dashboard_filters.py
-frontend/ui/dashboard_ui.py
-frontend/ui/page_setup.py
-frontend/ui/plot_style.py
-frontend/ui/theme.py
-README.md
-requirements.txt
-tests/test_perri_latest.py
-tests/test_perri_optimize.py
-```
-
-## README actual
-
-```markdown
-# Portafolio Riesgo API
-
-Backend y dashboard de integración para un proyecto de Teoría del Riesgo y APIs orientado al análisis de portafolios financieros con FastAPI y Streamlit.
-
-El proyecto permite estudiar un portafolio internacional mediante precios históricos, rendimientos, indicadores técnicos, VaR/CVaR, CAPM, Markowitz, modelos ARCH/GARCH/EGARCH, señales técnicas, contexto macroeconómico y comparación contra benchmark.
-
----
-
-## 1. Objetivo del proyecto
-
-Construir una arquitectura separada entre backend y frontend para analizar un portafolio de activos internacionales desde una perspectiva financiera, estadística y de riesgo.
-
-El backend se encarga de:
-
-- Descargar datos de mercado.
-- Validar entradas.
-- Limpiar y transformar información.
-- Convertir precios históricos a USD.
-- Calcular modelos financieros y estadísticos.
-- Exponer endpoints mediante FastAPI.
-
-El frontend se encarga de:
-
-- Visualizar resultados.
-- Organizar filtros.
-- Mostrar KPIs.
-- Renderizar gráficas.
-- Entregar interpretaciones para el usuario.
-- Separar cada análisis en módulos de Streamlit.
-
----
-
-## 2. Arquitectura general
-
-```text
-portafolio-riesgo/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   │   └── v1/
-│   │   ├── clients/
-│   │   ├── core/
-│   │   ├── schemas/
-│   │   ├── services/
-│   │   └── main.py
-│   ├── requirements.txt
-│   └── runtime.txt
-├── frontend/
-│   ├── assets/
-│   ├── pages/
-│   ├── services/
-│   ├── ui/
-│   ├── app.py
-│   └── config.py
-├── docs/
-├── .env.example
-├── .gitignore
-└── README.md
-```
-
----
-
-## 3. Tecnologías principales
-
-- FastAPI
-- Streamlit
-- Pydantic
-- pydantic-settings
-- yfinance
-- pandas
-- numpy
-- scipy
-- arch
-- plotly
-- uvicorn
-
----
-
-## 4. Separación backend/frontend
-
-El proyecto mantiene una separación clara:
-
-### Backend
-
-Contiene la lógica de negocio, datos y modelos:
-
-- Descarga de precios desde yfinance.
-- Conversión histórica de precios a USD.
-- Validación de tickers, fechas, pesos y parámetros.
-- Cálculo de rendimientos simples y logarítmicos.
-- Indicadores técnicos.
-- Estadísticas descriptivas.
-- Pruebas de normalidad.
-- VaR y CVaR.
-- CAPM.
-- Markowitz.
-- ARCH/GARCH/EGARCH.
-- Comparación contra benchmark.
-- Señales técnicas.
-- Snapshot macroeconómico.
-- Manejo estructurado de errores.
-
-### Frontend
-
-Contiene la capa visual:
-
-- Sidebar de filtros.
-- Tarjetas KPI.
-- Gráficas Plotly.
-- Tablas.
-- Interpretaciones.
-- Componentes reutilizables de UI.
-- Navegación modular por páginas.
-- Diseño visual institucional.
-
----
-
-## 5. Activos seleccionados
-
-Activos base del proyecto:
-
-| Activo | Ticker | País / Mercado |
-|---|---|---|
-| BP | `BP.L` | Reino Unido |
-| Carrefour | `CA.PA` | Francia |
-| Alimentation Couche-Tard | `ATD.TO` | Canadá |
-| FEMSA | `FEMSAUBD.MX` | México |
-| Seven & i | `3382.T` | Japón |
-
-Justificación:
-
-Se eligieron activos de diferentes geografías y perfiles empresariales para favorecer la diversificación y permitir un análisis comparativo internacional del riesgo, rendimiento, volatilidad y comportamiento frente al benchmark.
-
-El universo puede ampliarse hasta un máximo de 15 activos por portafolio, según las restricciones del backend.
-
----
-
-## 6. Conversión histórica a USD
-
-Los activos internacionales pueden venir en monedas distintas según su mercado de cotización. Para evitar mezclar retornos de diferentes monedas dentro de una misma matriz de rendimientos, el backend convierte históricamente los precios a USD usando series de divisas de yfinance.
-
-| Activo | Ticker | Moneda original | FX a USD |
-|---|---|---|---|
-| BP | `BP.L` | GBP/GBp | `GBPUSD=X` |
-| Carrefour | `CA.PA` | EUR | `EURUSD=X` |
-| Couche-Tard | `ATD.TO` | CAD | `CADUSD=X` |
-| FEMSA | `FEMSAUBD.MX` | MXN | `MXNUSD=X` |
-| Seven & i | `3382.T` | JPY | `JPYUSD=X` |
-
-Esta conversión permite que los módulos de rendimientos, CAPM, VaR/CVaR, GARCH, Markowitz y benchmark trabajen bajo una moneda común.
-
----
-
-## 7. Benchmark y moneda base
-
-- Benchmark global por defecto: `ACWI`
-- Moneda base metodológica: `USD`
-
-El benchmark `ACWI` se utiliza porque el portafolio combina activos de distintos países. Por tanto, se requiere una referencia global y no un índice puramente local.
-
----
-
-## 8. Tasa libre de riesgo
-
-La tasa libre de riesgo principal se toma desde yfinance usando:
-
-```text
-^IRX
-```
-
-Esta referencia corresponde a Treasury Bill de 13 semanas y se usa como tasa corta en USD para métricas como:
-
-- Sharpe.
-- CAPM.
-- Alpha de Jensen.
-- Markowitz.
-
-Se evita dejar una tasa libre de riesgo editable por el usuario en Markowitz para mantener consistencia metodológica.
-
----
-
-## 9. Inflación
-
-La inflación no se define manualmente.
-
-El backend está preparado para calcular inflación anual YoY usando FRED y la serie:
-
-```text
-CPIAUCSL
-```
-
-Si no existe `FRED_API_KEY`, el backend devuelve `null` y el frontend muestra el indicador como no disponible.
-
-Esto evita inventar datos macroeconómicos.
-
----
-
-## 10. Módulos del dashboard
-
-### Módulo 0 - Contextualización
-
-Presenta:
-
-- Activos base.
-- Países.
-- Rol financiero de cada activo.
-- Conversión histórica a USD.
-- Tasa libre de riesgo.
-- Benchmark global.
-
-### Módulo 1 - Análisis técnico
-
-Incluye:
-
-- Precio.
-- SMA.
-- EMA.
-- RSI.
-- Bandas de Bollinger.
-- MACD.
-- Línea de señal MACD.
-- Histograma MACD.
-- Oscilador Estocástico %K y %D.
-
-También permite activar o desactivar capas de las gráficas.
-
-### Módulo 2 - Rendimientos
-
-Incluye:
-
-- Rendimientos simples o logarítmicos.
-- Estadísticas descriptivas.
-- Histograma.
-- Boxplot.
-- Q-Q plot.
-- Shapiro-Wilk.
-- Jarque-Bera.
-- Anderson-Darling cuando la muestra es apta.
+        # Snapshot técnico actual del Proyecto Portafolio Riesgo USTA
+
+        Generado: 2026-05-18T20:19:23
+
+        ## Git
+
+        ```text
+        On branch backend
+        Your branch is up to date with 'origin/backend'.
+
+        nothing to commit, working tree clean
+        ```
+
+        ## Estructura detectada
+
+        ```text
+        .devcontainer/devcontainer.json
+        .env.example
+        .github/workflows/backend-ci.yml
+        .github/workflows/perri-scheduled-update.yml
+        .vscode/settings.json
+        backend/app/__init__.py
+        backend/app/api/__init__.py
+        backend/app/api/router.py
+        backend/app/api/v1/__init__.py
+        backend/app/api/v1/alerts.py
+        backend/app/api/v1/assets.py
+        backend/app/api/v1/benchmark.py
+        backend/app/api/v1/capm.py
+        backend/app/api/v1/decision.py
+        backend/app/api/v1/garch.py
+        backend/app/api/v1/help.py
+        backend/app/api/v1/investor.py
+        backend/app/api/v1/macro.py
+        backend/app/api/v1/market.py
+        backend/app/api/v1/perri.py
+        backend/app/api/v1/persistence.py
+        backend/app/api/v1/portfolio.py
+        backend/app/api/v1/returns_stats.py
+        backend/app/api/v1/risk.py
+        backend/app/api/v1/roboadvisor.py
+        backend/app/api/v1/technical.py
+        backend/app/api/v1/valuation.py
+        backend/app/clients/__init__.py
+        backend/app/clients/macro_client.py
+        backend/app/clients/market_client.py
+        backend/app/core/__init__.py
+        backend/app/core/assets_registry.py
+        backend/app/core/decorators.py
+        backend/app/core/dependencies.py
+        backend/app/core/error_catalog.py
+        backend/app/core/exceptions.py
+        backend/app/core/help_catalog.py
+        backend/app/core/market_utils.py
+        backend/app/core/security.py
+        backend/app/core/settings.py
+        backend/app/db/__init__.py
+        backend/app/db/build_perri_universe.py
+        backend/app/db/database.py
+        backend/app/db/import_perri_prices.py
+        backend/app/db/models.py
+        backend/app/db/seed_db.py
+        backend/app/domain/__init__.py
+        backend/app/jobs/__init__.py
+        backend/app/jobs/run_perri_optimization.py
+        backend/app/main.py
+        backend/app/schemas/__init__.py
+        backend/app/schemas/alerts.py
+        backend/app/schemas/benchmark.py
+        backend/app/schemas/capm.py
+        backend/app/schemas/common.py
+        backend/app/schemas/decision.py
+        backend/app/schemas/error.py
+        backend/app/schemas/garch.py
+        backend/app/schemas/help.py
+        backend/app/schemas/investor.py
+        backend/app/schemas/macro.py
+        backend/app/schemas/market.py
+        backend/app/schemas/portfolio.py
+        backend/app/schemas/returns_stats.py
+        backend/app/schemas/risk.py
+        backend/app/schemas/technical.py
+        backend/app/schemas/valuation.py
+        backend/app/services/__init__.py
+        backend/app/services/alerts_service.py
+        backend/app/services/assets_service.py
+        backend/app/services/benchmark_service.py
+        backend/app/services/capm_service.py
+        backend/app/services/decision_service.py
+        backend/app/services/garch_service.py
+        backend/app/services/help_service.py
+        backend/app/services/investor_service.py
+        backend/app/services/macro_service.py
+        backend/app/services/market_service.py
+        backend/app/services/option_service.py
+        backend/app/services/perri_optimizer_service.py
+        backend/app/services/portfolio_service.py
+        backend/app/services/returns_stats_service.py
+        backend/app/services/risk_service.py
+        backend/app/services/roboadvisor_service.py
+        backend/app/services/technical_service.py
+        backend/app/services/yield_service.py
+        backend/data/perri_latest_optimization.json
+        backend/data/perri_universe.json
+        backend/data/users.json
+        backend/requirements.txt
+        backend/runtime.txt
+        backend/update_cache.py
+        docker-compose.yml
+        docs/00_snapshot_codigo_actual.md
+        docs/01_arquitectura_tecnica.md
+        docs/generar_snapshot_codigo.py
+        frontend/.streamlit/secrets.toml
+        frontend/app.py
+        frontend/config.py
+        frontend/pages/01_Tecnico.py
+        frontend/pages/02_Rendimientos.py
+        frontend/pages/03_Garch.py
+        frontend/pages/04_Capm.py
+        frontend/pages/05_Var_Cvar.py
+        frontend/pages/06_Markowitz.py
+        frontend/pages/07_Señales.py
+        frontend/pages/08_Macro_Benchmark.py
+        frontend/pages/0_Contextualizacion.py
+        frontend/services/api_client.py
+        frontend/ui/__init__.py
+        frontend/ui/cards.py
+        frontend/ui/dashboard_filters.py
+        frontend/ui/dashboard_ui.py
+        frontend/ui/page_setup.py
+        frontend/ui/plot_style.py
+        frontend/ui/theme.py
+        README.md
+        requirements.txt
+        tests/test_perri_horizons.py
+        tests/test_perri_latest.py
+        tests/test_perri_optimize.py
+        ```
+
+        ## README actual
+
+        ```markdown
+        # Portafolio Riesgo USTA
+
+        Backend FastAPI y dashboard Streamlit para análisis integral de portafolios financieros, teoría del riesgo, valoración, optimización y automatización institucional de Perri.
+
+        El proyecto permite consultar activos, precios históricos, rendimientos, indicadores técnicos, VaR/CVaR, CAPM, Markowitz, GARCH, señales técnicas, análisis macroeconómico, benchmark, RoboAdvisor y optimización automática de portafolios con persistencia en SQLite.
+
+        ---
+
+        ## 1. Objetivo del proyecto
+
+        Construir una arquitectura modular y reproducible para analizar portafolios financieros internacionales desde una perspectiva cuantitativa, estadística y de riesgo.
+
+        El sistema está dividido en dos capas principales:
+
+        - **Backend FastAPI**: concentra lógica financiera, validación, persistencia, servicios de negocio, endpoints, jobs, automatización y pruebas.
+        - **Frontend Streamlit**: consume la API y presenta módulos visuales para interpretación financiera y toma de decisiones.
+
+        ---
+
+        ## 2. Estado técnico actual
+
+        El proyecto incluye actualmente:
+
+        - FastAPI modular.
+        - Streamlit modular.
+        - Pydantic y Pydantic Settings.
+        - SQLAlchemy 2.x.
+        - SQLite local.
+        - Persistencia de activos.
+        - Persistencia de precios históricos.
+        - Lectura de precios desde SQLite con fallback a proveedor externo.
+        - Universo Perri institucional.
+        - Optimización automática de Perri.
+        - Job para guardar la última optimización en JSON.
+        - GitHub Actions para CI.
+        - GitHub Actions programado para actualización de Perri.
+        - Dockerfile del backend.
+        - `docker-compose.yml`.
+        - Tests con `pytest` y `TestClient`.
+        - Nelson-Siegel.
+        - Black-Scholes.
+        - CAPM.
+        - Markowitz.
+        - VaR/CVaR.
+        - GARCH.
+        - RoboAdvisor.
+        - Dashboard Streamlit.
+        - Login básico.
+        - KYC / preferencias de inversionista.
+
+        Pendiente o parcial:
+
+        - ML Singleton predictivo real con endpoint `/predict`.
+        - Admin dashboard completo.
+        - Reportes PDF.
+        - Roles robustos.
+        - Deploy PaaS final.
+        - Más pruebas unitarias por módulo.
+        - Validación final del runtime Docker con `/health`.
+
+        ---
+
+        ## 3. Estructura general
+
+        ```text
+        portafolio-riesgo/
+        ├── backend/
+        │   ├── app/
+        │   │   ├── api/
+        │   │   │   ├── router.py
+        │   │   │   └── v1/
+        │   │   ├── clients/
+        │   │   ├── core/
+        │   │   ├── db/
+        │   │   ├── domain/
+        │   │   ├── jobs/
+        │   │   ├── schemas/
+        │   │   ├── services/
+        │   │   └── main.py
+        │   ├── data/
+        │   ├── requirements.txt
+        │   ├── runtime.txt
+        │   ├── update_cache.py
+        │   └── Dockerfile
+        ├── frontend/
+        │   ├── pages/
+        │   ├── services/
+        │   ├── ui/
+        │   ├── app.py
+        │   └── config.py
+        ├── tests/
+        ├── docs/
+        ├── .github/workflows/
+        ├── docker-compose.yml
+        ├── .dockerignore
+        ├── .env.example
+        ├── .gitignore
+        ├── requirements.txt
+        ├── roboadvisor_cache.csv
+        └── README.md
+        ```
+
+        ---
+
+        ## 4. Tecnologías principales
+
+        ### Backend
+
+        - Python 3.11 recomendado.
+        - FastAPI.
+        - Uvicorn.
+        - Pydantic.
+        - Pydantic Settings.
+        - SQLAlchemy.
+        - SQLite.
+        - pandas.
+        - numpy.
+        - scipy.
+        - yfinance.
+        - arch.
+        - pytest.
+        - httpx.
+
+        ### Frontend
+
+        - Streamlit.
+        - Plotly.
+        - pandas.
+        - requests.
+
+        ### DevOps
+
+        - Docker.
+        - Docker Compose.
+        - GitHub Actions.
+
+        ---
+
+        ## 5. Arquitectura del backend
+
+        El backend está organizado por responsabilidades.
+
+        ```text
+        backend/app/
+        ├── api/          # Routers FastAPI
+        ├── clients/      # Clientes externos: mercado y macro
+        ├── core/         # Configuración, seguridad, excepciones, dependencias
+        ├── db/           # SQLAlchemy, modelos, seeders e importadores
+        ├── jobs/         # Jobs ejecutables manualmente o por GitHub Actions
+        ├── schemas/      # Contratos Pydantic
+        ├── services/     # Lógica de negocio y modelos financieros
+        └── main.py       # Entrada principal FastAPI
+        ```
+
+        Regla de diseño:
+
+        ```text
+        Routers reciben y responden.
+        Schemas validan.
+        Services calculan.
+        Clients consultan proveedores externos.
+        DB persiste.
+        Jobs automatizan procesos.
+        Frontend visualiza.
+        ```
+
+        ---
+
+        ## 6. Entrada principal FastAPI
+
+        Archivo:
+
+        ```text
+        backend/app/main.py
+        ```
+
+        Responsabilidades:
+
+        - Crear instancia `FastAPI`.
+        - Configurar CORS.
+        - Inicializar SQLite mediante `lifespan`.
+        - Registrar manejador de excepciones.
+        - Registrar endpoint raíz.
+        - Registrar health check.
+        - Montar `api_router`.
+
+        Endpoints base:
+
+        ```text
+        GET /
+        GET /health
+        ```
+
+        La inicialización de base de datos usa:
+
+        ```text
+        init_db()
+        ```
+
+        Esto crea las tablas SQLAlchemy al iniciar la aplicación.
+
+        ---
+
+        ## 7. Configuración
+
+        Archivo:
+
+        ```text
+        backend/app/core/settings.py
+        ```
+
+        Clase principal:
+
+        ```python
+        class Settings(BaseSettings)
+        ```
+
+        Variables principales:
+
+        ```env
+        APP_NAME=Portafolio Riesgo API
+        APP_VERSION=0.1.0
+        APP_ENV=dev
+        DEBUG=true
+        API_V1_PREFIX=/api/v1
+        DATABASE_URL=sqlite:///./data/portafolio_riesgo.db
+        DEFAULT_START_DATE=2021-01-01
+        DEFAULT_END_DATE=2026-12-31
+        GLOBAL_BENCHMARK=ACWI
+        DEFAULT_BASE_CURRENCY=USD
+        FRED_API_KEY=
+        FRONTEND_BASE_URL=http://localhost:8501
+        ALLOWED_ORIGINS=http://localhost:8501,http://127.0.0.1:8501
+        MIN_OBS_VAR=60
+        MIN_OBS_CAPM=60
+        MIN_OBS_PORTFOLIO=60
+        ```
+
+        El proyecto usa `get_settings()` con cache para evitar recrear configuración en cada request.
+
+        ---
+
+        ## 8. Variables de entorno
+
+        Crear `.env` desde `.env.example`.
+
+        En PowerShell:
+
+        ```powershell
+        Copy-Item .env.example .env
+        Copy-Item .env backend\.env
+        ```
+
+        No subir `.env` al repositorio.
+
+        ---
+
+        ## 9. Routers disponibles
+
+        Todos los routers se registran en:
+
+        ```text
+        backend/app/api/router.py
+        ```
+
+        Prefijo general:
+
+        ```text
+        /api/v1
+        ```
+
+        Routers principales:
+
+        ```text
+        /api/v1/assets
+        /api/v1/market
+        /api/v1/technical
+        /api/v1/risk
+        /api/v1/portfolio
+        /api/v1/macro
+        /api/v1/capm
+        /api/v1/decision
+        /api/v1/investor
+        /api/v1/benchmark
+        /api/v1/help
+        /api/v1/returns-stats
+        /api/v1/alerts
+        /api/v1/garch
+        /api/v1/valuation
+        /api/v1/roboadvisor
+        /api/v1/perri
+        /api/v1/persistence
+        ```
+
+        ---
+
+        ## 10. Endpoints principales
+
+        ### Root y health
+
+        ```text
+        GET /
+        GET /health
+        ```
+
+        ### Assets
+
+        ```text
+        GET /api/v1/assets/
+        GET /api/v1/assets/search?q={query}
+        GET /api/v1/assets/summary
+        ```
+
+        ### Market
+
+        ```text
+        GET /api/v1/market/prices/{ticker}
+        GET /api/v1/market/returns/{ticker}
+        ```
+
+        ### Technical
+
+        ```text
+        GET /api/v1/technical/indicators/{ticker}
+        ```
+
+        ### Returns Stats
+
+        ```text
+        GET /api/v1/returns-stats/summary/{ticker}
+        ```
+
+        ### GARCH
+
+        ```text
+        GET /api/v1/garch/{ticker}
+        ```
+
+        ### CAPM
+
+        ```text
+        GET /api/v1/capm/{ticker}
+        POST /api/v1/capm/portfolio
+        ```
+
+        ### Risk
+
+        ```text
+        POST /api/v1/risk/var
+        ```
+
+        ### Portfolio
+
+        ```text
+        POST /api/v1/portfolio/efficient-frontier
+        ```
+
+        ### Benchmark
+
+        ```text
+        POST /api/v1/benchmark/compare
+        ```
+
+        ### Macro
+
+        ```text
+        GET /api/v1/macro/
+        GET /api/v1/macro/fx-spot/{base_currency}
+        ```
+
+        ### Decision
+
+        ```text
+        POST /api/v1/decision/panel
+        ```
+
+        ### Investor
+
+        ```text
+        POST /api/v1/investor/preferences
+        ```
+
+        ### Help
+
+        ```text
+        GET /api/v1/help/catalog
+        ```
+
+        ### Alerts
+
+        ```text
+        GET /api/v1/alerts/{ticker}
+        ```
+
+        ### Valuation
+
+        ```text
+        POST /api/v1/valuation/nelson-siegel
+        POST /api/v1/valuation/black-scholes
+        ```
+
+        ### RoboAdvisor
+
+        ```text
+        POST /api/v1/roboadvisor/suggest
+        ```
+
+        ### Perri
+
+        ```text
+        GET /api/v1/perri/latest
+        GET /api/v1/perri/optimize
+        ```
+
+        ### Persistence
+
+        ```text
+        GET /api/v1/persistence/health
+        ```
+
+        ---
+
+        ## 11. Inyección de dependencias
+
+        Archivo:
+
+        ```text
+        backend/app/core/dependencies.py
+        ```
+
+        El proyecto usa `Depends` para conectar endpoints con servicios y clientes.
+
+        Ejemplo de flujo:
+
+        ```text
+        Endpoint FastAPI
+        ↓ Depends(get_market_service)
+        MarketService
+        ↓ Depends(get_market_client)
+        MarketClient
+        ↓ Depends(get_app_settings)
+        Settings
+        ```
+
+        Dependencias relevantes:
+
+        ```python
+        get_app_settings()
+        get_market_client()
+        get_macro_client()
+        get_market_service()
+        get_technical_service()
+        get_risk_service()
+        get_portfolio_service()
+        get_macro_service()
+        get_capm_service()
+        get_decision_service()
+        get_investor_service()
+        get_assets_service()
+        get_benchmark_service()
+        get_help_service()
+        get_returns_stats_service()
+        get_alerts_service()
+        get_garch_service()
+        get_db()
+        ```
+
+        ---
+
+        ## 12. Persistencia con SQLAlchemy y SQLite
+
+        Archivos:
+
+        ```text
+        backend/app/db/database.py
+        backend/app/db/models.py
+        backend/app/db/seed_db.py
+        backend/app/db/import_perri_prices.py
+        ```
+
+        ### database.py
+
+        Responsabilidades:
+
+        - Crear `Base`.
+        - Resolver ruta estable de SQLite.
+        - Crear `engine`.
+        - Crear `SessionLocal`.
+        - Exponer `get_db()`.
+        - Exponer `init_db()`.
+
+        La ruta SQLite se resolvió para apuntar de forma estable a:
+
+        ```text
+        backend/data/portafolio_riesgo.db
+        ```
+
+        Esto evita que se creen bases accidentales cuando los comandos se ejecutan desde la raíz, `backend/`, Docker o GitHub Actions.
+
+        ### models.py
+
+        Modelos actuales:
+
+        ```text
+        Asset
+        Price
+        Portfolio
+        PredictionLog
+        ```
+
+        Relación principal:
+
+        ```text
+        Asset 1 ─── N Price
+        ```
+
+        La tabla `prices` guarda:
+
+        ```text
+        close_original
+        original_currency
+        fx_ticker
+        fx_rate_to_usd
+        close_usd
+        close
+        source
+        ```
+
+        ---
+
+        ## 13. Universo de activos
+
+        El proyecto tiene activos base y universo Perri.
+
+        Archivos relacionados:
+
+        ```text
+        backend/app/core/assets_registry.py
+        backend/app/db/build_perri_universe.py
+        backend/app/db/seed_db.py
+        backend/data/perri_universe.json
+        ```
+
+        El universo Perri clasifica activos por:
+
+        ```text
+        renta_variable
+        renta_fija
+        commodity
+        etf_global
+        etf_sectorial
+        efectivo_o_corto_plazo
+        ```
+
+        También conserva metadata metodológica:
+
+        ```text
+        moneda_origen
+        fx_ticker
+        benchmark_ticker
+        benchmark_description
+        include_in_perri
+        source
+        ```
+
+        ---
+
+        ## 14. Precios históricos
+
+        Fuente actual:
+
+        ```text
+        roboadvisor_cache.csv
+        ```
+
+        Importador:
+
+        ```text
+        backend/app/db/import_perri_prices.py
+        ```
+
+        Flujo:
+
+        ```text
+        roboadvisor_cache.csv
+                ↓
+        import_perri_prices.py
+                ↓
+        tabla prices
+                ↓
+        MarketService
+                ↓
+        /api/v1/market/prices/{ticker}
+        ```
+
+        El sistema guarda el cierre original y el cierre convertido a USD. En el universo actual, la mayoría de activos de Perri se trabajan en USD, por lo que:
+
+        ```text
+        fx_rate_to_usd = 1.0
+        close_usd = close_original
+        ```
+
+        ---
+
+        ## 15. MarketService
+
+        Archivo:
+
+        ```text
+        backend/app/services/market_service.py
+        ```
+
+        Responsabilidad:
+
+        - Consultar precios desde SQLite primero.
+        - Usar `MarketClient` como respaldo si no hay datos persistidos.
+        - Calcular rendimientos simples y logarítmicos.
+
+        Flujo:
+
+        ```text
+        GET /api/v1/market/prices/{ticker}
+                ↓
+        MarketService.get_prices()
+                ↓
+        _get_prices_from_db()
+                ↓
+        Asset + Price
+                ↓
+        Fallback a MarketClient si no hay datos
+        ```
+
+        ---
+
+        ## 16. Conversión a USD
+
+        El proyecto trabaja con USD como moneda base metodológica.
+
+        En el flujo externo, `MarketClient` convierte precios internacionales a USD usando metadata de activo y series FX cuando corresponde.
+
+        Campos relevantes:
+
+        ```text
+        Currency
+        BaseCurrency
+        FxTicker
+        FxRateToUSD
+        ```
+
+        En SQLite se conserva:
+
+        ```text
+        original_currency
+        fx_ticker
+        fx_rate_to_usd
+        close_usd
+        ```
+
+        ---
+
+        ## 17. Perri institucional
+
+        Perri es el componente institucional de optimización automática construido sobre SQLite.
+
+        Archivos:
+
+        ```text
+        backend/app/services/perri_optimizer_service.py
+        backend/app/api/v1/perri.py
+        backend/app/jobs/run_perri_optimization.py
+        backend/data/perri_latest_optimization.json
+        ```
+
+        ### PerriOptimizerService
+
+        Responsabilidades:
+
+        - Leer activos elegibles desde SQLite.
+        - Filtrar renta variable y renta fija.
+        - Construir retornos históricos.
+        - Seleccionar candidatos.
+        - Optimizar mínimo riesgo.
+        - Optimizar mejor relación riesgo-rentabilidad usando Sharpe.
+
+        Métodos principales:
+
+        ```python
+        _get_date_window()
+        _load_eligible_assets()
+        _load_close_series()
+        _build_returns_by_asset()
+        _individual_metrics()
+        _build_aligned_returns_matrix()
+        _portfolio_metrics()
+        _optimize()
+        run_optimization()
+        ```
+
+        ### Endpoints Perri
+
+        ```text
+        GET /api/v1/perri/latest
+        GET /api/v1/perri/optimize
+        ```
+
+        `/latest` devuelve el JSON precalculado.
+
+        `/optimize` recalcula desde SQLite.
+
+        ### Job Perri
 
-### Módulo 3 - ARCH/GARCH/EGARCH
+        Archivo:
+
+        ```text
+        backend/app/jobs/run_perri_optimization.py
+        ```
 
-Incluye:
+        Genera:
 
-- ARCH.
-- GARCH.
-- EGARCH.
-- Comparación por AIC/BIC.
-- Diagnóstico de residuos.
-- Volatilidad condicional.
-- Pronóstico de volatilidad.
+        ```text
+        backend/data/perri_latest_optimization.json
+        ```
 
-### Módulo 4 - CAPM
+        Flujo:
 
-Incluye:
+        ```text
+        seed_db
+        ↓
+        import_perri_prices
+        ↓
+        run_perri_optimization
+        ↓
+        perri_latest_optimization.json
+        ```
 
-- Beta individual.
-- Beta del portafolio.
-- Alpha.
-- R².
-- P-value.
-- Retorno esperado bajo CAPM.
-- Regresión activo-benchmark.
+        ---
 
-### Módulo 5 - VaR y CVaR
+        ## 18. Modelos financieros implementados
 
-Incluye:
+        ### Markowitz
 
-- VaR histórico.
-- VaR paramétrico.
-- VaR Monte Carlo.
-- CVaR histórico.
-- CVaR paramétrico.
-- CVaR Monte Carlo.
-- VaR monetario.
-- CVaR monetario.
-- Test de Kupiec.
+        Archivo:
 
-El nivel de confianza puede configurarse manualmente entre 95% y 99.99%.
+        ```text
+        backend/app/services/portfolio_service.py
+        ```
 
-### Módulo 6 - Markowitz
+        Incluye:
 
-Incluye:
+        - Frontera eficiente.
+        - Portafolio de mínima varianza.
+        - Portafolio de máximo Sharpe.
+        - Matriz de correlación.
+        - Portafolio objetivo.
+        - Ranking de portafolios.
 
-- Frontera eficiente.
-- Matriz de correlación.
-- Portafolio de mínima varianza.
-- Portafolio de máximo Sharpe.
-- Retorno objetivo.
-- Valor del portafolio.
-- Retorno esperado en dinero.
-- Perfiles de inversionista.
+        ### CAPM
 
-Perfiles soportados:
+        Archivo:
 
-- Sin perfil.
-- Mínimo riesgo.
-- Máxima utilidad.
-- Arriesgado.
+        ```text
+        backend/app/services/capm_service.py
+        ```
 
-Cuando se selecciona un perfil o retorno objetivo, los pesos manuales se bloquean porque la composición debe salir del modelo de optimización.
+        Incluye:
 
-### Módulo 7 - Señales técnicas
+        - Beta.
+        - Alpha.
+        - R².
+        - Retorno esperado.
+        - CAPM por activo.
+        - CAPM por portafolio.
 
-Convierte indicadores técnicos en alertas de compra, venta o neutralidad.
+        ### VaR/CVaR
 
-Indicadores utilizados:
+        Archivo:
 
-- RSI.
-- MACD.
-- Bollinger.
-- Medias móviles.
-- Estocástico.
+        ```text
+        backend/app/services/risk_service.py
+        ```
 
-### Módulo 8 - Macro y benchmark
+        Incluye:
 
-Incluye:
+        - VaR histórico.
+        - VaR paramétrico.
+        - VaR Monte Carlo.
+        - CVaR.
+        - Test de Kupiec.
 
-- Tasa libre de riesgo.
-- Inflación si existe API key de FRED.
-- Spot FX.
-- Comparación del portafolio contra ACWI.
-- Alpha de Jensen.
-- Tracking Error.
-- Information Ratio.
-- Sharpe.
-- Drawdown.
+        ### GARCH
 
----
+        Archivo:
 
-## 11. Variables de entorno
+        ```text
+        backend/app/services/garch_service.py
+        ```
 
-Crear un archivo `.env` a partir de `.env.example`.
+        Incluye:
 
-En PowerShell:
+        - ARCH.
+        - GARCH.
+        - EGARCH.
+        - Comparación por AIC/BIC.
+        - Diagnóstico.
+        - Pronóstico de volatilidad.
 
-```powershell
-Copy-Item .env.example .env
-Copy-Item .env backend\.env
-```
+        ### Nelson-Siegel
 
-Variables principales:
+        Archivo:
 
-```env
-APP_NAME=Portafolio Riesgo API
-APP_VERSION=0.1.0
-APP_ENV=dev
-DEBUG=true
+        ```text
+        backend/app/services/yield_service.py
+        ```
 
-API_V1_PREFIX=/api/v1
+        Endpoint:
 
-DEFAULT_START_DATE=2021-01-01
-DEFAULT_END_DATE=2026-12-31
-GLOBAL_BENCHMARK=ACWI
-DEFAULT_BASE_CURRENCY=USD
+        ```text
+        POST /api/v1/valuation/nelson-siegel
+        ```
 
-RF_TICKER_USD=^IRX
-RF_TICKER_EUR=^GDBR10
-RF_TICKER_COP_PROXY=^IRX
+        ### Black-Scholes
 
-FRED_API_KEY=
+        Archivo:
 
-FRONTEND_BASE_URL=http://localhost:8501
-YAHOO_TIMEOUT_SECONDS=20
-MACRO_TIMEOUT_SECONDS=20
-EXTERNAL_API_TIMEOUT_SECONDS=20
+        ```text
+        backend/app/services/option_service.py
+        ```
 
-INTERNAL_API_KEY=
+        Endpoint:
 
-ALLOWED_ORIGINS=http://localhost:8501,http://127.0.0.1:8501
+        ```text
+        POST /api/v1/valuation/black-scholes
+        ```
 
-MIN_OBS_VAR=60
-MIN_OBS_CAPM=60
-MIN_OBS_PORTFOLIO=60
-```
+        ---
 
-Importante:
+        ## 19. Schemas y validadores Pydantic
 
-No subir `.env` a GitHub.
+        Ubicación:
 
----
+        ```text
+        backend/app/schemas/
+        ```
 
-## 12. Instalación
+        El proyecto usa:
 
-### 1. Clonar el repositorio
+        ```python
+        @field_validator(...)
+        @model_validator(...)
+        ```
 
-```bash
-git clone https://github.com/edwardmorarom/Portafolio_APIS_RIESGO.git
-cd Portafolio_APIS_RIESGO
-```
+        Validaciones principales:
 
-### 2. Crear entorno virtual
+        - Tickers.
+        - Pesos.
+        - Suma de pesos.
+        - Tipo de retorno.
+        - Moneda base.
+        - Perfil de riesgo.
+        - Distribución.
+        - Horizonte de inversión.
+        - Alias enviados desde frontend.
 
-```bash
-python -m venv .venv
-```
+        Ejemplos de schemas:
 
-### 3. Activar entorno virtual
+        ```text
+        portfolio.py
+        risk.py
+        capm.py
+        benchmark.py
+        investor.py
+        garch.py
+        returns_stats.py
+        common.py
+        market.py
+        valuation.py
+        ```
 
-En PowerShell:
+        ---
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+        ## 20. Seguridad básica
 
-### 4. Instalar dependencias del backend
+        Archivo:
 
-```bash
-cd backend
-pip install -r requirements.txt
-```
+        ```text
+        backend/app/core/security.py
+        ```
 
----
+        Función:
 
-## 13. Ejecución del backend
+        ```python
+        require_internal_api_key()
+        ```
 
-Desde la carpeta `backend`:
+        Se usa en endpoints sensibles con:
 
-```bash
-uvicorn app.main:app --reload
-```
+        ```python
+        Depends(require_internal_api_key)
+        ```
 
-La documentación automática queda disponible en:
+        Módulos protegidos o parcialmente protegidos:
 
-```text
-http://127.0.0.1:8000/docs
-```
+        ```text
+        benchmark
+        capm portfolio
+        decision
+        portfolio
+        risk
+        ```
 
-Health check:
+        ---
 
-```text
-http://127.0.0.1:8000/health
-```
+        ## 21. Manejo de errores
 
----
+        Archivos:
 
-## 14. Ejecución del frontend
+        ```text
+        backend/app/core/error_catalog.py
+        backend/app/core/exceptions.py
+        ```
 
-Desde la raíz del proyecto:
+        Excepciones principales:
 
-```bash
-streamlit run frontend/app.py
-```
+        ```text
+        AppBaseException
+        InvalidDateRangeError
+        FutureDateError
+        InvalidApiKeyError
+        TickerNotFoundError
+        InsufficientObsVarError
+        InsufficientObsCapmError
+        InsufficientObsPortfolioError
+        ExternalApiFailureError
+        ```
 
-El dashboard queda disponible en:
+        `main.py` registra un handler global para `AppBaseException`.
 
-```text
-http://localhost:8501
-```
+        ---
 
----
+        ## 22. Decoradores
 
-## 15. Endpoints principales
+        Archivo:
 
-### Root y health
+        ```text
+        backend/app/core/decorators.py
+        ```
 
-- `GET /`
-- `GET /health`
+        Decorador actual:
 
-### Assets
+        ```python
+        log_execution_time(func)
+        ```
 
-- `GET /api/v1/assets/`
-- `GET /api/v1/assets/search`
+        Se usa para medir tiempo de ejecución en funciones sensibles, especialmente llamadas de mercado.
 
-### Market
+        ---
 
-- `GET /api/v1/market/prices/{ticker}`
-- `GET /api/v1/market/returns/{ticker}`
+        ## 23. Frontend Streamlit
 
-### Technical
+        Ubicación:
 
-- `GET /api/v1/technical/indicators/{ticker}`
+        ```text
+        frontend/
+        ```
 
-### Risk
+        Estructura:
 
-- `POST /api/v1/risk/var`
+        ```text
+        frontend/app.py
+        frontend/config.py
+        frontend/pages/
+        frontend/services/api_client.py
+        frontend/ui/
+        ```
 
-### Portfolio
+        ### Módulos del dashboard
 
-- `POST /api/v1/portfolio/efficient-frontier`
+        ```text
+        0_Contextualizacion.py
+        01_Tecnico.py
+        02_Rendimientos.py
+        03_Garch.py
+        04_Capm.py
+        05_Var_Cvar.py
+        06_Markowitz.py
+        07_Señales.py
+        08_Macro_Benchmark.py
+        ```
 
-### CAPM
+        ### ApiClient
 
-- `GET /api/v1/capm/{ticker}`
-- `POST /api/v1/capm/portfolio`
+        Archivo:
 
-### Macro
+        ```text
+        frontend/services/api_client.py
+        ```
 
-- `GET /api/v1/macro/`
-- `GET /api/v1/macro/fx-spot/{base_currency}`
+        Centraliza llamadas al backend.
 
-### Benchmark
+        Métodos relevantes:
 
-- `POST /api/v1/benchmark/compare`
+        ```text
+        get_assets
+        search_assets
+        get_prices
+        get_returns
+        get_technical_indicators
+        get_returns_stats
+        get_alerts
+        get_garch
+        get_capm
+        get_portfolio_capm
+        post_var_risk
+        post_efficient_frontier
+        get_macro_snapshot
+        post_benchmark_compare
+        get_decision_panel
+        validate_investor_preferences
+        post_roboadvisor_suggest
+        ```
 
-### Investor
+        ---
 
-- `POST /api/v1/investor/preferences`
+        ## 24. Módulos del dashboard
 
-### Decision
+        ### Módulo 0 - Contextualización
 
-- `POST /api/v1/decision/panel`
+        Muestra:
 
-### Help
+        - Universo de activos.
+        - Activos base.
+        - Activos ampliados.
+        - Metadata de Perri.
+        - Clase de activo.
+        - Benchmark metodológico.
+        - Fuente.
+        - Tasa libre de riesgo.
+        - Benchmark global.
 
-- `GET /api/v1/help/catalog`
+        ### Módulo 1 - Técnico
 
-### Returns Stats
+        Incluye:
 
-- `GET /api/v1/returns-stats/summary/{ticker}`
+        - Precio.
+        - SMA.
+        - EMA.
+        - RSI.
+        - Bollinger.
+        - MACD.
+        - Estocástico.
 
-### Alerts
+        ### Módulo 2 - Rendimientos
 
-- `GET /api/v1/alerts/{ticker}`
+        Incluye:
 
-### GARCH
+        - Rendimientos simples y logarítmicos.
+        - Estadísticas descriptivas.
+        - Histograma.
+        - Boxplot.
+        - Q-Q plot.
+        - Pruebas de normalidad.
 
-- `GET /api/v1/garch/{ticker}`
+        ### Módulo 3 - GARCH
 
----
+        Incluye:
 
-## 16. Seguridad básica implementada
+        - ARCH.
+        - GARCH.
+        - EGARCH.
+        - Diagnóstico.
+        - Pronóstico.
 
-- Uso de `.env.example`.
-- Exclusión de secretos con `.gitignore`.
-- API key interna opcional para endpoints sensibles.
-- Validación fuerte de inputs con Pydantic.
-- Control de fechas futuras.
-- Catálogo de errores.
-- Respuestas estructuradas.
-- Separación por routers, schemas, services y clients.
+        ### Módulo 4 - CAPM
 
----
+        Incluye:
 
-## 17. Notas metodológicas
+        - Beta.
+        - Alpha.
+        - R².
+        - P-value.
+        - Retorno esperado.
 
-- El sistema soporta rendimientos `simple` y `log`.
-- Se validan pesos del portafolio.
-- Se restringe el número máximo de activos.
-- Se validan horizontes de análisis.
-- Se soporta perfil del inversionista.
-- Se soporta rendimiento objetivo en optimización.
-- Se utiliza Rf común en USD para Markowitz y CAPM.
-- Se evita mezclar monedas porque los precios se convierten históricamente a USD.
-- La inflación solo se muestra si existe fuente real desde FRED.
+        ### Módulo 5 - VaR/CVaR
 
----
+        Incluye:
 
-## 18. Buenas prácticas implementadas
+        - VaR histórico.
+        - VaR paramétrico.
+        - VaR Monte Carlo.
+        - CVaR.
+        - Riesgo monetario.
+        - Backtesting.
 
-- Arquitectura modular.
-- FastAPI para backend.
-- Streamlit para frontend.
-- Pydantic para validación.
-- Pydantic Settings para configuración.
-- Variables de entorno.
-- Manejo de errores.
-- Decoradores.
-- Clientes externos.
-- Servicios de negocio separados de rutas.
-- Dashboard modular.
-- Conversión histórica a USD.
-- Documentación automática con Swagger.
-- Componentes visuales reutilizables.
-- Uso de tooltips para reducir texto visible en el dashboard.
+        ### Módulo 6 - Markowitz
 
----
+        Incluye:
 
-## 19. Estado actual
+        - Frontera eficiente.
+        - Mínima varianza.
+        - Máximo Sharpe.
+        - Retorno objetivo.
+        - Matriz de correlación.
+        - Perfiles.
 
-Actualmente el proyecto implementa:
+        ### Módulo 7 - Señales
 
-- Backend FastAPI modular.
-- Frontend Streamlit modular.
-- Precios y rendimientos reales.
-- Conversión histórica a USD.
-- Indicadores técnicos completos.
-- VaR y CVaR porcentual y monetario.
-- Frontera eficiente.
-- CAPM por activo y portafolio.
-- ARCH/GARCH/EGARCH.
-- Benchmark compare.
-- Panel de decisión.
-- Preferencias del inversionista.
-- Señales técnicas.
-- Búsqueda de activos.
-- Contexto macroeconómico con Rf real desde yfinance y soporte para inflación vía FRED.
+        Incluye señales técnicas por:
 
----
+        - RSI.
+        - MACD.
+        - Bollinger.
+        - Medias móviles.
+        - Estocástico.
 
-## 20. Autores
+        ### Módulo 8 - Macro y Benchmark
 
-- Edward Mora
-- Juan P. Vargas
-```
+        Incluye:
 
-## Archivos Python analizados
+        - Tasa libre de riesgo.
+        - Inflación si existe FRED.
+        - FX spot.
+        - Comparación contra benchmark.
+        - Alpha de Jensen.
+        - Tracking error.
+        - Information ratio.
+        - Drawdown.
 
-### `backend/app/__init__.py`
+        ---
 
-### `backend/app/api/__init__.py`
+        ## 25. Tests
 
-### `backend/app/api/router.py`
+        Ubicación:
 
-**Imports internos:**
+        ```text
+        tests/
+        ```
 
-- `from app.api.v1 import alerts, assets, benchmark, capm, decision, garch, help, investor, macro, market, persistence, portfolio, returns_stats, risk, technical, valuation, roboadvisor, perri`
+        Tests actuales:
 
-### `backend/app/api/v1/__init__.py`
+        ```text
+        tests/test_perri_latest.py
+        tests/test_perri_optimize.py
+        ```
 
-### `backend/app/api/v1/alerts.py`
+        Ejecutar:
 
-**Imports internos:**
+        ```powershell
+        python -m pytest tests/test_perri_latest.py tests/test_perri_optimize.py -q
+        ```
 
-- `from app.core.dependencies import get_alerts_service`
-- `from app.schemas.alerts import AlertsResponse`
-- `from app.services.alerts_service import AlertsService`
+        Validan:
 
-**Decoradores detectados:**
+        - `/api/v1/perri/latest`.
+        - `/api/v1/perri/optimize`.
+        - JSON precalculado.
+        - Optimización desde SQLite.
+        - Pesos de portafolio.
+        - Volatilidades no negativas.
+        - Suma de pesos cercana a 1.
 
-- `@router.get("/{ticker}", summary="Alertas tecnicas por activo", response_model=AlertsResponse)`
+        ---
 
-**Clases y funciones:**
+        ## 26. GitHub Actions
 
-- `async def get_alerts(`
+        Ubicación:
 
-**Dependencias / inyección detectada:**
+        ```text
+        .github/workflows/
+        ```
 
-- `from app.core.dependencies import get_alerts_service`
-- `service: AlertsService = Depends(get_alerts_service),`
+        Workflows actuales:
 
-### `backend/app/api/v1/assets.py`
+        ```text
+        backend-ci.yml
+        perri-scheduled-update.yml
+        ```
 
-**Imports internos:**
+        ### Backend CI
 
-- `from app.core.assets_registry import ALL_ASSETS, MAX_ASSETS_ALLOWED`
-- `from app.core.dependencies import get_assets_service, get_db`
-- `from app.core.settings import get_settings`
-- `from app.schemas.common import AssetSearchResponse, AssetUniverseItem, AssetUniverseResponse`
-- `from app.services.assets_service import AssetsService`
+        Ejecuta:
 
-**Decoradores detectados:**
+        - Instalación de dependencias.
+        - `compileall` del backend.
+        - Preparación de SQLite.
+        - Importación de precios.
+        - Optimización Perri.
+        - Tests de Perri.
 
-- `@router.get("/", summary="Listar universo de activos", response_model=AssetUniverseResponse)`
-- `@router.get("/search", summary="Buscar activos por nombre o ticker", response_model=AssetSearchResponse)`
-- `@router.get("/summary", summary="Resumen metodológico del universo de activos")`
+        ### Actualización automática Perri
 
-**Clases y funciones:**
+        Ejecuta dos veces al día:
 
-- `async def list_assets(`
-- `async def search_assets(`
-- `async def summarize_assets(`
+        ```text
+        04:30 Colombia = 09:30 UTC
+        17:30 Colombia = 22:30 UTC
+        ```
 
-**Dependencias / inyección detectada:**
+        Flujo:
 
-- `from app.core.dependencies import get_assets_service, get_db`
-- `service: AssetsService = Depends(get_assets_service),`
-- `db: Session = Depends(get_db),`
-- `service: AssetsService = Depends(get_assets_service),`
-- `db: Session = Depends(get_db),`
-- `service: AssetsService = Depends(get_assets_service),`
-- `db: Session = Depends(get_db),`
+        ```text
+        seed_db
+        import_perri_prices
+        run_perri_optimization
+        validar JSON
+        commit automático del JSON actualizado
+        ```
 
-### `backend/app/api/v1/benchmark.py`
+        ---
 
-**Imports internos:**
+        ## 27. Docker
 
-- `from app.core.dependencies import get_benchmark_service`
-- `from app.core.security import require_internal_api_key`
-- `from app.schemas.benchmark import BenchmarkCompareRequest, BenchmarkCompareResponse`
-- `from app.services.benchmark_service import BenchmarkService`
+        Archivos:
 
-**Decoradores detectados:**
+        ```text
+        backend/Dockerfile
+        docker-compose.yml
+        .dockerignore
+        ```
 
-- `@router.post("/compare", summary="Comparar portafolio contra benchmark", response_model=BenchmarkCompareResponse)`
+        Build:
 
-**Clases y funciones:**
+        ```powershell
+        docker compose build backend
+        ```
 
-- `async def compare_benchmark(`
+        Levantar backend:
 
-**Dependencias / inyección detectada:**
+        ```powershell
+        docker compose up backend
+        ```
 
-- `from app.core.dependencies import get_benchmark_service`
-- `_: None = Depends(require_internal_api_key),`
-- `service: BenchmarkService = Depends(get_benchmark_service),`
+        Probar health:
 
-### `backend/app/api/v1/capm.py`
+        ```powershell
+        Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/health"
+        ```
 
-**Imports internos:**
+        Resultado esperado:
 
-- `from app.core.dependencies import get_capm_service`
-- `from app.core.settings import get_settings`
-- `from app.schemas.capm import CapmResponse, PortfolioCapmRequest, PortfolioCapmResponse`
-- `from app.services.capm_service import CapmService`
-- `from app.core.security import require_internal_api_key`
+        ```text
+        status : ok
+        env    : docker
+        ```
 
-**Decoradores detectados:**
+        ---
 
-- `@router.get("/{ticker}", summary="Calcular CAPM por activo", response_model=CapmResponse)`
-- `@router.post("/portfolio", summary="Calcular CAPM del portafolio", response_model=PortfolioCapmResponse)`
+        ## 28. Instalación local
 
-**Clases y funciones:**
+        ### 1. Clonar repositorio
 
-- `async def get_capm(`
-- `async def get_portfolio_capm(`
+        ```bash
+        git clone https://github.com/edwardmorarom/Portafolio_APIS_RIESGO.git
+        cd Portafolio_APIS_RIESGO
+        ```
 
-**Dependencias / inyección detectada:**
+        ### 2. Crear entorno virtual
 
-- `from app.core.dependencies import get_capm_service`
-- `service: CapmService = Depends(get_capm_service),`
-- `_: None = Depends(require_internal_api_key),`
-- `service: CapmService = Depends(get_capm_service),`
+        ```powershell
+        python -m venv .venv
+        ```
 
-### `backend/app/api/v1/decision.py`
+        ### 3. Activar entorno virtual
 
-**Imports internos:**
+        ```powershell
+        .\.venv\Scripts\Activate.ps1
+        ```
 
-- `from app.core.dependencies import get_decision_service`
-- `from app.schemas.decision import DecisionPanelRequest, DecisionPanelResponse`
-- `from app.services.decision_service import DecisionService`
-- `from app.core.security import require_internal_api_key`
+        ### 4. Instalar dependencias
 
-**Decoradores detectados:**
+        Desde la raíz:
 
-- `@router.post("/panel", summary="Panel integrador de decisión", response_model=DecisionPanelResponse)`
+        ```powershell
+        pip install -r requirements.txt
+        ```
 
-**Clases y funciones:**
+        O desde backend:
 
-- `async def decision_panel(`
+        ```powershell
+        cd backend
+        pip install -r requirements.txt
+        ```
 
-**Dependencias / inyección detectada:**
+        Recomendación: usar Python 3.11 para evitar incompatibilidades de paquetes científicos.
 
-- `from app.core.dependencies import get_decision_service`
-- `_: None = Depends(require_internal_api_key),`
-- `service: DecisionService = Depends(get_decision_service),`
+        ---
 
-### `backend/app/api/v1/garch.py`
+        ## 29. Ejecución local
 
-**Imports internos:**
+        ### Backend
 
-- `from app.core.dependencies import get_garch_service`
-- `from app.schemas.garch import GarchResponse`
-- `from app.services.garch_service import GarchService`
+        ```powershell
+        cd C:\Users\edwar\Desktop\portafolio-riesgo\backend
+        uvicorn app.main:app --reload
+        ```
 
-**Decoradores detectados:**
+        Swagger:
 
-- `@router.get("/{ticker}", summary="Analisis ARCH GARCH EGARCH", response_model=GarchResponse)`
+        ```text
+        http://127.0.0.1:8000/docs
+        ```
 
-**Clases y funciones:**
+        Health:
 
-- `async def get_garch_analysis(`
+        ```text
+        http://127.0.0.1:8000/health
+        ```
 
-**Dependencias / inyección detectada:**
+        ### Frontend
 
-- `from app.core.dependencies import get_garch_service`
-- `service: GarchService = Depends(get_garch_service),`
+        Desde la raíz:
 
-### `backend/app/api/v1/help.py`
+        ```powershell
+        streamlit run frontend/app.py
+        ```
 
-**Imports internos:**
+        URL:
 
-- `from app.core.dependencies import get_help_service`
-- `from app.schemas.help import HelpCatalogResponse, HelpItem`
-- `from app.services.help_service import HelpService`
+        ```text
+        http://localhost:8501
+        ```
 
-**Decoradores detectados:**
+        ---
 
-- `@router.get("/catalog", summary="Catalogo de ayudas para tooltips", response_model=HelpCatalogResponse)`
+        ## 30. Preparación de datos Perri
 
-**Clases y funciones:**
+        Desde `backend`:
 
-- `async def get_help_catalog(`
+        ```powershell
+        cd C:\Users\edwar\Desktop\portafolio-riesgo\backend
 
-**Dependencias / inyección detectada:**
+        python -m app.db.seed_db
+        python -m app.db.import_perri_prices
+        python -m app.jobs.run_perri_optimization
+        ```
 
-- `from app.core.dependencies import get_help_service`
-- `service: HelpService = Depends(get_help_service),`
+        Esto deja lista:
 
-### `backend/app/api/v1/investor.py`
+        ```text
+        backend/data/perri_latest_optimization.json
+        ```
 
-**Imports internos:**
+        ---
 
-- `from app.core.dependencies import get_investor_service`
-- `from app.schemas.investor import InvestorPreferencesRequest, InvestorPreferencesResponse`
-- `from app.services.investor_service import InvestorService`
+        ## 31. Validación rápida
 
-**Decoradores detectados:**
+        Desde la raíz:
 
-- `@router.post("/preferences", summary="Validar preferencias del inversionista", response_model=InvestorPreferencesResponse)`
+        ```powershell
+        python -m compileall backend\app
+        python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py -q
+        ```
 
-**Clases y funciones:**
+        Desde backend:
 
-- `async def validate_preferences(`
+        ```powershell
+        uvicorn app.main:app --reload
+        ```
 
-**Dependencias / inyección detectada:**
+        Probar:
 
-- `from app.core.dependencies import get_investor_service`
-- `service: InvestorService = Depends(get_investor_service),`
+        ```powershell
+        Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/api/v1/perri/latest"
+        Invoke-RestMethod -Method Get -Uri "http://127.0.0.1:8000/api/v1/perri/optimize?history_years=5&rf_annual=0.04"
+        ```
 
-### `backend/app/api/v1/macro.py`
+        ---
 
-**Imports internos:**
+        ## 32. Archivos que no deben versionarse
 
-- `from app.core.dependencies import get_macro_service`
-- `from app.schemas.macro import MacroSnapshotResponse`
-- `from app.services.macro_service import MacroService`
-- `from app.schemas.macro import FxSpotResponse`
+        El `.gitignore` excluye bases locales y archivos sensibles.
 
-**Decoradores detectados:**
+        No subir:
 
-- `@router.get("/", summary="Snapshot macroeconómico", response_model=MacroSnapshotResponse)`
-- `@router.get("/fx-spot/{base_currency}", summary="Spot FX y referencia macro por moneda base", response_model=FxSpotResponse)`
+        ```text
+        .env
+        *.db
+        *.sqlite
+        *.sqlite3
+        backend/data/*.db
+        data/*.db
+        .venv/
+        .pytest_cache/
+        __pycache__/
+        ```
 
-**Clases y funciones:**
+        Sí se deben subir:
 
-- `async def get_macro_snapshot(`
-- `async def get_fx_spot(`
+        ```text
+        .gitignore
+        .env.example
+        backend/data/perri_universe.json
+        backend/data/perri_latest_optimization.json
+        docs/
+        .github/workflows/
+        ```
 
-**Dependencias / inyección detectada:**
+        ---
 
-- `from app.core.dependencies import get_macro_service`
-- `service: MacroService = Depends(get_macro_service),`
-- `service: MacroService = Depends(get_macro_service),`
+        ## 33. Documentación complementaria
 
-### `backend/app/api/v1/market.py`
+        Documentos recomendados dentro de `docs/`:
 
-**Imports internos:**
+        ```text
+        docs/00_snapshot_codigo_actual.md
+        docs/01_arquitectura_tecnica.md
+        ```
 
-- `from app.core.dependencies import get_db, get_market_service`
-- `from app.schemas.market import PricePoint, PricesResponse, ReturnPoint, ReturnsResponse`
-- `from app.services.market_service import MarketService`
+        `00_snapshot_codigo_actual.md` sirve como inventario técnico generado desde el código.
 
-**Decoradores detectados:**
+        `01_arquitectura_tecnica.md` explica la arquitectura, módulos, dependencias, decoradores y relaciones internas.
 
-- `@router.get("/prices/{ticker}", summary="Precios históricos por ticker", response_model=PricesResponse)`
-- `@router.get("/returns/{ticker}", summary="Rendimientos por ticker", response_model=ReturnsResponse)`
+        ---
 
-**Clases y funciones:**
+        ## 34. Buenas prácticas del proyecto
 
-- `async def get_prices(`
-- `async def get_returns(`
+        Antes de cada commit:
 
-**Dependencias / inyección detectada:**
+        ```powershell
+        git status
+        python -m compileall backend\app
+        python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py -q
+        ```
 
-- `from app.core.dependencies import get_db, get_market_service`
-- `service: MarketService = Depends(get_market_service),`
-- `db: Session = Depends(get_db),`
-- `service: MarketService = Depends(get_market_service),`
-- `db: Session = Depends(get_db),`
+        Patrón recomendado:
 
-### `backend/app/api/v1/perri.py`
+        ```text
+        1. Revisar estado real del código.
+        2. Hacer un cambio puntual.
+        3. Compilar.
+        4. Probar endpoint o script.
+        5. Ejecutar tests si aplica.
+        6. Revisar git status.
+        7. Hacer commit descriptivo.
+        8. Hacer push.
+        ```
 
-**Imports internos:**
+        ---
 
-- `from app.core.dependencies import get_db`
-- `from app.services.perri_optimizer_service import PerriOptimizerService`
+        ## 35. Comandos Git frecuentes
 
-**Decoradores detectados:**
+        ```powershell
+        git status
+        git add <archivo>
+        git commit -m "mensaje: descripción clara del cambio"
+        git push origin backend
+        ```
 
-- `@router.get("/latest", summary="Última optimización precalculada de Perri")`
-- `@router.get("/optimize", summary="Optimización institucional automática de Perri")`
+        Ejemplo:
 
-**Clases y funciones:**
+        ```powershell
+        git add backend/app/services/perri_optimizer_service.py
+        git commit -m "mejora: ajusta optimización institucional de Perri"
+        git push origin backend
+        ```
 
-- `async def get_latest_perri_optimization() -> dict:`
-- `async def optimize_perri_portfolio(`
+        ---
 
-**Dependencias / inyección detectada:**
+        ## 36. Autores
 
-- `from app.core.dependencies import get_db`
-- `db: Session = Depends(get_db),`
+        - Edward Mora.
+        - Juan P. Vargas.
 
-### `backend/app/api/v1/persistence.py`
+        ---
 
-**Imports internos:**
+        ## 37. Nota metodológica
 
-- `from app.core.dependencies import get_db`
-- `from app.db.models import Asset, Portfolio, PredictionLog, Price`
+        El proyecto trabaja sobre una moneda base común, USD, para evitar errores metodológicos al comparar activos internacionales. Los precios históricos se conservan con información de moneda original, tasa FX y cierre convertido.
 
-**Decoradores detectados:**
+        La optimización institucional de Perri usa precios persistidos en SQLite, no cálculos improvisados en frontend. Esto permite reproducibilidad, automatización y trazabilidad.
 
-- `@router.get("/health")`
+        ```
 
-**Clases y funciones:**
+        ## Archivos Python analizados
 
-- `def persistence_health(db: Session = Depends(get_db)) -> dict:`
+        ### `backend/app/__init__.py`
 
-**Dependencias / inyección detectada:**
+        ### `backend/app/api/__init__.py`
 
-- `from app.core.dependencies import get_db`
-- `def persistence_health(db: Session = Depends(get_db)) -> dict:`
+        ### `backend/app/api/router.py`
 
-### `backend/app/api/v1/portfolio.py`
+        **Imports internos:**
 
-**Imports internos:**
+        - `from app.api.v1 import alerts, assets, benchmark, capm, decision, garch, help, investor, macro, market, persistence, portfolio, returns_stats, risk, technical, valuation, roboadvisor, perri`
 
-- `from app.core.dependencies import get_portfolio_service`
-- `from app.schemas.portfolio import EfficientFrontierRequest, EfficientFrontierResponse`
-- `from app.services.portfolio_service import PortfolioService`
-- `from app.core.security import require_internal_api_key`
+        ### `backend/app/api/v1/__init__.py`
 
-**Decoradores detectados:**
+        ### `backend/app/api/v1/alerts.py`
 
-- `@router.post(`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_alerts_service`
+        - `from app.schemas.alerts import AlertsResponse`
+        - `from app.services.alerts_service import AlertsService`
 
-- `async def efficient_frontier(`
+        **Decoradores detectados:**
 
-**Dependencias / inyección detectada:**
+        - `@router.get("/{ticker}", summary="Alertas tecnicas por activo", response_model=AlertsResponse)`
 
-- `from app.core.dependencies import get_portfolio_service`
-- `_: None = Depends(require_internal_api_key),`
-- `service: PortfolioService = Depends(get_portfolio_service),`
+        **Clases y funciones:**
 
-### `backend/app/api/v1/returns_stats.py`
+        - `async def get_alerts(`
 
-**Imports internos:**
+        **Dependencias / inyección detectada:**
 
-- `from app.core.dependencies import get_returns_stats_service`
-- `from app.schemas.returns_stats import ReturnsStatsResponse`
-- `from app.services.returns_stats_service import ReturnsStatsService`
+        - `from app.core.dependencies import get_alerts_service`
+        - `service: AlertsService = Depends(get_alerts_service),`
 
-**Decoradores detectados:**
+        ### `backend/app/api/v1/assets.py`
 
-- `@router.get("/summary/{ticker}", summary="Estadistica de rendimientos", response_model=ReturnsStatsResponse)`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.assets_registry import ALL_ASSETS, MAX_ASSETS_ALLOWED`
+        - `from app.core.dependencies import get_assets_service, get_db`
+        - `from app.core.settings import get_settings`
+        - `from app.schemas.common import AssetSearchResponse, AssetUniverseItem, AssetUniverseResponse`
+        - `from app.services.assets_service import AssetsService`
 
-- `async def get_returns_stats(`
+        **Decoradores detectados:**
 
-**Dependencias / inyección detectada:**
+        - `@router.get("/", summary="Listar universo de activos", response_model=AssetUniverseResponse)`
+        - `@router.get("/search", summary="Buscar activos por nombre o ticker", response_model=AssetSearchResponse)`
+        - `@router.get("/summary", summary="Resumen metodológico del universo de activos")`
 
-- `from app.core.dependencies import get_returns_stats_service`
-- `service: ReturnsStatsService = Depends(get_returns_stats_service),`
+        **Clases y funciones:**
 
-### `backend/app/api/v1/risk.py`
+        - `async def list_assets(`
+        - `async def search_assets(`
+        - `async def summarize_assets(`
 
-**Imports internos:**
+        **Dependencias / inyección detectada:**
 
-- `from app.core.dependencies import get_risk_service`
-- `from app.schemas.risk import PortfolioVarRequest, PortfolioVarResponse`
-- `from app.services.risk_service import RiskService`
-- `from app.core.security import require_internal_api_key`
+        - `from app.core.dependencies import get_assets_service, get_db`
+        - `service: AssetsService = Depends(get_assets_service),`
+        - `db: Session = Depends(get_db),`
+        - `service: AssetsService = Depends(get_assets_service),`
+        - `db: Session = Depends(get_db),`
+        - `service: AssetsService = Depends(get_assets_service),`
+        - `db: Session = Depends(get_db),`
 
-**Decoradores detectados:**
+        ### `backend/app/api/v1/benchmark.py`
 
-- `@router.post("/var", summary="Calcular VaR y CVaR del portafolio", response_model=PortfolioVarResponse)`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_benchmark_service`
+        - `from app.core.security import require_internal_api_key`
+        - `from app.schemas.benchmark import BenchmarkCompareRequest, BenchmarkCompareResponse`
+        - `from app.services.benchmark_service import BenchmarkService`
 
-- `async def calculate_var(`
+        **Decoradores detectados:**
 
-**Dependencias / inyección detectada:**
+        - `@router.post("/compare", summary="Comparar portafolio contra benchmark", response_model=BenchmarkCompareResponse)`
 
-- `from app.core.dependencies import get_risk_service`
-- `_: None = Depends(require_internal_api_key),`
-- `service: RiskService = Depends(get_risk_service),`
+        **Clases y funciones:**
 
-### `backend/app/api/v1/roboadvisor.py`
+        - `async def compare_benchmark(`
 
-**Imports internos:**
+        **Dependencias / inyección detectada:**
 
-- `from app.clients.market_client import MarketClient`
-- `from app.core.dependencies import get_market_client`
-- `from app.services.roboadvisor_service import RoboAdvisorService`
+        - `from app.core.dependencies import get_benchmark_service`
+        - `_: None = Depends(require_internal_api_key),`
+        - `service: BenchmarkService = Depends(get_benchmark_service),`
 
-**Decoradores detectados:**
+        ### `backend/app/api/v1/capm.py`
 
-- `@router.post("/suggest", summary="Generar Portafolio Híbrido Institucional")`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_capm_service`
+        - `from app.core.settings import get_settings`
+        - `from app.schemas.capm import CapmResponse, PortfolioCapmRequest, PortfolioCapmResponse`
+        - `from app.services.capm_service import CapmService`
+        - `from app.core.security import require_internal_api_key`
 
-- `class RoboAdvisorRequest(BaseModel):`
-- `def get_roboadvisor_service(market_client: MarketClient = Depends(get_market_client)) -> RoboAdvisorService:`
-- `async def suggest_portfolio(`
+        **Decoradores detectados:**
 
-**Dependencias / inyección detectada:**
+        - `@router.get("/{ticker}", summary="Calcular CAPM por activo", response_model=CapmResponse)`
+        - `@router.post("/portfolio", summary="Calcular CAPM del portafolio", response_model=PortfolioCapmResponse)`
 
-- `def get_roboadvisor_service(market_client: MarketClient = Depends(get_market_client)) -> RoboAdvisorService:`
-- `service: RoboAdvisorService = Depends(get_roboadvisor_service)`
+        **Clases y funciones:**
 
-### `backend/app/api/v1/technical.py`
+        - `async def get_capm(`
+        - `async def get_portfolio_capm(`
 
-**Imports internos:**
+        **Dependencias / inyección detectada:**
 
-- `from app.core.dependencies import get_technical_service`
-- `from app.schemas.technical import TechnicalPoint, TechnicalResponse`
-- `from app.services.technical_service import TechnicalService`
+        - `from app.core.dependencies import get_capm_service`
+        - `service: CapmService = Depends(get_capm_service),`
+        - `_: None = Depends(require_internal_api_key),`
+        - `service: CapmService = Depends(get_capm_service),`
 
-**Decoradores detectados:**
+        ### `backend/app/api/v1/decision.py`
 
-- `@router.get("/indicators/{ticker}", summary="Indicadores técnicos por ticker", response_model=TechnicalResponse)`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_decision_service`
+        - `from app.schemas.decision import DecisionPanelRequest, DecisionPanelResponse`
+        - `from app.services.decision_service import DecisionService`
+        - `from app.core.security import require_internal_api_key`
 
-- `async def get_indicators(`
+        **Decoradores detectados:**
 
-**Dependencias / inyección detectada:**
+        - `@router.post("/panel", summary="Panel integrador de decisión", response_model=DecisionPanelResponse)`
 
-- `from app.core.dependencies import get_technical_service`
-- `service: TechnicalService = Depends(get_technical_service),`
+        **Clases y funciones:**
 
-### `backend/app/api/v1/valuation.py`
+        - `async def decision_panel(`
 
-**Imports internos:**
+        **Dependencias / inyección detectada:**
 
-- `from app.schemas.valuation import YieldCurveRequest, YieldCurveResponse, OptionValuationRequest, OptionValuationResponse`
-- `from app.services.yield_service import YieldService`
-- `from app.services.option_service import OptionService`
+        - `from app.core.dependencies import get_decision_service`
+        - `_: None = Depends(require_internal_api_key),`
+        - `service: DecisionService = Depends(get_decision_service),`
 
-**Decoradores detectados:**
+        ### `backend/app/api/v1/garch.py`
 
-- `@router.post("/nelson-siegel", response_model=YieldCurveResponse, summary="Ajuste de curva Nelson-Siegel")`
-- `@router.post("/black-scholes", response_model=OptionValuationResponse, summary="Valoración de opciones Black-Scholes")`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_garch_service`
+        - `from app.schemas.garch import GarchResponse`
+        - `from app.services.garch_service import GarchService`
 
-- `def get_yield_service() -> YieldService:`
-- `def get_option_service() -> OptionService:`
-- `async def fit_nelson_siegel(`
-- `async def calculate_option(`
+        **Decoradores detectados:**
 
-**Dependencias / inyección detectada:**
+        - `@router.get("/{ticker}", summary="Analisis ARCH GARCH EGARCH", response_model=GarchResponse)`
 
-- `def get_yield_service() -> YieldService:`
-- `def get_option_service() -> OptionService:`
-- `service: YieldService = Depends(get_yield_service)`
-- `service: OptionService = Depends(get_option_service)`
+        **Clases y funciones:**
 
-### `backend/app/clients/__init__.py`
+        - `async def get_garch_analysis(`
 
-### `backend/app/clients/macro_client.py`
+        **Dependencias / inyección detectada:**
 
-**Imports internos:**
+        - `from app.core.dependencies import get_garch_service`
+        - `service: GarchService = Depends(get_garch_service),`
 
-- `from app.core.settings import Settings`
+        ### `backend/app/api/v1/help.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `class MacroClient:`
-- `def __init__(self, settings: Settings) -> None:`
-- `def _get_last_close(self, ticker: str) -> float | None:`
-- `def get_us_inflation_yoy_pct(self) -> float | None:`
-- `def get_us_inflation_yoy_pct(self) -> float | None:`
-- `def get_macro_snapshot(self, base_currency: str) -> dict:`
+        - `from app.core.dependencies import get_help_service`
+        - `from app.schemas.help import HelpCatalogResponse, HelpItem`
+        - `from app.services.help_service import HelpService`
 
-### `backend/app/clients/market_client.py`
+        **Decoradores detectados:**
 
-**Imports internos:**
+        - `@router.get("/catalog", summary="Catalogo de ayudas para tooltips", response_model=HelpCatalogResponse)`
 
-- `from app.core.decorators import log_execution_time`
-- `from app.core.market_utils import normalize_end_date_to_available_data, validate_not_future`
-- `from app.core.assets_registry import ASSET_METADATA_BY_TICKER`
-- `from app.core.settings import Settings`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `async def get_help_catalog(`
 
-- `class MarketClient:`
-- `def __init__(self, settings: Settings) -> None:`
-- `def _download_prices(self, ticker: str, start: str, end: str) -> pd.DataFrame:`
-- `def _convert_ohlc_to_usd(self, prices: pd.DataFrame, ticker: str, start: str, end: str) -> pd.DataFrame:`
-- `def get_prices(self, ticker: str, start: str, end: str, convert_to_usd: bool = True) -> pd.DataFrame:`
+        **Dependencias / inyección detectada:**
 
-### `backend/app/core/__init__.py`
+        - `from app.core.dependencies import get_help_service`
+        - `service: HelpService = Depends(get_help_service),`
 
-### `backend/app/core/assets_registry.py`
+        ### `backend/app/api/v1/investor.py`
 
-### `backend/app/core/decorators.py`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_investor_service`
+        - `from app.schemas.investor import InvestorPreferencesRequest, InvestorPreferencesResponse`
+        - `from app.services.investor_service import InvestorService`
 
-- `def log_execution_time(func):`
-- `def wrapper(*args, **kwargs):`
+        **Decoradores detectados:**
 
-### `backend/app/core/dependencies.py`
+        - `@router.post("/preferences", summary="Validar preferencias del inversionista", response_model=InvestorPreferencesResponse)`
 
-**Imports internos:**
+        **Clases y funciones:**
 
-- `from app.db.database import get_db`
-- `from app.clients.macro_client import MacroClient`
-- `from app.clients.market_client import MarketClient`
-- `from app.core.settings import Settings, get_settings`
-- `from app.services.decision_service import DecisionService`
-- `from app.services.macro_service import MacroService`
-- `from app.services.market_service import MarketService`
-- `from app.services.portfolio_service import PortfolioService`
-- `from app.services.risk_service import RiskService`
-- `from app.services.technical_service import TechnicalService`
-- `from app.services.capm_service import CapmService`
-- `from app.services.decision_service import DecisionService`
-- `from app.services.investor_service import InvestorService`
-- `from app.services.assets_service import AssetsService`
-- `from app.services.benchmark_service import BenchmarkService`
-- `from app.services.help_service import HelpService`
-- `from app.services.returns_stats_service import ReturnsStatsService`
-- `from app.services.alerts_service import AlertsService`
-- `from app.services.garch_service import GarchService`
+        - `async def validate_preferences(`
 
-**Clases y funciones:**
+        **Dependencias / inyección detectada:**
 
-- `def get_app_settings() -> Settings:`
-- `def get_market_client(settings: Settings = Depends(get_app_settings)) -> MarketClient:`
-- `def get_macro_client(settings: Settings = Depends(get_app_settings)) -> MacroClient:`
-- `def get_market_service(client: MarketClient = Depends(get_market_client)) -> MarketService:`
-- `def get_technical_service(client: MarketClient = Depends(get_market_client)) -> TechnicalService:`
-- `def get_risk_service(client: MarketClient = Depends(get_market_client)) -> RiskService:`
-- `def get_portfolio_service(client: MarketClient = Depends(get_market_client)) -> PortfolioService:`
-- `def get_macro_service(`
-- `def get_capm_service(`
-- `def get_decision_service(`
-- `def get_investor_service() -> InvestorService:`
-- `def get_assets_service() -> AssetsService:`
-- `def get_benchmark_service(`
-- `def get_help_service() -> HelpService:`
-- `def get_returns_stats_service(client: MarketClient = Depends(get_market_client)) -> ReturnsStatsService:`
-- `def get_alerts_service(client: MarketClient = Depends(get_market_client)) -> AlertsService:`
-- `def get_garch_service(client: MarketClient = Depends(get_market_client)) -> GarchService:`
+        - `from app.core.dependencies import get_investor_service`
+        - `service: InvestorService = Depends(get_investor_service),`
 
-**Dependencias / inyección detectada:**
+        ### `backend/app/api/v1/macro.py`
 
-- `from app.db.database import get_db`
-- `def get_market_client(settings: Settings = Depends(get_app_settings)) -> MarketClient:`
-- `def get_macro_client(settings: Settings = Depends(get_app_settings)) -> MacroClient:`
-- `def get_market_service(client: MarketClient = Depends(get_market_client)) -> MarketService:`
-- `def get_technical_service(client: MarketClient = Depends(get_market_client)) -> TechnicalService:`
-- `def get_risk_service(client: MarketClient = Depends(get_market_client)) -> RiskService:`
-- `def get_portfolio_service(client: MarketClient = Depends(get_market_client)) -> PortfolioService:`
-- `def get_macro_service(`
-- `client: MacroClient = Depends(get_macro_client),`
-- `market_client: MarketClient = Depends(get_market_client),`
-- `def get_capm_service(`
-- `market_client: MarketClient = Depends(get_market_client),`
-- `macro_service: MacroService = Depends(get_macro_service),`
-- `def get_decision_service(`
-- `risk_service: RiskService = Depends(get_risk_service),`
-- `portfolio_service: PortfolioService = Depends(get_portfolio_service),`
-- `capm_service: CapmService = Depends(get_capm_service),`
-- `def get_investor_service() -> InvestorService:`
-- `def get_assets_service() -> AssetsService:`
-- `def get_benchmark_service(`
-- `market_client: MarketClient = Depends(get_market_client),`
-- `macro_service: MacroService = Depends(get_macro_service),`
-- `def get_help_service() -> HelpService:`
-- `def get_returns_stats_service(client: MarketClient = Depends(get_market_client)) -> ReturnsStatsService:`
-- `def get_alerts_service(client: MarketClient = Depends(get_market_client)) -> AlertsService:`
-- `def get_garch_service(client: MarketClient = Depends(get_market_client)) -> GarchService:`
+        **Imports internos:**
 
-### `backend/app/core/error_catalog.py`
+        - `from app.core.dependencies import get_macro_service`
+        - `from app.schemas.macro import MacroSnapshotResponse`
+        - `from app.services.macro_service import MacroService`
+        - `from app.schemas.macro import FxSpotResponse`
 
-### `backend/app/core/exceptions.py`
+        **Decoradores detectados:**
 
-**Imports internos:**
+        - `@router.get("/", summary="Snapshot macroeconómico", response_model=MacroSnapshotResponse)`
+        - `@router.get("/fx-spot/{base_currency}", summary="Spot FX y referencia macro por moneda base", response_model=FxSpotResponse)`
 
-- `from app.core.error_catalog import ERROR_CATALOG`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `async def get_macro_snapshot(`
+        - `async def get_fx_spot(`
 
-- `class AppBaseException(Exception):`
-- `def __init__(self, catalog_key: str, extra: dict | None = None) -> None:`
-- `class InvalidDateRangeError(AppBaseException):`
-- `def __init__(self) -> None:`
-- `class FutureDateError(AppBaseException):`
-- `def __init__(self) -> None:`
-- `class InvalidApiKeyError(AppBaseException):`
-- `def __init__(self) -> None:`
-- `class TickerNotFoundError(AppBaseException):`
-- `def __init__(self, ticker: str | None = None) -> None:`
-- `class InsufficientObsVarError(AppBaseException):`
-- `def __init__(self, required: int | None = None) -> None:`
-- `class InsufficientObsCapmError(AppBaseException):`
-- `def __init__(self, required: int | None = None) -> None:`
-- `class InsufficientObsPortfolioError(AppBaseException):`
-- `def __init__(self, required: int | None = None) -> None:`
-- `class ExternalApiFailureError(AppBaseException):`
-- `def __init__(self, source: str | None = None) -> None:`
+        **Dependencias / inyección detectada:**
 
-### `backend/app/core/help_catalog.py`
+        - `from app.core.dependencies import get_macro_service`
+        - `service: MacroService = Depends(get_macro_service),`
+        - `service: MacroService = Depends(get_macro_service),`
 
-### `backend/app/core/market_utils.py`
+        ### `backend/app/api/v1/market.py`
 
-**Imports internos:**
+        **Imports internos:**
 
-- `from app.core.exceptions import FutureDateError, InvalidDateRangeError`
+        - `from app.core.dependencies import get_db, get_market_service`
+        - `from app.schemas.market import PricePoint, PricesResponse, ReturnPoint, ReturnsResponse`
+        - `from app.services.market_service import MarketService`
 
-**Clases y funciones:**
+        **Decoradores detectados:**
 
-- `def normalize_end_date_to_available_data(df: pd.DataFrame) -> pd.DataFrame:`
-- `def validate_not_future(start: str, end: str) -> None:`
+        - `@router.get("/prices/{ticker}", summary="Precios históricos por ticker", response_model=PricesResponse)`
+        - `@router.get("/returns/{ticker}", summary="Rendimientos por ticker", response_model=ReturnsResponse)`
 
-### `backend/app/core/security.py`
+        **Clases y funciones:**
 
-**Imports internos:**
+        - `async def get_prices(`
+        - `async def get_returns(`
 
-- `from app.core.exceptions import InvalidApiKeyError`
-- `from app.core.settings import get_settings`
+        **Dependencias / inyección detectada:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_db, get_market_service`
+        - `service: MarketService = Depends(get_market_service),`
+        - `db: Session = Depends(get_db),`
+        - `service: MarketService = Depends(get_market_service),`
+        - `db: Session = Depends(get_db),`
 
-- `def require_internal_api_key(x_api_key: str | None = Header(default=None)) -> None:`
+        ### `backend/app/api/v1/perri.py`
 
-### `backend/app/core/settings.py`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_db`
+        - `from app.services.perri_optimizer_service import PerriOptimizerService`
 
-- `class Settings(BaseSettings):`
-- `def get_settings() -> Settings:`
+        **Decoradores detectados:**
 
-### `backend/app/db/__init__.py`
+        - `@router.get("/latest", summary="Última optimización precalculada de Perri")`
+        - `@router.get("/optimize", summary="Optimización institucional automática de Perri")`
 
-**Imports internos:**
+        **Clases y funciones:**
 
-- `from app.db.database import Base, SessionLocal, engine, get_db, init_db`
-- `from app.db.models import Asset, Portfolio, PredictionLog, Price`
+        - `async def get_latest_perri_optimization() -> dict:`
+        - `async def optimize_perri_portfolio(`
 
-**Dependencias / inyección detectada:**
+        **Dependencias / inyección detectada:**
 
-- `from app.db.database import Base, SessionLocal, engine, get_db, init_db`
-- `"get_db",`
+        - `from app.core.dependencies import get_db`
+        - `db: Session = Depends(get_db),`
 
-### `backend/app/db/build_perri_universe.py`
+        ### `backend/app/api/v1/persistence.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `def classify_asset(ticker: str) -> str:`
-- `def expected_currency(ticker: str) -> str:`
-- `def expected_fx_ticker(currency: str) -> str | None:`
-- `def recommended_benchmark(asset_type: str) -> str:`
-- `def benchmark_description(asset_type: str) -> str:`
-- `def build_perri_universe() -> dict:`
-- `def main() -> None:`
+        - `from app.core.dependencies import get_db`
+        - `from app.db.models import Asset, Portfolio, PredictionLog, Price`
 
-### `backend/app/db/database.py`
+        **Decoradores detectados:**
 
-**Imports internos:**
+        - `@router.get("/health")`
 
-- `from app.core.settings import get_settings`
-- `import app.db.models  # noqa: F401`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `def persistence_health(db: Session = Depends(get_db)) -> dict:`
 
-- `class Base(DeclarativeBase):`
-- `def _resolve_sqlite_url(database_url: str) -> str:`
-- `def get_db() -> Generator[Session, None, None]:`
-- `def init_db() -> None:`
+        **Dependencias / inyección detectada:**
 
-**Dependencias / inyección detectada:**
+        - `from app.core.dependencies import get_db`
+        - `def persistence_health(db: Session = Depends(get_db)) -> dict:`
 
-- `def get_db() -> Generator[Session, None, None]:`
+        ### `backend/app/api/v1/portfolio.py`
 
-### `backend/app/db/import_perri_prices.py`
+        **Imports internos:**
 
-**Imports internos:**
+        - `from app.core.dependencies import get_portfolio_service`
+        - `from app.schemas.portfolio import EfficientFrontierRequest, EfficientFrontierResponse`
+        - `from app.services.portfolio_service import PortfolioService`
+        - `from app.core.security import require_internal_api_key`
 
-- `from app.db.database import SessionLocal, init_db`
-- `from app.db.models import Asset, Price`
-- `from app.db.seed_db import seed_base_assets, seed_perri_assets`
+        **Decoradores detectados:**
 
-**Clases y funciones:**
+        - `@router.post(`
 
-- `def _chunks(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]]:`
-- `def _normalize_date(value: Any) -> date:`
-- `def import_perri_prices(cache_path: Path = CACHE_PATH) -> dict[str, int]:`
-- `def main() -> None:`
+        **Clases y funciones:**
 
-### `backend/app/db/models.py`
+        - `async def efficient_frontier(`
 
-**Imports internos:**
+        **Dependencias / inyección detectada:**
 
-- `from app.db.database import Base`
+        - `from app.core.dependencies import get_portfolio_service`
+        - `_: None = Depends(require_internal_api_key),`
+        - `service: PortfolioService = Depends(get_portfolio_service),`
 
-**Clases y funciones:**
+        ### `backend/app/api/v1/returns_stats.py`
 
-- `def utc_now() -> datetime:`
-- `class Asset(Base):`
-- `class Price(Base):`
-- `class Portfolio(Base):`
-- `class PredictionLog(Base):`
+        **Imports internos:**
 
-### `backend/app/db/seed_db.py`
+        - `from app.core.dependencies import get_returns_stats_service`
+        - `from app.schemas.returns_stats import ReturnsStatsResponse`
+        - `from app.services.returns_stats_service import ReturnsStatsService`
 
-**Imports internos:**
+        **Decoradores detectados:**
 
-- `from app.db.database import SessionLocal, init_db`
-- `from app.db.models import Asset`
+        - `@router.get("/summary/{ticker}", summary="Estadistica de rendimientos", response_model=ReturnsStatsResponse)`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `def _load_perri_universe() -> list[dict[str, Any]]:`
-- `def _upsert_asset(db, payload: dict[str, Any]) -> str:`
-- `def seed_base_assets() -> tuple[int, int]:`
-- `def seed_perri_assets() -> tuple[int, int]:`
-- `def count_assets() -> int:`
-- `def main() -> None:`
+        - `async def get_returns_stats(`
 
-### `backend/app/domain/__init__.py`
+        **Dependencias / inyección detectada:**
 
-### `backend/app/jobs/__init__.py`
+        - `from app.core.dependencies import get_returns_stats_service`
+        - `service: ReturnsStatsService = Depends(get_returns_stats_service),`
 
-### `backend/app/jobs/run_perri_optimization.py`
+        ### `backend/app/api/v1/risk.py`
 
-**Imports internos:**
+        **Imports internos:**
 
-- `from app.db.database import SessionLocal, init_db`
-- `from app.services.perri_optimizer_service import PerriOptimizerService`
+        - `from app.core.dependencies import get_risk_service`
+        - `from app.schemas.risk import PortfolioVarRequest, PortfolioVarResponse`
+        - `from app.services.risk_service import RiskService`
+        - `from app.core.security import require_internal_api_key`
 
-**Clases y funciones:**
+        **Decoradores detectados:**
 
-- `def _json_default(value: Any) -> str:`
-- `def run_perri_optimization_job(`
-- `def main() -> None:`
+        - `@router.post("/var", summary="Calcular VaR y CVaR del portafolio", response_model=PortfolioVarResponse)`
 
-### `backend/app/main.py`
+        **Clases y funciones:**
 
-**Imports internos:**
+        - `async def calculate_var(`
 
-- `from app.api.router import api_router`
-- `from app.core.exceptions import AppBaseException`
-- `from app.core.settings import get_settings`
-- `from app.db.database import init_db`
+        **Dependencias / inyección detectada:**
 
-**Decoradores detectados:**
+        - `from app.core.dependencies import get_risk_service`
+        - `_: None = Depends(require_internal_api_key),`
+        - `service: RiskService = Depends(get_risk_service),`
 
-- `@asynccontextmanager`
-- `@app.exception_handler(AppBaseException)`
-- `@app.get("/", tags=["Root"])`
-- `@app.get("/health", tags=["Health"])`
+        ### `backend/app/api/v1/roboadvisor.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `async def lifespan(app: FastAPI):`
-- `async def app_base_exception_handler(request: Request, exc: AppBaseException) -> JSONResponse:`
-- `async def root() -> dict[str, str]:`
-- `async def health() -> dict[str, str]:`
+        - `from app.clients.market_client import MarketClient`
+        - `from app.core.dependencies import get_market_client`
+        - `from app.services.roboadvisor_service import RoboAdvisorService`
 
-### `backend/app/schemas/__init__.py`
+        **Decoradores detectados:**
 
-### `backend/app/schemas/alerts.py`
+        - `@router.post("/suggest", summary="Generar Portafolio Híbrido Institucional")`
 
-**Decoradores detectados:**
+        **Clases y funciones:**
 
-- `@field_validator("ticker")`
-- `@classmethod`
+        - `class RoboAdvisorRequest(BaseModel):`
+        - `def get_roboadvisor_service(market_client: MarketClient = Depends(get_market_client)) -> RoboAdvisorService:`
+        - `async def suggest_portfolio(`
 
-**Clases y funciones:**
+        **Dependencias / inyección detectada:**
 
-- `class AlertsResponseItem(BaseModel):`
-- `class AlertsResponse(BaseModel):`
-- `class AlertsRequestParams(BaseModel):`
-- `def validate_ticker(cls, v: str) -> str:`
+        - `def get_roboadvisor_service(market_client: MarketClient = Depends(get_market_client)) -> RoboAdvisorService:`
+        - `service: RoboAdvisorService = Depends(get_roboadvisor_service)`
 
-### `backend/app/schemas/benchmark.py`
+        ### `backend/app/api/v1/technical.py`
 
-**Decoradores detectados:**
+        **Imports internos:**
 
-- `@field_validator("tickers")`
-- `@classmethod`
-- `@field_validator("weights")`
-- `@classmethod`
-- `@field_validator("base_currency")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
-- `@field_validator("mode")`
-- `@classmethod`
+        - `from app.core.dependencies import get_technical_service`
+        - `from app.schemas.technical import TechnicalPoint, TechnicalResponse`
+        - `from app.services.technical_service import TechnicalService`
 
-**Clases y funciones:**
+        **Decoradores detectados:**
 
-- `class BenchmarkCompareRequest(BaseModel):`
-- `def validate_tickers(cls, v: list[str]) -> list[str]:`
-- `def validate_weights_sum(cls, v: list[float]) -> list[float]:`
-- `def validate_currency(cls, v: str) -> str:`
-- `def validate_return_type(cls, v: str) -> str:`
-- `def validate_mode(cls, v: str) -> str:`
-- `class BenchmarkMetrics(BaseModel):`
-- `class BenchmarkCompareResponse(BaseModel):`
+        - `@router.get("/indicators/{ticker}", summary="Indicadores técnicos por ticker", response_model=TechnicalResponse)`
 
-### `backend/app/schemas/capm.py`
+        **Clases y funciones:**
 
-**Decoradores detectados:**
+        - `async def get_indicators(`
 
-- `@field_validator("tickers")`
-- `@classmethod`
-- `@field_validator("weights")`
-- `@classmethod`
-- `@field_validator("base_currency")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
+        **Dependencias / inyección detectada:**
 
-**Clases y funciones:**
+        - `from app.core.dependencies import get_technical_service`
+        - `service: TechnicalService = Depends(get_technical_service),`
 
-- `class CapmRegressionPoint(BaseModel):`
-- `class CapmResponse(BaseModel):`
-- `class PortfolioCapmRequest(BaseModel):`
-- `def validate_tickers(cls, v: list[str]) -> list[str]:`
-- `def validate_weights_sum(cls, v: list[float]) -> list[float]:`
-- `def validate_currency(cls, v: str) -> str:`
-- `def validate_return_type(cls, v: str) -> str:`
-- `class PortfolioCapmResponse(BaseModel):`
+        ### `backend/app/api/v1/valuation.py`
 
-### `backend/app/schemas/common.py`
+        **Imports internos:**
 
-**Decoradores detectados:**
+        - `from app.schemas.valuation import YieldCurveRequest, YieldCurveResponse, OptionValuationRequest, OptionValuationResponse`
+        - `from app.services.yield_service import YieldService`
+        - `from app.services.option_service import OptionService`
 
-- `@field_validator("base_currency")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
+        **Decoradores detectados:**
 
-**Clases y funciones:**
+        - `@router.post("/nelson-siegel", response_model=YieldCurveResponse, summary="Ajuste de curva Nelson-Siegel")`
+        - `@router.post("/black-scholes", response_model=OptionValuationResponse, summary="Valoración de opciones Black-Scholes")`
 
-- `class AssetItem(BaseModel):`
-- `class AssetsResponse(BaseModel):`
-- `class MacroQueryParams(BaseModel):`
-- `def validate_base_currency(cls, v: str) -> str:`
-- `class ReturnTypeMixin(BaseModel):`
-- `def validate_return_type(cls, v: str) -> str:`
-- `class AssetUniverseItem(BaseModel):`
-- `class AssetUniverseResponse(BaseModel):`
-- `class AssetSearchResponse(BaseModel):`
+        **Clases y funciones:**
 
-### `backend/app/schemas/decision.py`
+        - `def get_yield_service() -> YieldService:`
+        - `def get_option_service() -> OptionService:`
+        - `async def fit_nelson_siegel(`
+        - `async def calculate_option(`
 
-**Decoradores detectados:**
+        **Dependencias / inyección detectada:**
 
-- `@field_validator("tickers")`
-- `@classmethod`
-- `@field_validator("weights")`
-- `@classmethod`
-- `@field_validator("base_currency")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
+        - `def get_yield_service() -> YieldService:`
+        - `def get_option_service() -> OptionService:`
+        - `service: YieldService = Depends(get_yield_service)`
+        - `service: OptionService = Depends(get_option_service)`
 
-**Clases y funciones:**
+        ### `backend/app/clients/__init__.py`
 
-- `class DecisionPanelRequest(BaseModel):`
-- `def validate_tickers(cls, v: list[str]) -> list[str]:`
-- `def validate_weights_sum(cls, v: list[float]) -> list[float]:`
-- `def validate_currency(cls, v: str) -> str:`
-- `def validate_return_type(cls, v: str) -> str:`
-- `class DecisionPanelResponse(BaseModel):`
+        ### `backend/app/clients/macro_client.py`
 
-### `backend/app/schemas/error.py`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.settings import Settings`
 
-- `class ErrorDetail(BaseModel):`
-- `class ErrorResponse(BaseModel):`
+        **Clases y funciones:**
 
-### `backend/app/schemas/garch.py`
+        - `class MacroClient:`
+        - `def __init__(self, settings: Settings) -> None:`
+        - `def _get_last_close(self, ticker: str) -> float | None:`
+        - `def get_us_inflation_yoy_pct(self) -> float | None:`
+        - `def get_us_inflation_yoy_pct(self) -> float | None:`
+        - `def get_macro_snapshot(self, base_currency: str) -> dict:`
 
-**Decoradores detectados:**
+        ### `backend/app/clients/market_client.py`
 
-- `@field_validator("ticker")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
-- `@field_validator("mode")`
-- `@classmethod`
-- `@field_validator("distribution")`
-- `@classmethod`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.decorators import log_execution_time`
+        - `from app.core.market_utils import normalize_end_date_to_available_data, validate_not_future`
+        - `from app.core.assets_registry import ASSET_METADATA_BY_TICKER`
+        - `from app.core.settings import Settings`
 
-- `class GarchRequest(BaseModel):`
-- `def validate_ticker(cls, v: str) -> str:`
-- `def validate_return_type(cls, v: str) -> str:`
-- `def validate_mode(cls, v: str) -> str:`
-- `def validate_distribution(cls, v: str) -> str:`
-- `class GarchModelResult(BaseModel):`
-- `class GarchForecastPoint(BaseModel):`
-- `class GarchResponse(BaseModel):`
+        **Clases y funciones:**
 
-### `backend/app/schemas/help.py`
+        - `class MarketClient:`
+        - `def __init__(self, settings: Settings) -> None:`
+        - `def _download_prices(self, ticker: str, start: str, end: str) -> pd.DataFrame:`
+        - `def _convert_ohlc_to_usd(self, prices: pd.DataFrame, ticker: str, start: str, end: str) -> pd.DataFrame:`
+        - `def get_prices(self, ticker: str, start: str, end: str, convert_to_usd: bool = True) -> pd.DataFrame:`
 
-**Clases y funciones:**
+        ### `backend/app/core/__init__.py`
 
-- `class HelpItem(BaseModel):`
-- `class HelpCatalogResponse(BaseModel):`
+        ### `backend/app/core/assets_registry.py`
 
-### `backend/app/schemas/investor.py`
+        ### `backend/app/core/decorators.py`
 
-**Decoradores detectados:**
+        **Clases y funciones:**
 
-- `@field_validator("tickers")`
-- `@classmethod`
-- `@field_validator("weights_pct")`
-- `@classmethod`
-- `@field_validator("base_currency")`
-- `@classmethod`
-- `@field_validator("risk_profile")`
-- `@classmethod`
-- `@field_validator("horizon_type")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
-- `@field_validator("mode")`
-- `@classmethod`
-- `@model_validator(mode="after")`
+        - `def log_execution_time(func):`
+        - `def wrapper(*args, **kwargs):`
 
-**Clases y funciones:**
+        ### `backend/app/core/dependencies.py`
 
-- `class InvestorPreferencesRequest(BaseModel):`
-- `def validate_tickers(cls, v: list[str]) -> list[str]:`
-- `def validate_weights_pct_range(cls, v: list[float]) -> list[float]:`
-- `def validate_currency(cls, v: str) -> str:`
-- `def validate_risk_profile(cls, v: str) -> str:`
-- `def validate_horizon_type(cls, v: str) -> str:`
-- `def validate_return_type(cls, v: str) -> str:`
-- `def validate_mode(cls, v: str) -> str:`
-- `def validate_cross_fields(self) -> "InvestorPreferencesRequest":`
-- `class InvestorPreferencesResponse(BaseModel):`
+        **Imports internos:**
 
-### `backend/app/schemas/macro.py`
+        - `from app.db.database import get_db`
+        - `from app.clients.macro_client import MacroClient`
+        - `from app.clients.market_client import MarketClient`
+        - `from app.core.settings import Settings, get_settings`
+        - `from app.services.decision_service import DecisionService`
+        - `from app.services.macro_service import MacroService`
+        - `from app.services.market_service import MarketService`
+        - `from app.services.portfolio_service import PortfolioService`
+        - `from app.services.risk_service import RiskService`
+        - `from app.services.technical_service import TechnicalService`
+        - `from app.services.capm_service import CapmService`
+        - `from app.services.decision_service import DecisionService`
+        - `from app.services.investor_service import InvestorService`
+        - `from app.services.assets_service import AssetsService`
+        - `from app.services.benchmark_service import BenchmarkService`
+        - `from app.services.help_service import HelpService`
+        - `from app.services.returns_stats_service import ReturnsStatsService`
+        - `from app.services.alerts_service import AlertsService`
+        - `from app.services.garch_service import GarchService`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `class MacroSnapshotResponse(BaseModel):`
-- `class FxSpotResponse(BaseModel):`
+        - `def get_app_settings() -> Settings:`
+        - `def get_market_client(settings: Settings = Depends(get_app_settings)) -> MarketClient:`
+        - `def get_macro_client(settings: Settings = Depends(get_app_settings)) -> MacroClient:`
+        - `def get_market_service(client: MarketClient = Depends(get_market_client)) -> MarketService:`
+        - `def get_technical_service(client: MarketClient = Depends(get_market_client)) -> TechnicalService:`
+        - `def get_risk_service(client: MarketClient = Depends(get_market_client)) -> RiskService:`
+        - `def get_portfolio_service(client: MarketClient = Depends(get_market_client)) -> PortfolioService:`
+        - `def get_macro_service(`
+        - `def get_capm_service(`
+        - `def get_decision_service(`
+        - `def get_investor_service() -> InvestorService:`
+        - `def get_assets_service() -> AssetsService:`
+        - `def get_benchmark_service(`
+        - `def get_help_service() -> HelpService:`
+        - `def get_returns_stats_service(client: MarketClient = Depends(get_market_client)) -> ReturnsStatsService:`
+        - `def get_alerts_service(client: MarketClient = Depends(get_market_client)) -> AlertsService:`
+        - `def get_garch_service(client: MarketClient = Depends(get_market_client)) -> GarchService:`
 
-### `backend/app/schemas/market.py`
+        **Dependencias / inyección detectada:**
 
-**Clases y funciones:**
+        - `from app.db.database import get_db`
+        - `def get_market_client(settings: Settings = Depends(get_app_settings)) -> MarketClient:`
+        - `def get_macro_client(settings: Settings = Depends(get_app_settings)) -> MacroClient:`
+        - `def get_market_service(client: MarketClient = Depends(get_market_client)) -> MarketService:`
+        - `def get_technical_service(client: MarketClient = Depends(get_market_client)) -> TechnicalService:`
+        - `def get_risk_service(client: MarketClient = Depends(get_market_client)) -> RiskService:`
+        - `def get_portfolio_service(client: MarketClient = Depends(get_market_client)) -> PortfolioService:`
+        - `def get_macro_service(`
+        - `client: MacroClient = Depends(get_macro_client),`
+        - `market_client: MarketClient = Depends(get_market_client),`
+        - `def get_capm_service(`
+        - `market_client: MarketClient = Depends(get_market_client),`
+        - `macro_service: MacroService = Depends(get_macro_service),`
+        - `def get_decision_service(`
+        - `risk_service: RiskService = Depends(get_risk_service),`
+        - `portfolio_service: PortfolioService = Depends(get_portfolio_service),`
+        - `capm_service: CapmService = Depends(get_capm_service),`
+        - `def get_investor_service() -> InvestorService:`
+        - `def get_assets_service() -> AssetsService:`
+        - `def get_benchmark_service(`
+        - `market_client: MarketClient = Depends(get_market_client),`
+        - `macro_service: MacroService = Depends(get_macro_service),`
+        - `def get_help_service() -> HelpService:`
+        - `def get_returns_stats_service(client: MarketClient = Depends(get_market_client)) -> ReturnsStatsService:`
+        - `def get_alerts_service(client: MarketClient = Depends(get_market_client)) -> AlertsService:`
+        - `def get_garch_service(client: MarketClient = Depends(get_market_client)) -> GarchService:`
 
-- `class PricePoint(BaseModel):`
-- `class PricesResponse(BaseModel):`
-- `class ReturnPoint(BaseModel):`
-- `class ReturnsResponse(BaseModel):`
+        ### `backend/app/core/error_catalog.py`
 
-### `backend/app/schemas/portfolio.py`
+        ### `backend/app/core/exceptions.py`
 
-**Decoradores detectados:**
+        **Imports internos:**
 
-- `@model_validator(mode="before")`
-- `@classmethod`
-- `@field_validator("tickers")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
-- `@field_validator("risk_profile")`
-- `@classmethod`
+        - `from app.core.error_catalog import ERROR_CATALOG`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `class EfficientFrontierRequest(BaseModel):`
-- `def map_frontend_aliases(cls, values: dict):`
-- `def validate_tickers(cls, v: list[str]) -> list[str]:`
-- `def validate_return_type(cls, v: str) -> str:`
-- `def validate_risk_profile(cls, v: str | None) -> str | None:`
-- `class FrontierPoint(BaseModel):`
-- `class PortfolioWeightsItem(BaseModel):`
-- `class OptimalPortfolio(BaseModel):`
-- `class TargetReturnPortfolio(BaseModel):`
-- `class ProfileSuggestedPortfolio(BaseModel):`
-- `class TopPortfolio(BaseModel):`
-- `class EfficientFrontierResponse(BaseModel):`
+        - `class AppBaseException(Exception):`
+        - `def __init__(self, catalog_key: str, extra: dict | None = None) -> None:`
+        - `class InvalidDateRangeError(AppBaseException):`
+        - `def __init__(self) -> None:`
+        - `class FutureDateError(AppBaseException):`
+        - `def __init__(self) -> None:`
+        - `class InvalidApiKeyError(AppBaseException):`
+        - `def __init__(self) -> None:`
+        - `class TickerNotFoundError(AppBaseException):`
+        - `def __init__(self, ticker: str | None = None) -> None:`
+        - `class InsufficientObsVarError(AppBaseException):`
+        - `def __init__(self, required: int | None = None) -> None:`
+        - `class InsufficientObsCapmError(AppBaseException):`
+        - `def __init__(self, required: int | None = None) -> None:`
+        - `class InsufficientObsPortfolioError(AppBaseException):`
+        - `def __init__(self, required: int | None = None) -> None:`
+        - `class ExternalApiFailureError(AppBaseException):`
+        - `def __init__(self, source: str | None = None) -> None:`
 
-### `backend/app/schemas/returns_stats.py`
+        ### `backend/app/core/help_catalog.py`
 
-**Decoradores detectados:**
+        ### `backend/app/core/market_utils.py`
 
-- `@field_validator("ticker")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
-- `@field_validator("mode")`
-- `@classmethod`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.exceptions import FutureDateError, InvalidDateRangeError`
 
-- `class ReturnsStatsRequest(BaseModel):`
-- `def validate_ticker(cls, v: str) -> str:`
-- `def validate_return_type(cls, v: str) -> str:`
-- `def validate_mode(cls, v: str) -> str:`
-- `class NormalityTestResult(BaseModel):`
-- `class AndersonDarlingResult(BaseModel):`
-- `class HistogramBin(BaseModel):`
-- `class QQPoint(BaseModel):`
-- `class BoxplotSummary(BaseModel):`
-- `class ReturnsStatsResponse(BaseModel):`
+        **Clases y funciones:**
 
-### `backend/app/schemas/risk.py`
+        - `def normalize_end_date_to_available_data(df: pd.DataFrame) -> pd.DataFrame:`
+        - `def validate_not_future(start: str, end: str) -> None:`
 
-**Decoradores detectados:**
+        ### `backend/app/core/security.py`
 
-- `@field_validator("weights")`
-- `@classmethod`
-- `@field_validator("tickers")`
-- `@classmethod`
-- `@field_validator("return_type")`
-- `@classmethod`
-- `@field_validator("distribution")`
-- `@classmethod`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.exceptions import InvalidApiKeyError`
+        - `from app.core.settings import get_settings`
 
-- `class PortfolioVarRequest(BaseModel):`
-- `def validate_weights_sum(cls, v: list[float]) -> list[float]:`
-- `def validate_tickers_not_empty(cls, v: list[str]) -> list[str]:`
-- `def validate_return_type(cls, v: str) -> str:`
-- `def validate_distribution(cls, v: str) -> str:`
-- `class VarMethodResult(BaseModel):`
-- `class KupiecBacktestResult(BaseModel):`
-- `class PortfolioVarResponse(BaseModel):`
+        **Clases y funciones:**
 
-### `backend/app/schemas/technical.py`
+        - `def require_internal_api_key(x_api_key: str | None = Header(default=None)) -> None:`
 
-**Clases y funciones:**
+        ### `backend/app/core/settings.py`
 
-- `class TechnicalPoint(BaseModel):`
-- `class TechnicalResponse(BaseModel):`
+        **Clases y funciones:**
 
-### `backend/app/schemas/valuation.py`
+        - `class Settings(BaseSettings):`
+        - `def get_settings() -> Settings:`
 
-**Clases y funciones:**
+        ### `backend/app/db/__init__.py`
 
-- `class YieldCurveRequest(BaseModel):`
-- `class NelsonSiegelParams(BaseModel):`
-- `class YieldCurveResponse(BaseModel):`
-- `class OptionValuationRequest(BaseModel):`
-- `class Greeks(BaseModel):`
-- `class OptionValuationResponse(BaseModel):`
+        **Imports internos:**
 
-### `backend/app/services/__init__.py`
+        - `from app.db.database import Base, SessionLocal, engine, get_db, init_db`
+        - `from app.db.models import Asset, Portfolio, PredictionLog, Price`
 
-### `backend/app/services/alerts_service.py`
+        **Dependencias / inyección detectada:**
 
-**Imports internos:**
+        - `from app.db.database import Base, SessionLocal, engine, get_db, init_db`
+        - `"get_db",`
 
-- `from app.clients.market_client import MarketClient`
-- `from app.core.exceptions import TickerNotFoundError`
+        ### `backend/app/db/build_perri_universe.py`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `class AlertsService:`
-- `def __init__(self, client: MarketClient) -> None:`
-- `def _load_data(self, ticker: str, start: str, end: str) -> pd.DataFrame:`
-- `def get_alerts(`
+        - `def classify_asset(ticker: str) -> str:`
+        - `def expected_currency(ticker: str) -> str:`
+        - `def expected_fx_ticker(currency: str) -> str | None:`
+        - `def recommended_benchmark(asset_type: str) -> str:`
+        - `def benchmark_description(asset_type: str) -> str:`
+        - `def build_perri_universe() -> dict:`
+        - `def main() -> None:`
 
-### `backend/app/services/assets_service.py`
+        ### `backend/app/db/database.py`
 
-**Imports internos:**
+        **Imports internos:**
 
-- `from app.core.assets_registry import ALL_ASSETS`
-- `from app.db.models import Asset`
+        - `from app.core.settings import get_settings`
+        - `import app.db.models  # noqa: F401`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `class AssetsService:`
-- `def _asset_to_item(self, asset: Asset, default_tickers: set[str]) -> dict:`
-- `def _fallback_assets(self) -> list[dict]:`
-- `def list_assets(self, db: Session | None = None) -> list[dict]:`
-- `def search_assets(self, query: str, db: Session | None = None) -> dict:`
-- `def summarize_assets(self, db: Session) -> dict:`
+        - `class Base(DeclarativeBase):`
+        - `def _resolve_sqlite_url(database_url: str) -> str:`
+        - `def get_db() -> Generator[Session, None, None]:`
+        - `def init_db() -> None:`
 
-### `backend/app/services/benchmark_service.py`
+        **Dependencias / inyección detectada:**
 
-**Imports internos:**
+        - `def get_db() -> Generator[Session, None, None]:`
 
-- `from app.clients.market_client import MarketClient`
-- `from app.services.macro_service import MacroService`
+        ### `backend/app/db/import_perri_prices.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `class BenchmarkService:`
-- `def __init__(self, market_client: MarketClient, macro_service: MacroService) -> None:`
-- `def _returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:`
-- `def _returns_matrix(self, tickers: list[str], start: str, end: str, return_type: str) -> pd.DataFrame:`
-- `def _cumulative_return(self, returns: pd.Series, return_type: str) -> float:`
-- `def _annual_return(self, returns: pd.Series, return_type: str) -> float:`
-- `def _annual_volatility(self, returns: pd.Series) -> float:`
-- `def _max_drawdown(self, returns: pd.Series, return_type: str) -> float:`
-- `def _metrics(self, returns: pd.Series, rf_decimal: float, return_type: str) -> dict:`
-- `def compare(`
+        - `from app.db.database import SessionLocal, init_db`
+        - `from app.db.models import Asset, Price`
+        - `from app.db.seed_db import seed_base_assets, seed_perri_assets`
 
-### `backend/app/services/capm_service.py`
+        **Clases y funciones:**
 
-**Imports internos:**
+        - `def _chunks(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]]:`
+        - `def _normalize_date(value: Any) -> date:`
+        - `def import_perri_prices(cache_path: Path = CACHE_PATH) -> dict[str, int]:`
+        - `def main() -> None:`
 
-- `from app.clients.market_client import MarketClient`
-- `from app.services.macro_service import MacroService`
+        ### `backend/app/db/models.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `class CapmService:`
-- `def __init__(self, market_client: MarketClient, macro_service: MacroService) -> None:`
-- `def _returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:`
-- `def _returns_matrix(self, tickers: list[str], start: str, end: str, return_type: str) -> pd.DataFrame:`
-- `def _classify_beta(beta: float) -> str:`
-- `def calculate_capm(`
-- `def calculate_portfolio_capm(`
+        - `from app.db.database import Base`
 
-### `backend/app/services/decision_service.py`
+        **Clases y funciones:**
 
-**Imports internos:**
+        - `def utc_now() -> datetime:`
+        - `class Asset(Base):`
+        - `class Price(Base):`
+        - `class Portfolio(Base):`
+        - `class PredictionLog(Base):`
 
-- `from app.services.capm_service import CapmService`
-- `from app.services.portfolio_service import PortfolioService`
-- `from app.services.risk_service import RiskService`
+        ### `backend/app/db/seed_db.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `class DecisionService:`
-- `def __init__(`
-- `def _infer_stance(self, portfolio_beta: float, alpha_simple: float, mc_var_daily: float) -> str:`
-- `def build_panel(`
+        - `from app.db.database import SessionLocal, init_db`
+        - `from app.db.models import Asset`
 
-### `backend/app/services/garch_service.py`
+        **Clases y funciones:**
 
-**Imports internos:**
+        - `def _load_perri_universe() -> list[dict[str, Any]]:`
+        - `def _upsert_asset(db, payload: dict[str, Any]) -> str:`
+        - `def seed_base_assets() -> tuple[int, int]:`
+        - `def seed_perri_assets() -> tuple[int, int]:`
+        - `def count_assets() -> int:`
+        - `def main() -> None:`
 
-- `from app.clients.market_client import MarketClient`
-- `from app.core.exceptions import TickerNotFoundError`
+        ### `backend/app/domain/__init__.py`
 
-**Clases y funciones:**
+        ### `backend/app/jobs/__init__.py`
 
-- `class GarchService:`
-- `def __init__(self, client: MarketClient) -> None:`
-- `def _get_returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:`
-- `def _safe_float_list(values) -> list[float]:`
-- `def _normalize_distribution(distribution: str) -> str:`
-- `def _distribution_label(distribution: str) -> str:`
-- `def analyze(`
+        ### `backend/app/jobs/run_perri_optimization.py`
 
-### `backend/app/services/help_service.py`
+        **Imports internos:**
 
-**Imports internos:**
+        - `from app.db.database import SessionLocal, init_db`
+        - `from app.services.perri_optimizer_service import PerriOptimizerService`
 
-- `from app.core.help_catalog import HELP_CATALOG`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `def _json_default(value: Any) -> str:`
+        - `def _primary_metrics(result: dict) -> dict:`
+        - `def run_perri_optimization_job(`
+        - `def main() -> None:`
 
-- `class HelpService:`
-- `def get_catalog(self) -> dict:`
+        ### `backend/app/main.py`
 
-### `backend/app/services/investor_service.py`
+        **Imports internos:**
 
-**Imports internos:**
+        - `from app.api.router import api_router`
+        - `from app.core.exceptions import AppBaseException`
+        - `from app.core.settings import get_settings`
+        - `from app.db.database import init_db`
 
-- `from app.schemas.investor import InvestorPreferencesRequest`
+        **Decoradores detectados:**
 
-**Clases y funciones:**
+        - `@asynccontextmanager`
+        - `@app.exception_handler(AppBaseException)`
+        - `@app.get("/", tags=["Root"])`
+        - `@app.get("/health", tags=["Health"])`
 
-- `class InvestorService:`
-- `def determine_risk_profile(self, kyc_answers: dict) -> str:`
-- `def resolve_horizon(self, payload: InvestorPreferencesRequest) -> dict:`
+        **Clases y funciones:**
 
-### `backend/app/services/macro_service.py`
+        - `async def lifespan(app: FastAPI):`
+        - `async def app_base_exception_handler(request: Request, exc: AppBaseException) -> JSONResponse:`
+        - `async def root() -> dict[str, str]:`
+        - `async def health() -> dict[str, str]:`
 
-**Imports internos:**
+        ### `backend/app/schemas/__init__.py`
 
-- `from app.clients.macro_client import MacroClient`
-- `from app.clients.market_client import MarketClient`
+        ### `backend/app/schemas/alerts.py`
 
-**Clases y funciones:**
+        **Decoradores detectados:**
 
-- `class MacroService:`
-- `def __init__(self, client: MacroClient, market_client: MarketClient) -> None:`
-- `def get_macro_snapshot(self, base_currency: str) -> dict:`
-- `def resolve_rf_inputs(self, base_currency: str) -> tuple[str, float]:`
-- `def get_fx_spot(self, base_currency: str) -> dict:`
+        - `@field_validator("ticker")`
+        - `@classmethod`
 
-### `backend/app/services/market_service.py`
+        **Clases y funciones:**
 
-**Imports internos:**
+        - `class AlertsResponseItem(BaseModel):`
+        - `class AlertsResponse(BaseModel):`
+        - `class AlertsRequestParams(BaseModel):`
+        - `def validate_ticker(cls, v: str) -> str:`
 
-- `from app.clients.market_client import MarketClient`
-- `from app.db.models import Asset, Price`
+        ### `backend/app/schemas/benchmark.py`
 
-**Clases y funciones:**
+        **Decoradores detectados:**
 
-- `class MarketService:`
-- `def __init__(self, client: MarketClient) -> None:`
-- `def _get_prices_from_db(`
-- `def get_prices(`
-- `def get_returns(`
+        - `@field_validator("tickers")`
+        - `@classmethod`
+        - `@field_validator("weights")`
+        - `@classmethod`
+        - `@field_validator("base_currency")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
+        - `@field_validator("mode")`
+        - `@classmethod`
 
-### `backend/app/services/option_service.py`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class BenchmarkCompareRequest(BaseModel):`
+        - `def validate_tickers(cls, v: list[str]) -> list[str]:`
+        - `def validate_weights_sum(cls, v: list[float]) -> list[float]:`
+        - `def validate_currency(cls, v: str) -> str:`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `def validate_mode(cls, v: str) -> str:`
+        - `class BenchmarkMetrics(BaseModel):`
+        - `class BenchmarkCompareResponse(BaseModel):`
 
-- `class OptionService:`
-- `def calculate_black_scholes(`
-- `def implied_volatility(self, target_price: float, S: float, K: float, T: float, r: float) -> float:`
+        ### `backend/app/schemas/capm.py`
 
-### `backend/app/services/perri_optimizer_service.py`
+        **Decoradores detectados:**
 
-**Imports internos:**
+        - `@field_validator("tickers")`
+        - `@classmethod`
+        - `@field_validator("weights")`
+        - `@classmethod`
+        - `@field_validator("base_currency")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
 
-- `from app.db.models import Asset, Price`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class CapmRegressionPoint(BaseModel):`
+        - `class CapmResponse(BaseModel):`
+        - `class PortfolioCapmRequest(BaseModel):`
+        - `def validate_tickers(cls, v: list[str]) -> list[str]:`
+        - `def validate_weights_sum(cls, v: list[float]) -> list[float]:`
+        - `def validate_currency(cls, v: str) -> str:`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `class PortfolioCapmResponse(BaseModel):`
 
-- `class PerriOptimizerService:`
-- `def __init__(`
-- `def _get_date_window(`
-- `def _load_eligible_assets(self, db: Session) -> list[Asset]:`
-- `def _load_close_series(`
-- `def _build_returns_by_asset(`
-- `def _individual_metrics(`
-- `def _build_aligned_returns_matrix(`
-- `def _portfolio_metrics(`
-- `def _optimize(`
-- `def objective(weights: np.ndarray) -> float:`
-- `def run_optimization(`
+        ### `backend/app/schemas/common.py`
 
-### `backend/app/services/portfolio_service.py`
+        **Decoradores detectados:**
 
-**Imports internos:**
+        - `@field_validator("base_currency")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
 
-- `from app.clients.market_client import MarketClient`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class AssetItem(BaseModel):`
+        - `class AssetsResponse(BaseModel):`
+        - `class MacroQueryParams(BaseModel):`
+        - `def validate_base_currency(cls, v: str) -> str:`
+        - `class ReturnTypeMixin(BaseModel):`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `class AssetUniverseItem(BaseModel):`
+        - `class AssetUniverseResponse(BaseModel):`
+        - `class AssetSearchResponse(BaseModel):`
 
-- `class PortfolioOptimizerSingleton:`
-- `def __new__(cls, *args, **kwargs):`
-- `def __init__(self, client: MarketClient | None = None):`
-- `def _get_returns_matrix(self, tickers: list[str], start: str, end: str) -> pd.DataFrame:`
-- `def optimize_markowitz(`
-- `def portfolio_volatility(weights: np.ndarray) -> float:`
-- `class PortfolioService:`
-- `def __init__(self, client: MarketClient) -> None:`
-- `def _returns_by_type(self, close: pd.Series, return_type: str) -> pd.Series:`
-- `def _build_returns_matrix(`
-- `def _annual_return_from_daily(self, daily_return: float, return_type: str) -> float:`
-- `def _portfolio_metrics(`
-- `def _weights_payload(self, tickers: list[str], weights: np.ndarray) -> list[dict]:`
-- `def _portfolio_payload(`
-- `def _simulate_portfolios(`
-- `def _build_frontier_points(self, simulated: list[dict]) -> list[dict]:`
-- `def _optimize_min_variance(`
-- `def objective(weights: np.ndarray) -> float:`
-- `def _optimize_max_sharpe(`
-- `def objective(weights: np.ndarray) -> float:`
-- `def _select_target_return_portfolio(`
-- `def _select_profile_portfolio(`
-- `def _select_top_portfolios(`
-- `def build_efficient_frontier(`
+        ### `backend/app/schemas/decision.py`
 
-### `backend/app/services/returns_stats_service.py`
+        **Decoradores detectados:**
 
-**Imports internos:**
+        - `@field_validator("tickers")`
+        - `@classmethod`
+        - `@field_validator("weights")`
+        - `@classmethod`
+        - `@field_validator("base_currency")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
 
-- `from app.clients.market_client import MarketClient`
-- `from app.core.exceptions import TickerNotFoundError`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class DecisionPanelRequest(BaseModel):`
+        - `def validate_tickers(cls, v: list[str]) -> list[str]:`
+        - `def validate_weights_sum(cls, v: list[float]) -> list[float]:`
+        - `def validate_currency(cls, v: str) -> str:`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `class DecisionPanelResponse(BaseModel):`
 
-- `class ReturnsStatsService:`
-- `def __init__(self, client: MarketClient) -> None:`
-- `def _get_returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:`
-- `def _normality_conclusion(self, p_value: float | None) -> str:`
-- `def build_returns_stats(`
+        ### `backend/app/schemas/error.py`
 
-### `backend/app/services/risk_service.py`
+        **Clases y funciones:**
 
-**Imports internos:**
+        - `class ErrorDetail(BaseModel):`
+        - `class ErrorResponse(BaseModel):`
 
-- `from app.clients.market_client import MarketClient`
+        ### `backend/app/schemas/garch.py`
 
-**Clases y funciones:**
+        **Decoradores detectados:**
 
-- `class RiskService:`
-- `def __init__(self, client: MarketClient) -> None:`
-- `def _build_returns_matrix(self, tickers: list[str], start: str, end: str, return_type: str) -> pd.DataFrame:`
-- `def _portfolio_returns(self, returns_df: pd.DataFrame, weights: list[float]) -> pd.Series:`
-- `def _normalize_distribution(distribution: str) -> str:`
-- `def _distribution_label(distribution: str) -> str:`
-- `def _historical_var_cvar(self, portfolio_returns: pd.Series, alpha: float) -> dict:`
-- `def _monte_carlo_var_cvar(`
-- `def _parametric_var_cvar(`
-- `def _kupiec_test(self, portfolio_returns: pd.Series, alpha: float, var_daily: float) -> dict:`
-- `def calculate_var(`
+        - `@field_validator("ticker")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
+        - `@field_validator("mode")`
+        - `@classmethod`
+        - `@field_validator("distribution")`
+        - `@classmethod`
 
-### `backend/app/services/roboadvisor_service.py`
+        **Clases y funciones:**
 
-**Imports internos:**
+        - `class GarchRequest(BaseModel):`
+        - `def validate_ticker(cls, v: str) -> str:`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `def validate_mode(cls, v: str) -> str:`
+        - `def validate_distribution(cls, v: str) -> str:`
+        - `class GarchModelResult(BaseModel):`
+        - `class GarchForecastPoint(BaseModel):`
+        - `class GarchResponse(BaseModel):`
 
-- `from app.services.portfolio_service import PortfolioOptimizerSingleton`
-- `from app.clients.market_client import MarketClient`
+        ### `backend/app/schemas/help.py`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `class RoboAdvisorService:`
-- `def __init__(self, market_client: MarketClient):`
-- `def suggest_hybrid_portfolio(self, profile: str, total_assets: int, custom_tickers: list[str] = None) -> dict:`
+        - `class HelpItem(BaseModel):`
+        - `class HelpCatalogResponse(BaseModel):`
 
-### `backend/app/services/technical_service.py`
+        ### `backend/app/schemas/investor.py`
 
-**Imports internos:**
+        **Decoradores detectados:**
 
-- `from app.clients.market_client import MarketClient`
+        - `@field_validator("tickers")`
+        - `@classmethod`
+        - `@field_validator("weights_pct")`
+        - `@classmethod`
+        - `@field_validator("base_currency")`
+        - `@classmethod`
+        - `@field_validator("risk_profile")`
+        - `@classmethod`
+        - `@field_validator("horizon_type")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
+        - `@field_validator("mode")`
+        - `@classmethod`
+        - `@model_validator(mode="after")`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `class TechnicalService:`
-- `def __init__(self, client: MarketClient) -> None:`
-- `def get_indicators(self, ticker: str, start: str, end: str) -> pd.DataFrame:`
+        - `class InvestorPreferencesRequest(BaseModel):`
+        - `def validate_tickers(cls, v: list[str]) -> list[str]:`
+        - `def validate_weights_pct_range(cls, v: list[float]) -> list[float]:`
+        - `def validate_currency(cls, v: str) -> str:`
+        - `def validate_risk_profile(cls, v: str) -> str:`
+        - `def validate_horizon_type(cls, v: str) -> str:`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `def validate_mode(cls, v: str) -> str:`
+        - `def validate_cross_fields(self) -> "InvestorPreferencesRequest":`
+        - `class InvestorPreferencesResponse(BaseModel):`
 
-### `backend/app/services/yield_service.py`
+        ### `backend/app/schemas/macro.py`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `class YieldService:`
-- `def nelson_siegel(t: np.ndarray, tau: float, beta0: float, beta1: float, beta2: float) -> np.ndarray:`
-- `def fit_nelson_siegel(self, yields: list[float], maturities: list[float]) -> dict:`
-- `def objective(params):`
+        - `class MacroSnapshotResponse(BaseModel):`
+        - `class FxSpotResponse(BaseModel):`
 
-### `frontend/app.py`
+        ### `backend/app/schemas/market.py`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `def verificar_login(username, password):`
+        - `class PricePoint(BaseModel):`
+        - `class PricesResponse(BaseModel):`
+        - `class ReturnPoint(BaseModel):`
+        - `class ReturnsResponse(BaseModel):`
 
-### `frontend/config.py`
+        ### `backend/app/schemas/portfolio.py`
 
-### `frontend/pages/01_Tecnico.py`
+        **Decoradores detectados:**
 
-**Clases y funciones:**
+        - `@model_validator(mode="before")`
+        - `@classmethod`
+        - `@field_validator("tickers")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
+        - `@field_validator("risk_profile")`
+        - `@classmethod`
 
-- `def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:`
-- `def _resolve_dates(`
-- `def _fetch_prices(ticker: str, start: str, end: str) -> tuple[pd.DataFrame, str | None]:`
-- `def _build_technical_view(`
-- `def _latest_valid(series: pd.Series) -> float | None:`
-- `def _previous_valid(series: pd.Series) -> float | None:`
-- `def _format_delta(current: float | None, previous: float | None, as_pct: bool = True) -> str:`
-- `def _interpret_trend(close_now: float | None, sma_now: float | None, ema_now: float | None) -> str:`
-- `def _interpret_rsi(rsi_now: float | None) -> str:`
-- `def _interpret_bollinger(close_now: float | None, bb_low: float | None, bb_up: float | None) -> str:`
-- `def _interpret_macd(macd_now: float | None, signal_now: float | None, hist_now: float | None) -> str:`
-- `def _interpret_stochastic(stoch_k_now: float | None, stoch_d_now: float | None) -> str:`
-- `def _plot_price_ma(df: pd.DataFrame,modo: str,sma_window: int,ema_window: int,show_price: bool,show_sma: bool,show_ema: bool,`
-- `def _plot_rsi(df: pd.DataFrame, modo: str, rsi_window: int, show_levels: bool) -> go.Figure:`
-- `def _plot_bollinger(`
-- `def _plot_macd(`
-- `def _plot_stochastic(`
+        **Clases y funciones:**
 
-### `frontend/pages/02_Rendimientos.py`
+        - `class EfficientFrontierRequest(BaseModel):`
+        - `def map_frontend_aliases(cls, values: dict):`
+        - `def validate_tickers(cls, v: list[str]) -> list[str]:`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `def validate_risk_profile(cls, v: str | None) -> str | None:`
+        - `class FrontierPoint(BaseModel):`
+        - `class PortfolioWeightsItem(BaseModel):`
+        - `class OptimalPortfolio(BaseModel):`
+        - `class TargetReturnPortfolio(BaseModel):`
+        - `class ProfileSuggestedPortfolio(BaseModel):`
+        - `class TopPortfolio(BaseModel):`
+        - `class EfficientFrontierResponse(BaseModel):`
 
-**Clases y funciones:**
+        ### `backend/app/schemas/returns_stats.py`
 
-- `def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:`
-- `def _resolve_dates(`
-- `def _fetch_returns_stats(`
-- `def _fetch_raw_returns(`
-- `def _normal_pdf(x: np.ndarray, mean: float, std: float) -> np.ndarray:`
-- `def _build_histogram_figure(`
-- `def _build_boxplot_figure(`
-- `def _extract_qq_df(payload: dict) -> pd.DataFrame:`
-- `def pick(*names):`
-- `def _build_qq_figure(qq_df: pd.DataFrame, modo: str) -> go.Figure:`
-- `def _render_test_card(`
-- `def _help_badge(text: str):`
+        **Decoradores detectados:**
 
-### `frontend/pages/03_Garch.py`
+        - `@field_validator("ticker")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
+        - `@field_validator("mode")`
+        - `@classmethod`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:`
-- `def _resolve_dates(`
-- `def _fetch_garch(`
-- `def _format_comparison_table(candidate_models: list[dict]) -> pd.DataFrame:`
-- `def _extract_best_log_likelihood(payload: dict):`
-- `def _format_diagnostics_table(payload: dict) -> pd.DataFrame:`
-- `def _fmt(v):`
-- `def _extract_best_model_series(payload: dict) -> pd.DataFrame:`
-- `def _extract_multi_model_series(payload: dict) -> pd.DataFrame:`
-- `def _build_conditional_volatility_figure(payload: dict, modo: str) -> tuple[go.Figure, bool]:`
-- `def compact_help_card(title: str, help_text: str, caption: str = ""):`
-- `def _extract_forecast_df(payload: dict) -> pd.DataFrame:`
-- `def _build_forecast_figure(`
-- `def _forecast_message(payload: dict) -> str:`
-- `def _diagnostic_guide(payload: dict) -> str:`
-- `def _format_num(valor, decimales=4):`
-- `def _format_pct(valor):`
+        - `class ReturnsStatsRequest(BaseModel):`
+        - `def validate_ticker(cls, v: str) -> str:`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `def validate_mode(cls, v: str) -> str:`
+        - `class NormalityTestResult(BaseModel):`
+        - `class AndersonDarlingResult(BaseModel):`
+        - `class HistogramBin(BaseModel):`
+        - `class QQPoint(BaseModel):`
+        - `class BoxplotSummary(BaseModel):`
+        - `class ReturnsStatsResponse(BaseModel):`
 
-### `frontend/pages/04_Capm.py`
+        ### `backend/app/schemas/risk.py`
 
-**Clases y funciones:**
+        **Decoradores detectados:**
 
-- `def _resolve_dates(`
-- `def _pick_value(payload: dict | None, *keys):`
-- `def _asset_options() -> tuple[list[str], dict[str, dict]]:`
-- `def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:`
-- `def _fetch_capm(`
-- `def _fetch_portfolio_capm(`
-- `def _coerce_series_frame(payload: dict) -> pd.DataFrame:`
-- `def pick(*names):`
-- `def _build_regression_figure(`
-- `def _format_capm_table(payload: dict) -> pd.DataFrame:`
-- `def _fmt(v):`
-- `def _classify_beta(beta: float | None) -> str:`
-- `def _expected_return_text(v) -> str:`
-- `def _format_num(x, ndigits: int = 4) -> str:`
-- `def _capm_reading(payload: dict) -> str:`
+        - `@field_validator("weights")`
+        - `@classmethod`
+        - `@field_validator("tickers")`
+        - `@classmethod`
+        - `@field_validator("return_type")`
+        - `@classmethod`
+        - `@field_validator("distribution")`
+        - `@classmethod`
 
-### `frontend/pages/05_Var_Cvar.py`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class PortfolioVarRequest(BaseModel):`
+        - `def validate_weights_sum(cls, v: list[float]) -> list[float]:`
+        - `def validate_tickers_not_empty(cls, v: list[str]) -> list[str]:`
+        - `def validate_return_type(cls, v: str) -> str:`
+        - `def validate_distribution(cls, v: str) -> str:`
+        - `class VarMethodResult(BaseModel):`
+        - `class KupiecBacktestResult(BaseModel):`
+        - `class PortfolioVarResponse(BaseModel):`
 
-- `def _resolve_dates(`
-- `def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:`
-- `def _format_pct(x) -> str:`
-- `def _format_num(x, ndigits: int = 4) -> str:`
-- `def _format_money(x) -> str:`
-- `def _money_risk(portfolio_value: float, risk_pct) -> float | None:`
-- `def _fetch_var(`
-- `def _method_metric(payload: dict, method_key: str, *metric_names):`
-- `def _extract_distribution_series(payload: dict) -> pd.Series:`
-- `def _extract_kupiec(payload: dict) -> dict:`
-- `def _comparison_table(payload: dict, portfolio_value: float) -> pd.DataFrame:`
-- `def _build_distribution_figure(`
+        ### `backend/app/schemas/technical.py`
 
-### `frontend/pages/06_Markowitz.py`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class TechnicalPoint(BaseModel):`
+        - `class TechnicalResponse(BaseModel):`
 
-- `def _resolve_dates(`
-- `def _pick_value(payload: dict | None, *keys):`
-- `def _format_pct(x) -> str:`
-- `def _format_num(x, ndigits: int = 4) -> str:`
-- `def _format_money(x) -> str:`
-- `def _profile_to_backend(profile_label: str) -> str | None:`
-- `def _weights_editor(`
-- `def _fetch_rf_usd() -> tuple[float, str, str | None]:`
-- `def _build_frontier_payload(`
-- `def _fetch_frontier(payload: dict) -> tuple[dict, str | None]:`
-- `def _extract_frontier_df(payload: dict) -> pd.DataFrame:`
-- `def pick(*names):`
-- `def _extract_simulated_df(payload: dict) -> pd.DataFrame:`
-- `def pick(*names):`
-- `def _extract_named_block(payload: dict, *keys) -> dict:`
-- `def _extract_min_var(payload: dict) -> dict:`
-- `def _extract_max_sharpe(payload: dict) -> dict:`
-- `def _extract_target(payload: dict) -> dict:`
-- `def _extract_profile_suggestion(payload: dict) -> dict:`
-- `def _extract_weights_df(obj: dict | None) -> pd.DataFrame:`
-- `def _extract_reference_weights_df(weights: list[float]) -> pd.DataFrame:`
-- `def _extract_top_portfolios_df(payload: dict) -> pd.DataFrame:`
-- `def _extract_corr_df(payload: dict) -> pd.DataFrame:`
-- `def _metric_from_block(block: dict, *keys):`
-- `def _selected_portfolio_block(`
-- `def _selected_return_and_vol(block: dict) -> tuple[float | None, float | None]:`
-- `def _build_corr_heatmap(corr_df: pd.DataFrame, modo: str, clean_view: bool) -> go.Figure:`
-- `def _build_frontier_figure(`
-- `def _module_reading(`
+        ### `backend/app/schemas/valuation.py`
 
-### `frontend/pages/07_Señales.py`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class YieldCurveRequest(BaseModel):`
+        - `class NelsonSiegelParams(BaseModel):`
+        - `class YieldCurveResponse(BaseModel):`
+        - `class OptionValuationRequest(BaseModel):`
+        - `class Greeks(BaseModel):`
+        - `class OptionValuationResponse(BaseModel):`
 
-- `def _resolve_dates(`
-- `def _safe_str(v) -> str:`
-- `def _safe_float(v) -> float | None:`
-- `def _pick_value(payload: dict | None, *keys):`
-- `def _extract_alert_items(payload: dict) -> list[dict]:`
-- `def _fetch_alerts_for_asset(`
-- `def _infer_signal_status(alert: dict) -> tuple[str, str, str]:`
-- `def _human_title(alert: dict) -> str:`
-- `def _human_description(alert: dict) -> str:`
-- `def _human_date(alert: dict) -> str:`
-- `def _human_value(alert: dict) -> str:`
-- `def _render_signal_card(alert: dict):`
-- `def _build_summary_rows(asset_results: list[dict]) -> pd.DataFrame:`
+        ### `backend/app/services/__init__.py`
 
-### `frontend/pages/08_Macro_Benchmark.py`
+        ### `backend/app/services/alerts_service.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `def _resolve_dates(`
-- `def _normalize_mode(modo: str) -> str:`
-- `def _pick_value(payload: dict | None, *keys):`
-- `def _format_pct(x) -> str:`
-- `def _format_num(x, ndigits: int = 4) -> str:`
-- `def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:`
-- `def _call_macro_snapshot(client, base_currency: str) -> dict:`
-- `def _call_benchmark_compare(client, payload: dict) -> dict:`
-- `def _fetch_macro_and_benchmark(`
-- `def _metric_block(payload: dict, key: str) -> dict:`
-- `def _extract_macro_table(macro_payload: dict) -> pd.DataFrame:`
-- `def _comparison_table(benchmark_payload: dict) -> pd.DataFrame:`
-- `def _build_base100_chart(benchmark_payload: dict, modo: str, clean_view: bool) -> go.Figure:`
+        - `from app.clients.market_client import MarketClient`
+        - `from app.core.exceptions import TickerNotFoundError`
 
-### `frontend/pages/0_Contextualizacion.py`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class AlertsService:`
+        - `def __init__(self, client: MarketClient) -> None:`
+        - `def _load_data(self, ticker: str, start: str, end: str) -> pd.DataFrame:`
+        - `def get_alerts(`
 
-- `def _get_logo_path(ticker: str) -> str | None:`
-- `def _build_asset_profile(name: str, ticker: str, country: str, is_default: bool) -> dict[str, str]:`
-- `def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict[str, str]], str | None]:`
-- `def _chunks(items: list[dict], size: int) -> list[list[dict]]:`
-- `def _render_logo_card(ticker: str):`
-- `def _render_role_card(profile: dict[str, str]):`
-- `def _render_financial_card(profile: dict[str, str], asset: dict):`
-- `def _render_asset_block(asset: dict, modo: str):`
-- `def _render_rf_and_benchmark_tab():`
+        ### `backend/app/services/assets_service.py`
 
-### `frontend/services/api_client.py`
+        **Imports internos:**
 
-**Clases y funciones:**
+        - `from app.core.assets_registry import ALL_ASSETS`
+        - `from app.db.models import Asset`
 
-- `class ApiConfig:`
-- `def api_root(self) -> str:`
-- `def _read_secret(key: str, default: str | None = None) -> str | None:`
-- `def get_api_config() -> ApiConfig:`
-- `class ApiClientError(Exception):`
-- `def __init__(`
-- `class ApiClient:`
-- `def __init__(self, config: ApiConfig | None = None) -> None:`
-- `def _headers(self, include_api_key: bool = False) -> dict[str, str]:`
-- `def _url(self, path: str) -> str:`
-- `def _handle_response(self, response: requests.Response) -> dict[str, Any]:`
-- `def get(`
-- `def post(`
-- `def get_root(self) -> dict[str, Any]:`
-- `def get_health(self) -> dict[str, Any]:`
-- `def get_assets(self) -> dict[str, Any]:`
-- `def search_assets(self, query: str) -> dict[str, Any]:`
-- `def get_help_catalog(self) -> dict[str, Any]:`
-- `def get_prices(self, ticker: str, start: str, end: str) -> dict[str, Any]:`
-- `def get_returns(self, ticker: str, start: str, end: str) -> dict[str, Any]:`
-- `def get_technical_indicators(`
-- `def get_returns_stats(`
-- `def get_alerts(`
-- `def get_garch(`
-- `def get_capm(`
-- `def get_portfolio_capm(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def post_var_risk(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def get_portfolio_var(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def post_efficient_frontier(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def get_efficient_frontier(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def get_macro(self, base_currency: str = "USD") -> dict[str, Any]:`
-- `def get_macro_snapshot(self, base_currency: str = "USD") -> dict[str, Any]:`
-- `def get_fx_spot(self, base_currency: str = "USD") -> dict[str, Any]:`
-- `def post_benchmark_compare(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def compare_benchmark(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def get_decision_panel(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def validate_investor_preferences(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def post_roboadvisor_suggest(self, payload: dict[str, Any]) -> dict[str, Any]:`
-- `def get_api_client() -> ApiClient:`
+        **Clases y funciones:**
 
-### `frontend/ui/__init__.py`
+        - `class AssetsService:`
+        - `def _asset_to_item(self, asset: Asset, default_tickers: set[str]) -> dict:`
+        - `def _fallback_assets(self) -> list[dict]:`
+        - `def list_assets(self, db: Session | None = None) -> list[dict]:`
+        - `def search_assets(self, query: str, db: Session | None = None) -> dict:`
+        - `def summarize_assets(self, db: Session) -> dict:`
 
-### `frontend/ui/cards.py`
+        ### `backend/app/services/benchmark_service.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `def render_chip(text: str):`
-- `def render_chip_row(items: list[str]):`
-- `def render_info_card(title: str, body: str):`
-- `def render_meta_row(items: list[tuple[str, str]]):`
+        - `from app.clients.market_client import MarketClient`
+        - `from app.services.macro_service import MacroService`
 
-### `frontend/ui/dashboard_filters.py`
+        **Clases y funciones:**
 
-### `frontend/ui/dashboard_ui.py`
+        - `class BenchmarkService:`
+        - `def __init__(self, market_client: MarketClient, macro_service: MacroService) -> None:`
+        - `def _returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:`
+        - `def _returns_matrix(self, tickers: list[str], start: str, end: str, return_type: str) -> pd.DataFrame:`
+        - `def _cumulative_return(self, returns: pd.Series, return_type: str) -> float:`
+        - `def _annual_return(self, returns: pd.Series, return_type: str) -> float:`
+        - `def _annual_volatility(self, returns: pd.Series) -> float:`
+        - `def _max_drawdown(self, returns: pd.Series, return_type: str) -> float:`
+        - `def _metrics(self, returns: pd.Series, rf_decimal: float, return_type: str) -> dict:`
+        - `def compare(`
 
-**Clases y funciones:**
+        ### `backend/app/services/capm_service.py`
 
-- `def aplicar_estilos_globales(modo: str = "General"):`
-- `def render_sidebar_brand(`
-- `def render_sidebar_panel(`
-- `def mode_badge(modo: str):`
-- `def header_dashboard(titulo: str, subtitulo: str, modo: str | None = None):`
-- `def nota(texto: str):`
-- `def seccion(titulo: str):`
-- `def titulo_con_ayuda(titulo: str, help_text: str, nivel: int = 3):`
-- `def tarjeta_kpi(`
-- `def plot_card_header(titulo: str, help_text: str, modo: str = "General", caption: str = ""):`
-- `def plot_card_footer(texto: str):`
-- `def toolbar_label(texto: str):`
+        **Imports internos:**
 
-### `frontend/ui/page_setup.py`
+        - `from app.clients.market_client import MarketClient`
+        - `from app.services.macro_service import MacroService`
 
-**Clases y funciones:**
+        **Clases y funciones:**
 
-- `def setup_dashboard_page(`
+        - `class CapmService:`
+        - `def __init__(self, market_client: MarketClient, macro_service: MacroService) -> None:`
+        - `def _returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:`
+        - `def _returns_matrix(self, tickers: list[str], start: str, end: str, return_type: str) -> pd.DataFrame:`
+        - `def _classify_beta(beta: float) -> str:`
+        - `def calculate_capm(`
+        - `def calculate_portfolio_capm(`
 
-### `frontend/ui/plot_style.py`
+        ### `backend/app/services/decision_service.py`
 
-**Clases y funciones:**
+        **Imports internos:**
 
-- `def style_plotly_figure(`
-- `def add_reference_line(`
+        - `from app.services.capm_service import CapmService`
+        - `from app.services.portfolio_service import PortfolioService`
+        - `from app.services.risk_service import RiskService`
 
-### `frontend/ui/theme.py`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class DecisionService:`
+        - `def __init__(`
+        - `def _infer_stance(self, portfolio_beta: float, alpha_simple: float, mc_var_daily: float) -> str:`
+        - `def build_panel(`
 
-- `def safe_text(text: str | None) -> str:`
-- `def image_to_base64(image_path: str) -> str:`
-- `def get_theme_tokens(modo: str = "General") -> dict[str, str]:`
-- `def build_global_css(modo: str = "General") -> str:`
+        ### `backend/app/services/garch_service.py`
 
-### `tests/test_perri_latest.py`
+        **Imports internos:**
 
-**Imports internos:**
+        - `from app.clients.market_client import MarketClient`
+        - `from app.core.exceptions import TickerNotFoundError`
 
-- `from app.main import app  # noqa: E402`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class GarchService:`
+        - `def __init__(self, client: MarketClient) -> None:`
+        - `def _get_returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:`
+        - `def _safe_float_list(values) -> list[float]:`
+        - `def _normalize_distribution(distribution: str) -> str:`
+        - `def _distribution_label(distribution: str) -> str:`
+        - `def analyze(`
 
-- `def test_perri_latest_returns_precalculated_optimization():`
+        ### `backend/app/services/help_service.py`
 
-### `tests/test_perri_optimize.py`
+        **Imports internos:**
 
-**Imports internos:**
+        - `from app.core.help_catalog import HELP_CATALOG`
 
-- `from app.main import app  # noqa: E402`
+        **Clases y funciones:**
 
-**Clases y funciones:**
+        - `class HelpService:`
+        - `def get_catalog(self) -> dict:`
 
-- `def test_perri_optimize_returns_valid_portfolios():`
+        ### `backend/app/services/investor_service.py`
+
+        **Imports internos:**
+
+        - `from app.schemas.investor import InvestorPreferencesRequest`
+
+        **Clases y funciones:**
+
+        - `class InvestorService:`
+        - `def determine_risk_profile(self, kyc_answers: dict) -> str:`
+        - `def resolve_horizon(self, payload: InvestorPreferencesRequest) -> dict:`
+
+        ### `backend/app/services/macro_service.py`
+
+        **Imports internos:**
+
+        - `from app.clients.macro_client import MacroClient`
+        - `from app.clients.market_client import MarketClient`
+
+        **Clases y funciones:**
+
+        - `class MacroService:`
+        - `def __init__(self, client: MacroClient, market_client: MarketClient) -> None:`
+        - `def get_macro_snapshot(self, base_currency: str) -> dict:`
+        - `def resolve_rf_inputs(self, base_currency: str) -> tuple[str, float]:`
+        - `def get_fx_spot(self, base_currency: str) -> dict:`
+
+        ### `backend/app/services/market_service.py`
+
+        **Imports internos:**
+
+        - `from app.clients.market_client import MarketClient`
+        - `from app.db.models import Asset, Price`
+
+        **Clases y funciones:**
+
+        - `class MarketService:`
+        - `def __init__(self, client: MarketClient) -> None:`
+        - `def _get_prices_from_db(`
+        - `def get_prices(`
+        - `def get_returns(`
+
+        ### `backend/app/services/option_service.py`
+
+        **Clases y funciones:**
+
+        - `class OptionService:`
+        - `def calculate_black_scholes(`
+        - `def implied_volatility(self, target_price: float, S: float, K: float, T: float, r: float) -> float:`
+
+        ### `backend/app/services/perri_optimizer_service.py`
+
+        **Imports internos:**
+
+        - `from app.db.models import Asset, Price`
+
+        **Clases y funciones:**
+
+        - `class PerriOptimizerService:`
+        - `def __init__(`
+        - `def _get_end_date(self, db: Session, end: str | None) -> pd.Timestamp:`
+        - `def _window_for_horizon(`
+        - `def _load_eligible_assets(self, db: Session) -> list[Asset]:`
+        - `def _load_asset_by_ticker(self, db: Session, ticker: str) -> Asset | None:`
+        - `def _load_close_series(`
+        - `def _to_returns(self, close: pd.Series) -> pd.Series:`
+        - `def _build_returns_by_asset(`
+        - `def _load_benchmark_returns(`
+        - `def _individual_metrics(`
+        - `def _candidate_sets(self, metrics: pd.DataFrame, portfolio_size: int) -> dict[str, list[str]]:`
+        - `def _build_aligned_returns_matrix(`
+        - `def _portfolio_metrics(`
+        - `def _capm_metrics(`
+        - `def _distribution_by_asset_type(`
+        - `def _weights_payload(self, tickers: list[str], weights: np.ndarray) -> list[dict[str, float | str]]:`
+        - `def _optimize_once(`
+        - `def objective(weights: np.ndarray) -> float:`
+        - `def _optimize_for_size(`
+        - `def _optimize_for_horizon(`
+        - `def run_optimization(`
+
+        ### `backend/app/services/portfolio_service.py`
+
+        **Imports internos:**
+
+        - `from app.clients.market_client import MarketClient`
+
+        **Clases y funciones:**
+
+        - `class PortfolioOptimizerSingleton:`
+        - `def __new__(cls, *args, **kwargs):`
+        - `def __init__(self, client: MarketClient | None = None):`
+        - `def _get_returns_matrix(self, tickers: list[str], start: str, end: str) -> pd.DataFrame:`
+        - `def optimize_markowitz(`
+        - `def portfolio_volatility(weights: np.ndarray) -> float:`
+        - `class PortfolioService:`
+        - `def __init__(self, client: MarketClient) -> None:`
+        - `def _returns_by_type(self, close: pd.Series, return_type: str) -> pd.Series:`
+        - `def _build_returns_matrix(`
+        - `def _annual_return_from_daily(self, daily_return: float, return_type: str) -> float:`
+        - `def _portfolio_metrics(`
+        - `def _weights_payload(self, tickers: list[str], weights: np.ndarray) -> list[dict]:`
+        - `def _portfolio_payload(`
+        - `def _simulate_portfolios(`
+        - `def _build_frontier_points(self, simulated: list[dict]) -> list[dict]:`
+        - `def _optimize_min_variance(`
+        - `def objective(weights: np.ndarray) -> float:`
+        - `def _optimize_max_sharpe(`
+        - `def objective(weights: np.ndarray) -> float:`
+        - `def _select_target_return_portfolio(`
+        - `def _select_profile_portfolio(`
+        - `def _select_top_portfolios(`
+        - `def build_efficient_frontier(`
+
+        ### `backend/app/services/returns_stats_service.py`
+
+        **Imports internos:**
+
+        - `from app.clients.market_client import MarketClient`
+        - `from app.core.exceptions import TickerNotFoundError`
+
+        **Clases y funciones:**
+
+        - `class ReturnsStatsService:`
+        - `def __init__(self, client: MarketClient) -> None:`
+        - `def _get_returns(self, ticker: str, start: str, end: str, return_type: str) -> pd.Series:`
+        - `def _normality_conclusion(self, p_value: float | None) -> str:`
+        - `def build_returns_stats(`
+
+        ### `backend/app/services/risk_service.py`
+
+        **Imports internos:**
+
+        - `from app.clients.market_client import MarketClient`
+
+        **Clases y funciones:**
+
+        - `class RiskService:`
+        - `def __init__(self, client: MarketClient) -> None:`
+        - `def _build_returns_matrix(self, tickers: list[str], start: str, end: str, return_type: str) -> pd.DataFrame:`
+        - `def _portfolio_returns(self, returns_df: pd.DataFrame, weights: list[float]) -> pd.Series:`
+        - `def _normalize_distribution(distribution: str) -> str:`
+        - `def _distribution_label(distribution: str) -> str:`
+        - `def _historical_var_cvar(self, portfolio_returns: pd.Series, alpha: float) -> dict:`
+        - `def _monte_carlo_var_cvar(`
+        - `def _parametric_var_cvar(`
+        - `def _kupiec_test(self, portfolio_returns: pd.Series, alpha: float, var_daily: float) -> dict:`
+        - `def calculate_var(`
+
+        ### `backend/app/services/roboadvisor_service.py`
+
+        **Imports internos:**
+
+        - `from app.services.portfolio_service import PortfolioOptimizerSingleton`
+        - `from app.clients.market_client import MarketClient`
+
+        **Clases y funciones:**
+
+        - `class RoboAdvisorService:`
+        - `def __init__(self, market_client: MarketClient):`
+        - `def suggest_hybrid_portfolio(self, profile: str, total_assets: int, custom_tickers: list[str] = None) -> dict:`
+
+        ### `backend/app/services/technical_service.py`
+
+        **Imports internos:**
+
+        - `from app.clients.market_client import MarketClient`
+
+        **Clases y funciones:**
+
+        - `class TechnicalService:`
+        - `def __init__(self, client: MarketClient) -> None:`
+        - `def get_indicators(self, ticker: str, start: str, end: str) -> pd.DataFrame:`
+
+        ### `backend/app/services/yield_service.py`
+
+        **Clases y funciones:**
+
+        - `class YieldService:`
+        - `def nelson_siegel(t: np.ndarray, tau: float, beta0: float, beta1: float, beta2: float) -> np.ndarray:`
+        - `def fit_nelson_siegel(self, yields: list[float], maturities: list[float]) -> dict:`
+        - `def objective(params):`
+
+        ### `frontend/app.py`
+
+        **Clases y funciones:**
+
+        - `def verificar_login(username, password):`
+
+        ### `frontend/config.py`
+
+        ### `frontend/pages/01_Tecnico.py`
+
+        **Clases y funciones:**
+
+        - `def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:`
+        - `def _resolve_dates(`
+        - `def _fetch_prices(ticker: str, start: str, end: str) -> tuple[pd.DataFrame, str | None]:`
+        - `def _build_technical_view(`
+        - `def _latest_valid(series: pd.Series) -> float | None:`
+        - `def _previous_valid(series: pd.Series) -> float | None:`
+        - `def _format_delta(current: float | None, previous: float | None, as_pct: bool = True) -> str:`
+        - `def _interpret_trend(close_now: float | None, sma_now: float | None, ema_now: float | None) -> str:`
+        - `def _interpret_rsi(rsi_now: float | None) -> str:`
+        - `def _interpret_bollinger(close_now: float | None, bb_low: float | None, bb_up: float | None) -> str:`
+        - `def _interpret_macd(macd_now: float | None, signal_now: float | None, hist_now: float | None) -> str:`
+        - `def _interpret_stochastic(stoch_k_now: float | None, stoch_d_now: float | None) -> str:`
+        - `def _plot_price_ma(df: pd.DataFrame,modo: str,sma_window: int,ema_window: int,show_price: bool,show_sma: bool,show_ema: bool,`
+        - `def _plot_rsi(df: pd.DataFrame, modo: str, rsi_window: int, show_levels: bool) -> go.Figure:`
+        - `def _plot_bollinger(`
+        - `def _plot_macd(`
+        - `def _plot_stochastic(`
+
+        ### `frontend/pages/02_Rendimientos.py`
+
+        **Clases y funciones:**
+
+        - `def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:`
+        - `def _resolve_dates(`
+        - `def _fetch_returns_stats(`
+        - `def _fetch_raw_returns(`
+        - `def _normal_pdf(x: np.ndarray, mean: float, std: float) -> np.ndarray:`
+        - `def _build_histogram_figure(`
+        - `def _build_boxplot_figure(`
+        - `def _extract_qq_df(payload: dict) -> pd.DataFrame:`
+        - `def pick(*names):`
+        - `def _build_qq_figure(qq_df: pd.DataFrame, modo: str) -> go.Figure:`
+        - `def _render_test_card(`
+        - `def _help_badge(text: str):`
+
+        ### `frontend/pages/03_Garch.py`
+
+        **Clases y funciones:**
+
+        - `def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:`
+        - `def _resolve_dates(`
+        - `def _fetch_garch(`
+        - `def _format_comparison_table(candidate_models: list[dict]) -> pd.DataFrame:`
+        - `def _extract_best_log_likelihood(payload: dict):`
+        - `def _format_diagnostics_table(payload: dict) -> pd.DataFrame:`
+        - `def _fmt(v):`
+        - `def _extract_best_model_series(payload: dict) -> pd.DataFrame:`
+        - `def _extract_multi_model_series(payload: dict) -> pd.DataFrame:`
+        - `def _build_conditional_volatility_figure(payload: dict, modo: str) -> tuple[go.Figure, bool]:`
+        - `def compact_help_card(title: str, help_text: str, caption: str = ""):`
+        - `def _extract_forecast_df(payload: dict) -> pd.DataFrame:`
+        - `def _build_forecast_figure(`
+        - `def _forecast_message(payload: dict) -> str:`
+        - `def _diagnostic_guide(payload: dict) -> str:`
+        - `def _format_num(valor, decimales=4):`
+        - `def _format_pct(valor):`
+
+        ### `frontend/pages/04_Capm.py`
+
+        **Clases y funciones:**
+
+        - `def _resolve_dates(`
+        - `def _pick_value(payload: dict | None, *keys):`
+        - `def _asset_options() -> tuple[list[str], dict[str, dict]]:`
+        - `def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:`
+        - `def _fetch_capm(`
+        - `def _fetch_portfolio_capm(`
+        - `def _coerce_series_frame(payload: dict) -> pd.DataFrame:`
+        - `def pick(*names):`
+        - `def _build_regression_figure(`
+        - `def _format_capm_table(payload: dict) -> pd.DataFrame:`
+        - `def _fmt(v):`
+        - `def _classify_beta(beta: float | None) -> str:`
+        - `def _expected_return_text(v) -> str:`
+        - `def _format_num(x, ndigits: int = 4) -> str:`
+        - `def _capm_reading(payload: dict) -> str:`
+
+        ### `frontend/pages/05_Var_Cvar.py`
+
+        **Clases y funciones:**
+
+        - `def _resolve_dates(`
+        - `def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:`
+        - `def _format_pct(x) -> str:`
+        - `def _format_num(x, ndigits: int = 4) -> str:`
+        - `def _format_money(x) -> str:`
+        - `def _money_risk(portfolio_value: float, risk_pct) -> float | None:`
+        - `def _fetch_var(`
+        - `def _method_metric(payload: dict, method_key: str, *metric_names):`
+        - `def _extract_distribution_series(payload: dict) -> pd.Series:`
+        - `def _extract_kupiec(payload: dict) -> dict:`
+        - `def _comparison_table(payload: dict, portfolio_value: float) -> pd.DataFrame:`
+        - `def _build_distribution_figure(`
+
+        ### `frontend/pages/06_Markowitz.py`
+
+        **Clases y funciones:**
+
+        - `def _resolve_dates(`
+        - `def _pick_value(payload: dict | None, *keys):`
+        - `def _format_pct(x) -> str:`
+        - `def _format_num(x, ndigits: int = 4) -> str:`
+        - `def _format_money(x) -> str:`
+        - `def _profile_to_backend(profile_label: str) -> str | None:`
+        - `def _weights_editor(`
+        - `def _fetch_rf_usd() -> tuple[float, str, str | None]:`
+        - `def _build_frontier_payload(`
+        - `def _fetch_frontier(payload: dict) -> tuple[dict, str | None]:`
+        - `def _extract_frontier_df(payload: dict) -> pd.DataFrame:`
+        - `def pick(*names):`
+        - `def _extract_simulated_df(payload: dict) -> pd.DataFrame:`
+        - `def pick(*names):`
+        - `def _extract_named_block(payload: dict, *keys) -> dict:`
+        - `def _extract_min_var(payload: dict) -> dict:`
+        - `def _extract_max_sharpe(payload: dict) -> dict:`
+        - `def _extract_target(payload: dict) -> dict:`
+        - `def _extract_profile_suggestion(payload: dict) -> dict:`
+        - `def _extract_weights_df(obj: dict | None) -> pd.DataFrame:`
+        - `def _extract_reference_weights_df(weights: list[float]) -> pd.DataFrame:`
+        - `def _extract_top_portfolios_df(payload: dict) -> pd.DataFrame:`
+        - `def _extract_corr_df(payload: dict) -> pd.DataFrame:`
+        - `def _metric_from_block(block: dict, *keys):`
+        - `def _selected_portfolio_block(`
+        - `def _selected_return_and_vol(block: dict) -> tuple[float | None, float | None]:`
+        - `def _build_corr_heatmap(corr_df: pd.DataFrame, modo: str, clean_view: bool) -> go.Figure:`
+        - `def _build_frontier_figure(`
+        - `def _module_reading(`
+
+        ### `frontend/pages/07_Señales.py`
+
+        **Clases y funciones:**
+
+        - `def _resolve_dates(`
+        - `def _safe_str(v) -> str:`
+        - `def _safe_float(v) -> float | None:`
+        - `def _pick_value(payload: dict | None, *keys):`
+        - `def _extract_alert_items(payload: dict) -> list[dict]:`
+        - `def _fetch_alerts_for_asset(`
+        - `def _infer_signal_status(alert: dict) -> tuple[str, str, str]:`
+        - `def _human_title(alert: dict) -> str:`
+        - `def _human_description(alert: dict) -> str:`
+        - `def _human_date(alert: dict) -> str:`
+        - `def _human_value(alert: dict) -> str:`
+        - `def _render_signal_card(alert: dict):`
+        - `def _build_summary_rows(asset_results: list[dict]) -> pd.DataFrame:`
+
+        ### `frontend/pages/08_Macro_Benchmark.py`
+
+        **Clases y funciones:**
+
+        - `def _resolve_dates(`
+        - `def _normalize_mode(modo: str) -> str:`
+        - `def _pick_value(payload: dict | None, *keys):`
+        - `def _format_pct(x) -> str:`
+        - `def _format_num(x, ndigits: int = 4) -> str:`
+        - `def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:`
+        - `def _call_macro_snapshot(client, base_currency: str) -> dict:`
+        - `def _call_benchmark_compare(client, payload: dict) -> dict:`
+        - `def _fetch_macro_and_benchmark(`
+        - `def _metric_block(payload: dict, key: str) -> dict:`
+        - `def _extract_macro_table(macro_payload: dict) -> pd.DataFrame:`
+        - `def _comparison_table(benchmark_payload: dict) -> pd.DataFrame:`
+        - `def _build_base100_chart(benchmark_payload: dict, modo: str, clean_view: bool) -> go.Figure:`
+
+        ### `frontend/pages/0_Contextualizacion.py`
+
+        **Clases y funciones:**
+
+        - `def _get_logo_path(ticker: str) -> str | None:`
+        - `def _build_asset_profile(name: str, ticker: str, country: str, is_default: bool) -> dict[str, str]:`
+        - `def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict[str, str]], str | None]:`
+        - `def _chunks(items: list[dict], size: int) -> list[list[dict]]:`
+        - `def _render_logo_card(ticker: str):`
+        - `def _render_role_card(profile: dict[str, str]):`
+        - `def _render_financial_card(profile: dict[str, str], asset: dict):`
+        - `def _render_asset_block(asset: dict, modo: str):`
+        - `def _render_rf_and_benchmark_tab():`
+
+        ### `frontend/services/api_client.py`
+
+        **Clases y funciones:**
+
+        - `class ApiConfig:`
+        - `def api_root(self) -> str:`
+        - `def _read_secret(key: str, default: str | None = None) -> str | None:`
+        - `def get_api_config() -> ApiConfig:`
+        - `class ApiClientError(Exception):`
+        - `def __init__(`
+        - `class ApiClient:`
+        - `def __init__(self, config: ApiConfig | None = None) -> None:`
+        - `def _headers(self, include_api_key: bool = False) -> dict[str, str]:`
+        - `def _url(self, path: str) -> str:`
+        - `def _handle_response(self, response: requests.Response) -> dict[str, Any]:`
+        - `def get(`
+        - `def post(`
+        - `def get_root(self) -> dict[str, Any]:`
+        - `def get_health(self) -> dict[str, Any]:`
+        - `def get_assets(self) -> dict[str, Any]:`
+        - `def search_assets(self, query: str) -> dict[str, Any]:`
+        - `def get_help_catalog(self) -> dict[str, Any]:`
+        - `def get_prices(self, ticker: str, start: str, end: str) -> dict[str, Any]:`
+        - `def get_returns(self, ticker: str, start: str, end: str) -> dict[str, Any]:`
+        - `def get_technical_indicators(`
+        - `def get_returns_stats(`
+        - `def get_alerts(`
+        - `def get_garch(`
+        - `def get_capm(`
+        - `def get_portfolio_capm(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def post_var_risk(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def get_portfolio_var(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def post_efficient_frontier(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def get_efficient_frontier(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def get_macro(self, base_currency: str = "USD") -> dict[str, Any]:`
+        - `def get_macro_snapshot(self, base_currency: str = "USD") -> dict[str, Any]:`
+        - `def get_fx_spot(self, base_currency: str = "USD") -> dict[str, Any]:`
+        - `def post_benchmark_compare(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def compare_benchmark(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def get_decision_panel(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def validate_investor_preferences(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def get_perri_latest(self) -> dict[str, Any]:`
+        - `def post_roboadvisor_suggest(self, payload: dict[str, Any]) -> dict[str, Any]:`
+        - `def get_api_client() -> ApiClient:`
+
+        ### `frontend/ui/__init__.py`
+
+        ### `frontend/ui/cards.py`
+
+        **Clases y funciones:**
+
+        - `def render_chip(text: str):`
+        - `def render_chip_row(items: list[str]):`
+        - `def render_info_card(title: str, body: str):`
+        - `def render_meta_row(items: list[tuple[str, str]]):`
+
+        ### `frontend/ui/dashboard_filters.py`
+
+        ### `frontend/ui/dashboard_ui.py`
+
+        **Clases y funciones:**
+
+        - `def aplicar_estilos_globales(modo: str = "General"):`
+        - `def render_sidebar_brand(`
+        - `def render_sidebar_panel(`
+        - `def mode_badge(modo: str):`
+        - `def header_dashboard(titulo: str, subtitulo: str, modo: str | None = None):`
+        - `def nota(texto: str):`
+        - `def seccion(titulo: str):`
+        - `def titulo_con_ayuda(titulo: str, help_text: str, nivel: int = 3):`
+        - `def tarjeta_kpi(`
+        - `def plot_card_header(titulo: str, help_text: str, modo: str = "General", caption: str = ""):`
+        - `def plot_card_footer(texto: str):`
+        - `def toolbar_label(texto: str):`
+
+        ### `frontend/ui/page_setup.py`
+
+        **Clases y funciones:**
+
+        - `def setup_dashboard_page(`
+
+        ### `frontend/ui/plot_style.py`
+
+        **Clases y funciones:**
+
+        - `def style_plotly_figure(`
+        - `def add_reference_line(`
+
+        ### `frontend/ui/theme.py`
+
+        **Clases y funciones:**
+
+        - `def safe_text(text: str | None) -> str:`
+        - `def image_to_base64(image_path: str) -> str:`
+        - `def get_theme_tokens(modo: str = "General") -> dict[str, str]:`
+        - `def build_global_css(modo: str = "General") -> str:`
+
+        ### `tests/test_perri_horizons.py`
+
+        **Imports internos:**
+
+        - `from app.main import app  # noqa: E402`
+
+        **Clases y funciones:**
+
+        - `def test_perri_latest_contains_exact_horizons_sizes_and_objectives():`
+
+        ### `tests/test_perri_latest.py`
+
+        **Imports internos:**
+
+        - `from app.main import app  # noqa: E402`
+
+        **Clases y funciones:**
+
+        - `def test_perri_latest_returns_precalculated_optimization():`
+
+        ### `tests/test_perri_optimize.py`
+
+        **Imports internos:**
+
+        - `from app.main import app  # noqa: E402`
+
+        **Clases y funciones:**
+
+        - `def test_perri_optimize_returns_valid_portfolios():`

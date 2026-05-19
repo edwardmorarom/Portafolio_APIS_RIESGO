@@ -30,7 +30,9 @@ El proyecto incluye actualmente:
 - Persistencia de precios históricos.
 - Lectura de precios desde SQLite con fallback a proveedor externo.
 - Universo Perri institucional.
-- Optimización automática de Perri.
+- Optimización automática de Perri con horizontes exactos `1y`, `3y` y `5y`.
+- Portafolios Perri exactos de `5`, `10` y `15` activos.
+- Objetivos Perri `min_risk`, `max_sharpe` y `max_return`.
 - Job para guardar la última optimización en JSON.
 - GitHub Actions para CI.
 - GitHub Actions programado para actualización de Perri.
@@ -489,13 +491,11 @@ Responsabilidades:
 - Exponer `get_db()`.
 - Exponer `init_db()`.
 
-La ruta SQLite se resolvió para apuntar de forma estable a:
+La ruta SQLite se resuelve de forma estable a:
 
 ```text
 backend/data/portafolio_riesgo.db
 ```
-
-Esto evita que se creen bases accidentales cuando los comandos se ejecutan desde la raíz, `backend/`, Docker o GitHub Actions.
 
 ### models.py
 
@@ -593,7 +593,7 @@ MarketService
 /api/v1/market/prices/{ticker}
 ```
 
-El sistema guarda el cierre original y el cierre convertido a USD. En el universo actual, la mayoría de activos de Perri se trabajan en USD, por lo que:
+El sistema guarda cierre original y cierre convertido a USD. En el universo actual, la mayoría de activos de Perri se trabajan en USD, por lo que:
 
 ```text
 fx_rate_to_usd = 1.0
@@ -679,20 +679,27 @@ Responsabilidades:
 - Filtrar renta variable y renta fija.
 - Construir retornos históricos.
 - Seleccionar candidatos.
-- Optimizar mínimo riesgo.
-- Optimizar mejor relación riesgo-rentabilidad usando Sharpe.
+- Optimizar portafolios exactos de 5, 10 y 15 activos.
+- Calcular horizontes exactos de 1, 3 y 5 años.
+- Optimizar tres objetivos: `min_risk`, `max_sharpe` y `max_return`.
+- Generar métricas de retorno esperado, volatilidad, Sharpe, beta, alpha y distribución por clase de activo.
 
 Métodos principales:
 
 ```python
-_get_date_window()
+_get_end_date()
+_window_for_horizon()
 _load_eligible_assets()
 _load_close_series()
 _build_returns_by_asset()
 _individual_metrics()
+_candidate_sets()
 _build_aligned_returns_matrix()
 _portfolio_metrics()
-_optimize()
+_capm_metrics()
+_optimize_once()
+_optimize_for_size()
+_optimize_for_horizon()
 run_optimization()
 ```
 
@@ -997,133 +1004,45 @@ frontend/services/api_client.py
 
 Centraliza llamadas al backend.
 
-Métodos relevantes:
-
-```text
-get_assets
-search_assets
-get_prices
-get_returns
-get_technical_indicators
-get_returns_stats
-get_alerts
-get_garch
-get_capm
-get_portfolio_capm
-post_var_risk
-post_efficient_frontier
-get_macro_snapshot
-post_benchmark_compare
-get_decision_panel
-validate_investor_preferences
-post_roboadvisor_suggest
-```
-
 ---
 
 ## 24. Módulos del dashboard
 
 ### Módulo 0 - Contextualización
 
-Muestra:
-
-- Universo de activos.
-- Activos base.
-- Activos ampliados.
-- Metadata de Perri.
-- Clase de activo.
-- Benchmark metodológico.
-- Fuente.
-- Tasa libre de riesgo.
-- Benchmark global.
+Muestra universo de activos, activos base, activos ampliados, metadata de Perri, clase de activo, benchmark metodológico, fuente, tasa libre de riesgo y benchmark global.
 
 ### Módulo 1 - Técnico
 
-Incluye:
-
-- Precio.
-- SMA.
-- EMA.
-- RSI.
-- Bollinger.
-- MACD.
-- Estocástico.
+Incluye precio, SMA, EMA, RSI, Bollinger, MACD y estocástico.
 
 ### Módulo 2 - Rendimientos
 
-Incluye:
-
-- Rendimientos simples y logarítmicos.
-- Estadísticas descriptivas.
-- Histograma.
-- Boxplot.
-- Q-Q plot.
-- Pruebas de normalidad.
+Incluye rendimientos simples y logarítmicos, estadísticas descriptivas, histograma, boxplot, Q-Q plot y pruebas de normalidad.
 
 ### Módulo 3 - GARCH
 
-Incluye:
-
-- ARCH.
-- GARCH.
-- EGARCH.
-- Diagnóstico.
-- Pronóstico.
+Incluye ARCH, GARCH, EGARCH, diagnóstico y pronóstico.
 
 ### Módulo 4 - CAPM
 
-Incluye:
-
-- Beta.
-- Alpha.
-- R².
-- P-value.
-- Retorno esperado.
+Incluye beta, alpha, R², p-value y retorno esperado.
 
 ### Módulo 5 - VaR/CVaR
 
-Incluye:
-
-- VaR histórico.
-- VaR paramétrico.
-- VaR Monte Carlo.
-- CVaR.
-- Riesgo monetario.
-- Backtesting.
+Incluye VaR histórico, paramétrico, Monte Carlo, CVaR, riesgo monetario y backtesting.
 
 ### Módulo 6 - Markowitz
 
-Incluye:
-
-- Frontera eficiente.
-- Mínima varianza.
-- Máximo Sharpe.
-- Retorno objetivo.
-- Matriz de correlación.
-- Perfiles.
+Incluye frontera eficiente, mínima varianza, máximo Sharpe, retorno objetivo, matriz de correlación y perfiles.
 
 ### Módulo 7 - Señales
 
-Incluye señales técnicas por:
-
-- RSI.
-- MACD.
-- Bollinger.
-- Medias móviles.
-- Estocástico.
+Incluye señales técnicas por RSI, MACD, Bollinger, medias móviles y estocástico.
 
 ### Módulo 8 - Macro y Benchmark
 
-Incluye:
-
-- Tasa libre de riesgo.
-- Inflación si existe FRED.
-- FX spot.
-- Comparación contra benchmark.
-- Alpha de Jensen.
-- Tracking error.
-- Information ratio.
-- Drawdown.
+Incluye tasa libre de riesgo, inflación si existe FRED, FX spot, comparación contra benchmark, alpha de Jensen, tracking error, information ratio y drawdown.
 
 ---
 
@@ -1140,12 +1059,13 @@ Tests actuales:
 ```text
 tests/test_perri_latest.py
 tests/test_perri_optimize.py
+tests/test_perri_horizons.py
 ```
 
 Ejecutar:
 
 ```powershell
-python -m pytest tests/test_perri_latest.py tests/test_perri_optimize.py -q
+python -m pytest tests/test_perri_latest.py tests/test_perri_optimize.py tests/test_perri_horizons.py -q
 ```
 
 Validan:
@@ -1154,6 +1074,10 @@ Validan:
 - `/api/v1/perri/optimize`.
 - JSON precalculado.
 - Optimización desde SQLite.
+- Horizontes exactos `1y`, `3y` y `5y`.
+- Tamaños exactos de portafolio `5`, `10` y `15`.
+- Objetivos `min_risk`, `max_sharpe` y `max_return`.
+- Modo de selección `exact`.
 - Pesos de portafolio.
 - Volatilidades no negativas.
 - Suma de pesos cercana a 1.
@@ -1347,7 +1271,7 @@ Desde la raíz:
 
 ```powershell
 python -m compileall backend\app
-python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py -q
+python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py tests\test_perri_horizons.py -q
 ```
 
 Desde backend:
@@ -1418,7 +1342,7 @@ Antes de cada commit:
 ```powershell
 git status
 python -m compileall backend\app
-python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py -q
+python -m pytest tests\test_perri_latest.py tests\test_perri_optimize.py tests\test_perri_horizons.py -q
 ```
 
 Patrón recomendado:
@@ -1445,11 +1369,13 @@ git commit -m "mensaje: descripción clara del cambio"
 git push origin backend
 ```
 
-Ejemplo:
+Ejemplo profesional:
 
 ```powershell
-git add backend/app/services/perri_optimizer_service.py
-git commit -m "mejora: ajusta optimización institucional de Perri"
+git add README.md docs/01_arquitectura_tecnica.md
+git commit -m "docs: actualiza documentación técnica de Perri" `
+           -m "Documenta los horizontes 1y, 3y y 5y, los tamaños exactos de 5, 10 y 15 activos, y los objetivos min_risk, max_sharpe y max_return." `
+           -m "Alinea README y arquitectura técnica con los tests actuales de Perri."
 git push origin backend
 ```
 
