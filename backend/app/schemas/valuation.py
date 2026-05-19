@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 
 # --- ESQUEMAS PARA NELSON-SIEGEL ---
 class YieldCurveRequest(BaseModel):
     yields: List[float] = Field(..., description="Lista de tasas observadas")
-    maturities: List[float] = Field(..., description="Lista de plazos/vencimientos en años")
+    maturities: List[float] = Field(..., description="Lista de plazos/vencimientos en aÃ±os")
 
 class NelsonSiegelParams(BaseModel):
     tau: float
@@ -23,7 +23,7 @@ class YieldCurveResponse(BaseModel):
 class OptionValuationRequest(BaseModel):
     spot_price: float = Field(..., gt=0)
     strike_price: float = Field(..., gt=0)
-    time_to_maturity: float = Field(..., gt=0, description="Tiempo en años")
+    time_to_maturity: float = Field(..., gt=0, description="Tiempo en aÃ±os")
     risk_free_rate: float = Field(..., description="Tasa anualizada (ej: 0.05)")
     volatility: float = Field(..., gt=0, description="Volatilidad anualizada")
     option_type: str = Field("call", pattern="^(call|put)$")
@@ -32,6 +32,8 @@ class Greeks(BaseModel):
     delta: float
     gamma: float
     vega: float
+    theta: float
+    rho: float
 
 class OptionValuationResponse(BaseModel):
     price: float
