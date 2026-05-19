@@ -104,6 +104,32 @@ class TopPortfolio(BaseModel):
     sharpe: float = Field(..., description="Ratio de Sharpe")
     weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Pesos del portafolio")
 
+
+class PerriObjectiveComparison(BaseModel):
+    objective: str = Field(..., description="Objetivo Perri comparado")
+    perri_return: float | None = Field(default=None, description="Retorno anual Perri")
+    perri_volatility: float | None = Field(default=None, description="Volatilidad anual Perri")
+    perri_sharpe: float | None = Field(default=None, description="Sharpe Perri")
+    user_return: float = Field(..., description="Retorno anual del portafolio Markowitz del usuario")
+    user_volatility: float = Field(..., description="Volatilidad anual del portafolio Markowitz del usuario")
+    user_sharpe: float = Field(..., description="Sharpe del portafolio Markowitz del usuario")
+    return_gap: float | None = Field(default=None, description="Diferencia de retorno usuario menos Perri")
+    volatility_gap: float | None = Field(default=None, description="Diferencia de volatilidad usuario menos Perri")
+    sharpe_gap: float | None = Field(default=None, description="Diferencia de Sharpe usuario menos Perri")
+    verdict: str = Field(..., description="Resultado interpretativo de la comparación")
+
+
+class PerriComparison(BaseModel):
+    enabled: bool = Field(..., description="Indica si la comparación contra Perri fue posible")
+    portfolio_size: int = Field(..., description="Cantidad de activos del portafolio del usuario")
+    horizon: str = Field(..., description="Horizonte Perri usado para comparar")
+    message: str = Field(..., description="Mensaje general de comparación")
+    comparisons: list[PerriObjectiveComparison] = Field(
+        default_factory=list,
+        description="Comparaciones contra objetivos Perri",
+    )
+
+
 class EfficientFrontierResponse(BaseModel):
     tickers: list[str] = Field(..., description="Tickers analizados")
     start: str = Field(..., description="Fecha inicial")
@@ -129,4 +155,8 @@ class EfficientFrontierResponse(BaseModel):
     suggested_profile_portfolio: ProfileSuggestedPortfolio | None = Field(
         default=None,
         description="Portafolio sugerido según perfil",
+    )
+    perri_comparison: PerriComparison | None = Field(
+        default=None,
+        description="Comparación del portafolio Markowitz contra umbrales institucionales Perri",
     )

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
@@ -457,6 +460,192 @@ class PortfolioService:
 
         return None
 
+    def _resolve_perri_horizon(self, start: str, end: str) -> str:
+        start_date = pd.to_datetime(start)
+        end_date = pd.to_datetime(end)
+        days = max(int((end_date - start_date).days), 1)
+
+        candidates = {
+            "1y": 365,
+            "3y": 365 * 3,
+            "5y": 365 * 5,
+        }
+
+        return min(candidates, key=lambda key: abs(candidates[key] - days))
+
+    def _load_latest_perri_payload(self) -> dict | None:
+        project_root = Path(__file__).resolve().parents[3]
+        path = project_root / "backend" / "data" / "perri_latest_optimization.json"
+
+        if not path.exists():
+            return None
+
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                payload = json.load(file)
+        except (OSError, json.JSONDecodeError):
+            return None
+
+        result = payload.get("result") if isinstance(payload, dict) else None
+        return result if isinstance(result, dict) else None
+
+    def _select_max_return_from_simulations(
+        self,
+        tickers: list[str],
+        simulated: list[dict],
+        weights_store: list[np.ndarray],
+    ) -> dict | None:
+        if not simulated or not weights_store:
+            return None
+
+        best_idx = None
+        best_return = -np.inf
+
+        for idx, row in enumerate(simulated):
+            if idx >= len(weights_store):
+                continue
+
+            annual_return = row.get("return")
+            volatility = row.get("volatility")
+            sharpe = row.get("sharpe")
+
+            if annual_return is None or volatility is None or sharpe is None:
+                continue
+
+            if not np.isfinite(float(annual_return)):
+                continue
+
+            if float(annual_return) > best_return:
+                best_return = float(annual_return)
+                best_idx = idx
+
+        if best_idx is None:
+            return None
+
+        row = simulated[best_idx]
+
+        return {
+            "return": float(row["return"]),
+            "volatility": float(row["volatility"]),
+            "sharpe": float(row["sharpe"]),
+            "weights": self._weights_payload(tickers, weights_store[best_idx]),
+        }
+
+    def _build_perri_comparison(
+        self,
+        portfolio_size: int,
+        start: str,
+        end: str,
+        min_variance_payload: dict,
+        max_sharpe_payload: dict,
+        max_return_payload: dict | None,
+    ) -> dict:
+        horizon = self._resolve_perri_horizon(start=start, end=end)
+
+        if portfolio_size not in {5, 10, 15}:
+            return {
+                "enabled": False,
+                "portfolio_size": int(portfolio_size),
+                "horizon": horizon,
+                "message": "La comparación Perri solo está disponible para portafolios exactos de 5, 10 o 15 activos.",
+                "comparisons": [],
+            }
+
+        perri_result = self._load_latest_perri_payload()
+
+        if perri_result is None:
+            return {
+                "enabled": False,
+                "portfolio_size": int(portfolio_size),
+                "horizon": horizon,
+                "message": "No fue posible cargar backend/data/perri_latest_optimization.json.",
+                "comparisons": [],
+            }
+
+        horizon_payload = perri_result.get("horizons", {}).get(horizon)
+        size_payload = None
+
+        if isinstance(horizon_payload, dict):
+            size_payload = horizon_payload.get("portfolio_sizes", {}).get(str(portfolio_size))
+
+        if not isinstance(size_payload, dict):
+            return {
+                "enabled": False,
+                "portfolio_size": int(portfolio_size),
+                "horizon": horizon,
+                "message": "No existe umbral Perri para el horizonte y tamaño solicitados.",
+                "comparisons": [],
+            }
+
+        user_payload_by_objective = {
+            "min_risk": min_variance_payload,
+            "max_sharpe": max_sharpe_payload,
+            "max_return": max_return_payload,
+        }
+
+        comparisons = []
+
+        for objective, user_payload in user_payload_by_objective.items():
+            perri_payload = size_payload.get(objective)
+
+            if not isinstance(perri_payload, dict) or not isinstance(user_payload, dict):
+                continue
+
+            perri_return = perri_payload.get("expected_return_annual")
+            perri_volatility = perri_payload.get("volatility_annual")
+            perri_sharpe = perri_payload.get("sharpe")
+
+            user_return = float(user_payload["return"])
+            user_volatility = float(user_payload["volatility"])
+            user_sharpe = float(user_payload["sharpe"])
+
+            return_gap = None if perri_return is None else user_return - float(perri_return)
+            volatility_gap = None if perri_volatility is None else user_volatility - float(perri_volatility)
+            sharpe_gap = None if perri_sharpe is None else user_sharpe - float(perri_sharpe)
+
+            if objective == "min_risk":
+                verdict = (
+                    "El portafolio del usuario tiene menor o igual volatilidad que Perri."
+                    if volatility_gap is not None and volatility_gap <= 0
+                    else "Perri mantiene menor volatilidad institucional para este tamaño y horizonte."
+                )
+            elif objective == "max_sharpe":
+                verdict = (
+                    "El portafolio del usuario iguala o supera el Sharpe de Perri."
+                    if sharpe_gap is not None and sharpe_gap >= 0
+                    else "Perri mantiene mejor relación riesgo-retorno por Sharpe."
+                )
+            else:
+                verdict = (
+                    "El portafolio del usuario iguala o supera el retorno de Perri."
+                    if return_gap is not None and return_gap >= 0
+                    else "Perri mantiene mayor retorno esperado para este tamaño y horizonte."
+                )
+
+            comparisons.append(
+                {
+                    "objective": objective,
+                    "perri_return": None if perri_return is None else float(perri_return),
+                    "perri_volatility": None if perri_volatility is None else float(perri_volatility),
+                    "perri_sharpe": None if perri_sharpe is None else float(perri_sharpe),
+                    "user_return": user_return,
+                    "user_volatility": user_volatility,
+                    "user_sharpe": user_sharpe,
+                    "return_gap": return_gap,
+                    "volatility_gap": volatility_gap,
+                    "sharpe_gap": sharpe_gap,
+                    "verdict": verdict,
+                }
+            )
+
+        return {
+            "enabled": True,
+            "portfolio_size": int(portfolio_size),
+            "horizon": horizon,
+            "message": "Comparación contra umbrales institucionales Perri generada correctamente.",
+            "comparisons": comparisons,
+        }
+
     def _select_top_portfolios(
         self,
         tickers: list[str],
@@ -586,6 +775,24 @@ class PortfolioService:
             weights_store=weights_store,
         )
 
+        min_variance_payload = self._portfolio_payload(
+            effective_tickers,
+            min_var_weights,
+            min_var_metrics,
+        )
+
+        max_sharpe_payload = self._portfolio_payload(
+            effective_tickers,
+            max_sharpe_weights,
+            max_sharpe_metrics,
+        )
+
+        max_return_payload = self._select_max_return_from_simulations(
+            tickers=effective_tickers,
+            simulated=simulated,
+            weights_store=weights_store,
+        )
+
         return {
             "tickers": effective_tickers,
             "start": start,
@@ -596,16 +803,8 @@ class PortfolioService:
             "correlation_matrix": corr_matrix,
             "observations": int(len(returns_df)),
             "n_assets": int(len(effective_tickers)),
-            "min_variance": self._portfolio_payload(
-                effective_tickers,
-                min_var_weights,
-                min_var_metrics,
-            ),
-            "max_sharpe": self._portfolio_payload(
-                effective_tickers,
-                max_sharpe_weights,
-                max_sharpe_metrics,
-            ),
+            "min_variance": min_variance_payload,
+            "max_sharpe": max_sharpe_payload,
             "top_portfolios": self._select_top_portfolios(
                 tickers=effective_tickers,
                 simulated=simulated,
@@ -614,4 +813,12 @@ class PortfolioService:
             ),
             "target_return_portfolio": target_portfolio,
             "suggested_profile_portfolio": profile_portfolio,
+            "perri_comparison": self._build_perri_comparison(
+                portfolio_size=len(effective_tickers),
+                start=start,
+                end=end,
+                min_variance_payload=min_variance_payload,
+                max_sharpe_payload=max_sharpe_payload,
+                max_return_payload=max_return_payload,
+            ),
         }
