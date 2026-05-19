@@ -1,4 +1,4 @@
-from fastapi import Depends
+﻿from fastapi import Depends
 
 from app.db.database import get_db
 from app.clients.macro_client import MacroClient
@@ -19,6 +19,7 @@ from app.services.help_service import HelpService
 from app.services.returns_stats_service import ReturnsStatsService
 from app.services.alerts_service import AlertsService
 from app.services.garch_service import GarchService
+from app.services.chatbot_service import ChatbotService
 
 def get_app_settings() -> Settings:
     return get_settings()
@@ -103,3 +104,6 @@ def get_alerts_service(client: MarketClient = Depends(get_market_client)) -> Ale
 
 def get_garch_service(client: MarketClient = Depends(get_market_client)) -> GarchService:
     return GarchService(client=client)
+
+def get_chatbot_service() -> ChatbotService:
+    return ChatbotService()
