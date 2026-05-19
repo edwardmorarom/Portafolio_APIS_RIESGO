@@ -1,18 +1,11 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import plotly.graph_objects as go
 import streamlit as st
 
 from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_info_card, render_meta_row
-from ui.dashboard_ui import (
-    header_dashboard,
-    nota,
-    plot_card_footer,
-    plot_card_header,
-    seccion,
-    tarjeta_kpi,
-)
+from ui.dashboard_ui import header_dashboard, nota, plot_card_footer, plot_card_header, seccion, tarjeta_kpi
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
 
@@ -25,92 +18,40 @@ def _format_pct(value: float) -> str:
     return f"{float(value):.2%}"
 
 
-setup_dashboard_page(
+def _severity_color(severity: str) -> str:
+    return {
+        "bajo": "#16A34A",
+        "moderado": "#D97706",
+        "alto": "#DC2626",
+        "critico": "#7F1D1D",
+    }.get(str(severity).lower(), "#64748B")
+
+
+modo, filtros_panel = setup_dashboard_page(
+    title="Dashboard Riesgo",
+    subtitle="Universidad Santo Tomás",
+    filtros_label="Parámetros de stress testing",
+    filtros_expanded=True,
     page_title="Stress Testing",
     page_icon="⚠️",
 )
 
-header_dashboard(
-    title="Módulo 11 — Stress testing",
-    subtitle="Simulación de escenarios adversos sobre el valor del portafolio.",
-)
-
 client = get_api_client()
 
-seccion("Parámetros del escenario")
+with filtros_panel:
+    c1, c2 = st.columns(2)
+    with c1:
+        portfolio_value = st.number_input("Valor del portafolio", min_value=1_000.0, value=100_000.0, step=5_000.0)
+        expected_return = st.number_input("Retorno esperado", min_value=-1.0, max_value=1.0, value=0.12, step=0.01, format="%.4f")
+        volatility = st.number_input("Volatilidad base", min_value=0.0001, max_value=2.0, value=0.20, step=0.01, format="%.4f")
+        var_95 = st.number_input("VaR 95%", min_value=-1.0, max_value=1.0, value=-0.08, step=0.01, format="%.4f")
+    with c2:
+        beta = st.number_input("Beta del portafolio", min_value=-2.0, max_value=5.0, value=1.15, step=0.05, format="%.4f")
+        rate_shock = st.number_input("Shock de tasa", min_value=-1.0, max_value=1.0, value=0.03, step=0.01, format="%.4f")
+        market_shock = st.number_input("Shock de mercado", min_value=-1.0, max_value=1.0, value=-0.15, step=0.01, format="%.4f")
+        volatility_multiplier = st.number_input("Multiplicador de volatilidad", min_value=0.1, max_value=10.0, value=1.5, step=0.1, format="%.2f")
 
-with st.sidebar:
-    st.markdown("### Escenario de stress")
-
-    portfolio_value = st.number_input(
-        "Valor del portafolio",
-        min_value=1_000.0,
-        value=100_000.0,
-        step=5_000.0,
-    )
-
-    expected_return = st.number_input(
-        "Retorno esperado",
-        min_value=-1.0,
-        max_value=1.0,
-        value=0.12,
-        step=0.01,
-        format="%.4f",
-    )
-
-    volatility = st.number_input(
-        "Volatilidad base",
-        min_value=0.0001,
-        max_value=2.0,
-        value=0.20,
-        step=0.01,
-        format="%.4f",
-    )
-
-    var_95 = st.number_input(
-        "VaR 95%",
-        min_value=-1.0,
-        max_value=1.0,
-        value=-0.08,
-        step=0.01,
-        format="%.4f",
-    )
-
-    beta = st.number_input(
-        "Beta del portafolio",
-        min_value=-2.0,
-        max_value=5.0,
-        value=1.15,
-        step=0.05,
-        format="%.4f",
-    )
-
-    rate_shock = st.number_input(
-        "Shock de tasa",
-        min_value=-1.0,
-        max_value=1.0,
-        value=0.03,
-        step=0.01,
-        format="%.4f",
-    )
-
-    market_shock = st.number_input(
-        "Shock de mercado",
-        min_value=-1.0,
-        max_value=1.0,
-        value=-0.15,
-        step=0.01,
-        format="%.4f",
-    )
-
-    volatility_multiplier = st.number_input(
-        "Multiplicador de volatilidad",
-        min_value=0.1,
-        max_value=10.0,
-        value=1.5,
-        step=0.1,
-        format="%.2f",
-    )
+    run_scenario = st.button("Ejecutar escenario", type="primary", use_container_width=True)
 
 payload = {
     "portfolio_value": float(portfolio_value),
@@ -123,52 +64,68 @@ payload = {
     "volatility_multiplier": float(volatility_multiplier),
 }
 
-render_info_card(
+header_dashboard(
     "Stress testing",
-    "Este módulo estima pérdida potencial bajo shocks de tasa, mercado y volatilidad.",
+    "Simulación de escenarios adversos de tasa, mercado y volatilidad sobre el portafolio.",
+    modo=modo,
 )
 
-if st.button("Ejecutar escenario", type="primary"):
+tab_result, tab_impact, tab_read = st.tabs(["Resultado", "Impacto", "Lectura"])
+
+result: dict | None = None
+if run_scenario:
     try:
         result = client.post("/stress/scenario", json_payload=payload, include_api_key=True)
+    except ApiClientError as exc:
+        st.error(f"Error al consumir backend de stress testing: {exc.message}")
+    except Exception as exc:
+        st.error(f"Error inesperado: {exc}")
+else:
+    nota("Ajusta el escenario y ejecútalo para estimar pérdida, valor estresado y severidad.")
 
-        seccion("Resultado del escenario")
+with tab_result:
+    seccion("Resultado del escenario")
 
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            tarjeta_kpi("Pérdida estimada", _format_money(result["estimated_loss"]))
-        with col2:
-            tarjeta_kpi("Valor estresado", _format_money(result["stressed_portfolio_value"]))
-        with col3:
-            tarjeta_kpi("Severidad", str(result["severity"]).upper())
+    if result:
+        severity = str(result["severity"]).lower()
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            tarjeta_kpi("Pérdida estimada", _format_money(result["estimated_loss"]), subtexto="Pérdida monetaria")
+        with c2:
+            tarjeta_kpi("Valor estresado", _format_money(result["stressed_portfolio_value"]), subtexto="Valor post-shock")
+        with c3:
+            tarjeta_kpi("Severidad", severity.upper(), subtexto="Clasificación del escenario")
 
-        col4, col5, col6 = st.columns(3)
-        with col4:
-            tarjeta_kpi("Retorno estresado", _format_pct(result["stressed_return"]))
-        with col5:
-            tarjeta_kpi("Volatilidad estresada", _format_pct(result["stressed_volatility"]))
-        with col6:
-            tarjeta_kpi("VaR estresado", _format_pct(result["stressed_var_95"]))
+        c4, c5, c6 = st.columns(3)
+        with c4:
+            tarjeta_kpi("Retorno stress", _format_pct(result["stressed_return"]), subtexto="Retorno ajustado")
+        with c5:
+            tarjeta_kpi("Volatilidad stress", _format_pct(result["stressed_volatility"]), subtexto="Volatilidad ampliada")
+        with c6:
+            tarjeta_kpi("VaR stress", _format_pct(result["stressed_var_95"]), subtexto="VaR bajo shock")
 
         render_meta_row(
             {
                 "Shock tasa": _format_pct(rate_shock),
                 "Shock mercado": _format_pct(market_shock),
                 "Multiplicador vol": f"{volatility_multiplier:.2f}x",
+                "Beta": f"{beta:.2f}",
             }
         )
+    else:
+        render_info_card("Escenario pendiente", "Ejecuta el escenario para obtener los indicadores de stress.")
 
-        seccion("Comparación valor base vs estresado")
+with tab_impact:
+    seccion("Comparación visual")
 
+    if result:
+        severity = str(result["severity"]).lower()
         fig = go.Figure()
         fig.add_trace(
             go.Bar(
-                x=["Valor base", "Valor estresado", "Pérdida estimada"],
-                y=[
-                    portfolio_value,
-                    result["stressed_portfolio_value"],
-                    result["estimated_loss"],
-                ],
+                x=["Valor base", "Valor estresado", "Pérdida"],
+                y=[portfolio_value, result["stressed_portfolio_value"], result["estimated_loss"]],
+                marker_color=["#2563EB", _severity_color(severity), "#DC2626"],
                 text=[
                     _format_money(portfolio_value),
                     _format_money(result["stressed_portfolio_value"]),
@@ -179,22 +136,32 @@ if st.button("Ejecutar escenario", type="primary"):
             )
         )
 
-        fig.update_layout(
-            title="Impacto del escenario de stress",
-            xaxis_title="Métrica",
-            yaxis_title="Valor monetario",
-            showlegend=False,
+        plot_card_header("Impacto financiero", "Compara el valor inicial contra la pérdida estimada.", modo=modo)
+        st.plotly_chart(
+            style_plotly_figure(
+                fig,
+                modo=modo,
+                title="Valor bajo stress",
+                xaxis_title="Métrica",
+                yaxis_title="Valor monetario",
+                show_xgrid=False,
+            ),
+            use_container_width=True,
         )
+        plot_card_footer("La barra de pérdida estima el daño combinado de shocks de retorno y VaR estresado.")
+    else:
+        render_info_card("Impacto pendiente", "Ejecuta el escenario para ver la comparación gráfica.")
 
-        plot_card_header("Impacto financiero")
-        st.plotly_chart(style_plotly_figure(fig), use_container_width=True)
-        plot_card_footer("La gráfica compara el valor inicial del portafolio contra el valor bajo stress.")
+with tab_read:
+    seccion("Lectura ejecutiva")
+    render_info_card(
+        "Uso financiero",
+        (
+            "El stress testing no predice el futuro: fuerza una combinación adversa de mercado, tasas y volatilidad "
+            "para evaluar resiliencia. Sirve para comparar portafolios bajo supuestos extremos y anticipar necesidades "
+            "de cobertura, rebalanceo o liquidez."
+        ),
+    )
 
+    if result:
         nota(result.get("summary", "Escenario calculado correctamente."))
-
-    except ApiClientError as exc:
-        st.error(f"Error al consumir backend de stress testing: {exc.message}")
-    except Exception as exc:
-        st.error(f"Error inesperado: {exc}")
-else:
-    nota("Ajusta los parámetros en la barra lateral y ejecuta el escenario de stress.")
