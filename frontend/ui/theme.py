@@ -136,12 +136,18 @@ def build_global_css(modo: str = "General") -> str:
         max-width: 1320px;
     }
 
+    [data-testid="stSidebar"],
+    [data-testid="stSidebarNav"],
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+
     h1, h2, h3, h4, h5, h6 {
         color: var(--text-main) !important;
     }
 
-    h1 { font-size: 2.25rem; font-weight: 900; margin-bottom: 0.2rem; letter-spacing: -0.02em; }
-    h2 { font-size: 1.28rem; font-weight: 900; margin-top: 1.3rem; margin-bottom: 0.4rem; letter-spacing: -0.01em; }
+    h1 { font-size: 2.25rem; font-weight: 900; margin-bottom: 0.2rem; letter-spacing: 0; }
+    h2 { font-size: 1.28rem; font-weight: 900; margin-top: 1.3rem; margin-bottom: 0.4rem; letter-spacing: 0; }
     h3 { font-size: 1.04rem; font-weight: 800; }
 
     .stMarkdown, .stMarkdown p, .stMarkdown li, p, label {
@@ -239,6 +245,37 @@ def build_global_css(modo: str = "General") -> str:
         font-weight: 600;
     }
 
+    .sidebar-session {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 18px;
+        padding: 0.9rem;
+        margin: 0.8rem 0 1rem 0;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.10);
+    }
+
+    .sidebar-session-name {
+        color: #ffffff !important;
+        font-size: 0.98rem;
+        font-weight: 900;
+        line-height: 1.2;
+        margin-bottom: 0.2rem;
+    }
+
+    .sidebar-session-role {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 0.22rem 0.62rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #ffffff !important;
+        font-size: 0.76rem;
+        font-weight: 800;
+        margin-top: 0.35rem;
+    }
+
     [data-testid="stSidebar"] .streamlit-expanderHeader {
         background: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.70) !important;
@@ -333,6 +370,185 @@ def build_global_css(modo: str = "General") -> str:
         font-weight: 700;
         border: none;
         box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+    }
+
+    .stButton > button:hover {
+        border: none;
+        filter: brightness(1.03);
+        transform: translateY(-1px);
+    }
+
+    .login-shell {
+        min-height: 76vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .login-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.1rem;
+        border-radius: 18px;
+        background: #ffffff;
+        border: 1px solid var(--border-soft);
+        box-shadow: var(--shadow-main);
+        margin-bottom: 0.7rem;
+    }
+
+    .login-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+    }
+
+    .login-logo {
+        width: 54px;
+        height: 54px;
+        object-fit: contain;
+        border-radius: 50%;
+        border: 1px solid var(--border-soft);
+        background: #ffffff;
+    }
+
+    .login-brand-title {
+        font-size: 1rem;
+        font-weight: 900;
+        color: var(--text-main) !important;
+        line-height: 1.15;
+    }
+
+    .login-brand-subtitle {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--text-muted) !important;
+        margin-top: 0.12rem;
+    }
+
+    .login-status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0.34rem 0.78rem;
+        border-radius: 999px;
+        background: #E8F7EF;
+        border: 1px solid rgba(22, 163, 74, 0.20);
+        color: #166534 !important;
+        font-size: 0.8rem;
+        font-weight: 900;
+    }
+
+    .login-copy {
+        background: linear-gradient(180deg, #ffffff 0%, #F7FAFC 100%);
+        border: 1px solid var(--border-soft);
+        border-radius: 22px;
+        padding: 1.35rem;
+        box-shadow: var(--shadow-main);
+        margin-bottom: 0.8rem;
+    }
+
+    .login-eyebrow {
+        color: var(--accent-main) !important;
+        font-size: 0.78rem;
+        font-weight: 900;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        margin-bottom: 0.45rem;
+    }
+
+    .login-title {
+        color: var(--text-main) !important;
+        font-size: 2.05rem;
+        line-height: 1.08;
+        font-weight: 900;
+        letter-spacing: 0;
+        margin-bottom: 0.65rem;
+    }
+
+    .login-subtitle {
+        color: var(--text-soft) !important;
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.55;
+    }
+
+    .login-feature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
+        margin-top: 1rem;
+    }
+
+    .login-feature {
+        background: #ffffff;
+        border: 1px solid var(--border-soft);
+        border-radius: 16px;
+        padding: 0.88rem;
+    }
+
+    .login-feature strong {
+        display: block;
+        color: var(--text-main) !important;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .login-feature span {
+        color: var(--text-muted) !important;
+        font-size: 0.84rem;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    div[data-testid="stForm"] {
+        background: #ffffff;
+        border: 1px solid var(--border-soft);
+        border-radius: 20px;
+        padding: 1.05rem 1.05rem 1.1rem 1.05rem;
+        box-shadow: var(--shadow-main);
+    }
+
+    .home-panel,
+    .module-card,
+    .session-panel {
+        background: linear-gradient(180deg, #ffffff 0%, #F7FAFC 100%);
+        border: 1px solid var(--border-soft);
+        border-radius: 18px;
+        padding: 1.05rem;
+        box-shadow: var(--shadow-main);
+        min-height: 150px;
+        margin-bottom: 0.9rem;
+    }
+
+    .home-panel-title,
+    .module-card-title,
+    .session-panel-title {
+        color: var(--text-main) !important;
+        font-size: 1.02rem;
+        font-weight: 900;
+        line-height: 1.25;
+        margin-bottom: 0.35rem;
+    }
+
+    .home-panel-body,
+    .module-card-body,
+    .session-panel-body {
+        color: var(--text-soft) !important;
+        font-size: 0.92rem;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+
+    .module-card-kicker {
+        color: var(--accent-main) !important;
+        font-size: 0.76rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0;
+        margin-bottom: 0.45rem;
     }
 
     div[data-testid="stDataFrame"] {
@@ -471,7 +687,7 @@ def build_global_css(modo: str = "General") -> str:
     .ui-kpi-title {
         font-size: 0.82rem;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0;
         font-weight: 900;
         color: var(--text-muted) !important;
         line-height: 1.2;
@@ -485,7 +701,7 @@ def build_global_css(modo: str = "General") -> str:
         color: var(--text-main) !important;
         line-height: 1.02;
         margin-bottom: 0.35rem;
-        letter-spacing: -0.03em;
+        letter-spacing: 0;
         text-align: center;
     }
 
@@ -618,7 +834,7 @@ def build_global_css(modo: str = "General") -> str:
         color: var(--text-muted) !important;
         margin-bottom: 0.35rem;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0;
     }
 
     .stTabs [data-baseweb="tab-list"] {
@@ -646,6 +862,344 @@ def build_global_css(modo: str = "General") -> str:
         color: var(--accent-main) !important;
         border: 1px solid rgba(148,163,184,0.24) !important;
         box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+    }
+
+    .top-shell {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border: 1px solid var(--border-soft);
+        border-radius: 18px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 0.8rem;
+        background: linear-gradient(180deg, var(--panel-bg) 0%, var(--panel-bg-2) 100%);
+        box-shadow: var(--shadow-main);
+    }
+
+    .top-brand {
+        color: var(--text-main) !important;
+        font-size: 1.05rem;
+        font-weight: 900;
+        line-height: 1.15;
+    }
+
+    .top-subtitle {
+        color: var(--text-muted) !important;
+        font-size: 0.84rem;
+        font-weight: 700;
+        margin-top: 0.1rem;
+    }
+
+    .top-session {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        color: var(--text-soft) !important;
+        font-size: 0.86rem;
+        font-weight: 700;
+    }
+
+    .top-session strong {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, var(--accent-main), var(--accent-second));
+        font-size: 0.78rem;
+        font-weight: 900;
+    }
+
+    .nav-ordered-label {
+        color: var(--text-muted) !important;
+        font-size: 0.78rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0;
+        margin: 0.15rem 0 0.42rem 0;
+    }
+
+    div[data-testid="stPageLink"] a {
+        min-height: 42px;
+        border-radius: 999px;
+        border: 1px solid var(--accent-border);
+        background: linear-gradient(180deg, var(--panel-bg) 0%, var(--panel-bg-2) 100%);
+        color: var(--text-main) !important;
+        font-weight: 850;
+        justify-content: center;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+        margin-bottom: 0.35rem;
+        padding-left: 0.6rem;
+        padding-right: 0.6rem;
+    }
+
+    div[data-testid="stPageLink"] a:hover {
+        border-color: var(--accent-border);
+        color: var(--accent-main) !important;
+        transform: translateY(-1px);
+    }
+
+    .metric-band {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.85rem;
+        margin: 0.8rem 0 1rem 0;
+    }
+
+    .login-shell {
+        min-height: 82vh;
+        justify-content: center;
+    }
+
+    .login-stage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 26px;
+        min-height: 560px;
+        padding: 1.15rem;
+        background:
+            radial-gradient(circle at 16% 18%, rgba(35, 116, 255, 0.48), transparent 24%),
+            radial-gradient(circle at 82% 32%, rgba(31, 212, 255, 0.36), transparent 20%),
+            linear-gradient(135deg, #071536 0%, #04102B 54%, #081A43 100%);
+        border: 1px solid rgba(129, 180, 255, 0.22);
+        box-shadow: 0 28px 70px rgba(4, 16, 43, 0.34);
+    }
+
+    .login-stage::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+        background-size: 36px 36px;
+        mask-image: linear-gradient(90deg, black 0%, rgba(0,0,0,0.25) 75%, transparent 100%);
+        pointer-events: none;
+    }
+
+    .login-glow {
+        position: absolute;
+        width: 190px;
+        height: 190px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(61, 220, 255, 0.92), rgba(39, 118, 255, 0.24) 52%, transparent 70%);
+        filter: blur(1px);
+        opacity: 0.9;
+        pointer-events: none;
+    }
+
+    .login-glow.one { right: 9%; top: 18%; }
+    .login-glow.two { left: 7%; bottom: 9%; width: 150px; height: 150px; opacity: 0.72; }
+
+    .login-frame {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.78fr);
+        gap: 1.15rem;
+        align-items: center;
+        min-height: 528px;
+    }
+
+    .login-copy,
+    .login-card {
+        background: rgba(8, 24, 58, 0.62);
+        border: 1px solid rgba(180, 218, 255, 0.18);
+        border-radius: 22px;
+        padding: 1.25rem;
+        backdrop-filter: blur(18px);
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.24);
+    }
+
+    .login-copy {
+        background: transparent;
+        border-color: transparent;
+        box-shadow: none;
+        padding: 1.8rem;
+    }
+
+    .login-eyebrow,
+    .login-title,
+    .login-subtitle,
+    .login-brand-title,
+    .login-brand-subtitle {
+        color: #F8FBFF !important;
+    }
+
+    .login-eyebrow {
+        color: #64D9FF !important;
+        text-transform: uppercase;
+        font-size: 0.78rem;
+        font-weight: 900;
+        margin-bottom: 0.65rem;
+    }
+
+    .login-title {
+        font-size: 2.45rem;
+        line-height: 1.05;
+        font-weight: 900;
+        max-width: 560px;
+    }
+
+    .login-subtitle {
+        color: #BED3F7 !important;
+        max-width: 620px;
+        margin-top: 0.85rem;
+    }
+
+    .login-logo {
+        background: rgba(255,255,255,0.92);
+    }
+
+    .login-feature-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .login-feature {
+        background: rgba(255,255,255,0.07);
+        border-color: rgba(255,255,255,0.12);
+    }
+
+    .login-feature strong { color: #FFFFFF !important; }
+    .login-feature span { color: #BED3F7 !important; }
+
+    .login-card div[data-testid="stForm"] {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    .login-card label,
+    .login-card p {
+        color: #D8E6FF !important;
+    }
+
+    .login-card input {
+        background: rgba(255,255,255,0.08) !important;
+        border: 1px solid rgba(255,255,255,0.24) !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+    }
+
+    .login-card-title {
+        color: #FFFFFF !important;
+        font-size: 1.4rem;
+        font-weight: 900;
+        margin-bottom: 0.15rem;
+    }
+
+    .login-card-subtitle {
+        color: #AFC5EA !important;
+        font-size: 0.9rem;
+        font-weight: 650;
+        margin-bottom: 1.1rem;
+    }
+
+    .login-trust-row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+
+    .login-trust {
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.07);
+        color: #D9EAFF !important;
+        padding: 0.35rem 0.68rem;
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+
+    @media (max-width: 860px) {
+        .login-frame {
+            grid-template-columns: 1fr;
+            min-height: auto;
+        }
+
+        .login-title {
+            font-size: 2rem;
+        }
+
+        .login-copy {
+            padding: 1.1rem;
+        }
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --app-bg-start: #07111F;
+            --app-bg-end: #0B1424;
+            --text-main: #F8FAFC;
+            --text-soft: #CBD5E1;
+            --text-muted: #94A3B8;
+            --accent-main: #38BDF8;
+            --accent-second: #2563EB;
+            --accent-soft: rgba(56, 189, 248, 0.14);
+            --accent-border: rgba(56, 189, 248, 0.24);
+            --card-bg: #111827;
+            --panel-bg: #111827;
+            --panel-bg-2: #0F172A;
+            --border-soft: rgba(148, 163, 184, 0.22);
+            --shadow-main: 0 16px 36px rgba(0, 0, 0, 0.30);
+            --chip-bg: rgba(56, 189, 248, 0.12);
+            --chip-text: #BAE6FD;
+            --chip-border: rgba(56, 189, 248, 0.24);
+        }
+
+        .login-topbar,
+        .home-panel,
+        .module-card,
+        .session-panel,
+        .ui-note,
+        .ui-hero,
+        .ui-kpi-card,
+        .ui-test-card,
+        .ui-plot-head,
+        .ui-plot-foot,
+        div[data-testid="stDataFrame"],
+        div[data-testid="stPlotlyChart"],
+        div[data-testid="stForm"],
+        .top-shell {
+            background: linear-gradient(180deg, #111827 0%, #0F172A 100%) !important;
+            border-color: rgba(148, 163, 184, 0.22) !important;
+        }
+
+        .stTabs [data-baseweb="tab-list"] {
+            background: rgba(15, 23, 42, 0.92) !important;
+            border-color: rgba(148, 163, 184, 0.22) !important;
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            color: #CBD5E1 !important;
+        }
+
+        .stTabs [aria-selected="true"] {
+            background: #111827 !important;
+            color: #7DD3FC !important;
+        }
+
+        div[data-testid="stPageLink"] a {
+            background: linear-gradient(180deg, #111827 0%, #0F172A 100%) !important;
+            border-color: rgba(148, 163, 184, 0.22) !important;
+            color: #E2E8F0 !important;
+        }
+
+        .stTextInput input,
+        .stNumberInput input,
+        .stSelectbox div,
+        .stMultiSelect div,
+        .stDateInput input {
+            background-color: #0F172A !important;
+            color: #F8FAFC !important;
+            -webkit-text-fill-color: #F8FAFC !important;
+        }
     }
     </style>
     """
