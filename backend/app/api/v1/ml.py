@@ -1,20 +1,20 @@
 from fastapi import APIRouter, HTTPException
 
-from app.ml.predictor import MLPredictor
-from app.schemas.ml_schema import (
-    MLPredictionRequest,
-    MLPredictionResponse,
-)
+from app.ml.predictor import MODEL_VERSION, MLPredictor
+from app.schemas.ml_schema import MLPredictionRequest, MLPredictionResponse
+
 
 router = APIRouter(prefix="/ml", tags=["Machine Learning"])
 
 predictor = MLPredictor()
 
 
-@router.post(
-    "/predict",
-    response_model=MLPredictionResponse,
-)
+@router.get("/status")
+def get_ml_status() -> dict:
+    return predictor.metadata()
+
+
+@router.post("/predict", response_model=MLPredictionResponse)
 def predict_return(payload: MLPredictionRequest):
     try:
         prediction = predictor.predict(
@@ -27,11 +27,8 @@ def predict_return(payload: MLPredictionRequest):
 
         return MLPredictionResponse(
             predicted_return=prediction,
-            model_version="1.0.0",
+            model_version=MODEL_VERSION,
         )
 
     except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=str(exc),
-        )
+        raise HTTPException(status_code=500, detail=str(exc))

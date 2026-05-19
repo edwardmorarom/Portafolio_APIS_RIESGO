@@ -5,10 +5,15 @@ from app.ml.predictor import MLPredictor
 
 
 def test_ml_predictor_singleton_instance():
-    first = MLPredictor()
-    second = MLPredictor()
+    assert MLPredictor() is MLPredictor()
 
-    assert first is second
+
+def test_ml_predictor_model_is_loaded():
+    predictor = MLPredictor()
+
+    assert predictor.is_loaded() is True
+    assert predictor.metadata()["model_loaded"] is True
+    assert predictor.metadata()["model_size_bytes"] > 0
 
 
 def test_ml_predictor_returns_float_prediction():
@@ -23,6 +28,19 @@ def test_ml_predictor_returns_float_prediction():
     )
 
     assert isinstance(result, float)
+
+
+def test_ml_status_endpoint_returns_metadata():
+    client = TestClient(app)
+
+    response = client.get("/api/v1/ml/status")
+
+    assert response.status_code == 200
+    payload = response.json()
+
+    assert payload["model_loaded"] is True
+    assert payload["model_version"] == "1.0.0"
+    assert payload["model_size_bytes"] > 0
 
 
 def test_ml_predict_endpoint_returns_prediction():
@@ -40,10 +58,7 @@ def test_ml_predict_endpoint_returns_prediction():
     )
 
     assert response.status_code == 200
-
     payload = response.json()
 
-    assert "predicted_return" in payload
-    assert "model_version" in payload
     assert payload["model_version"] == "1.0.0"
     assert isinstance(payload["predicted_return"], float)

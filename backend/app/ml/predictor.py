@@ -5,6 +5,7 @@ import numpy as np
 
 
 MODEL_PATH = Path(__file__).resolve().parent / "model.joblib"
+MODEL_VERSION = "1.0.0"
 
 
 class MLPredictor:
@@ -22,6 +23,17 @@ class MLPredictor:
         if MODEL_PATH.exists() and MODEL_PATH.stat().st_size > 0:
             cls._model = joblib.load(MODEL_PATH)
 
+    def is_loaded(self) -> bool:
+        return self._model is not None
+
+    def metadata(self) -> dict:
+        return {
+            "model_loaded": self.is_loaded(),
+            "model_version": MODEL_VERSION,
+            "model_path": str(MODEL_PATH),
+            "model_size_bytes": MODEL_PATH.stat().st_size if MODEL_PATH.exists() else 0,
+        }
+
     def predict(
         self,
         volatility: float,
@@ -34,15 +46,7 @@ class MLPredictor:
             raise ValueError("El modelo ML no ha sido entrenado.")
 
         features = np.array(
-            [[
-                volatility,
-                sharpe_ratio,
-                var_95,
-                beta,
-                market_return,
-            ]]
+            [[volatility, sharpe_ratio, var_95, beta, market_return]]
         )
 
-        prediction = self._model.predict(features)[0]
-
-        return float(prediction)
+        return float(self._model.predict(features)[0])
