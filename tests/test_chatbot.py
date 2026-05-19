@@ -34,12 +34,12 @@ def test_chatbot_answers_supported_var_question():
     assert payload["sources"]
 
 
-def test_chatbot_returns_controlled_response_for_unsupported_question():
+def test_chatbot_returns_controlled_response_for_financial_but_unsupported_question():
     with TestClient(app) as client:
         response = client.post(
             "/api/v1/chatbot/ask",
             json={
-                "question": "Explícame un tema que no está en la base local",
+                "question": "Explícame la duración modificada de bonos",
                 "mode": "general",
             },
         )

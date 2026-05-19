@@ -4,6 +4,11 @@ import re
 
 from app.clients.llm_client import LLMClient
 from app.core.chatbot_knowledge import CHATBOT_KNOWLEDGE_BASE
+from app.core.chatbot_scope import (
+    FINANCIAL_SCOPE_FOLLOWUPS,
+    FINANCIAL_SCOPE_MESSAGE,
+    is_financial_question,
+)
 
 
 class ChatbotService:
@@ -61,6 +66,36 @@ class ChatbotService:
         normalized_question = question.strip()
         normalized_mode = mode.strip().lower()
         normalized_module = module.strip().lower() if module else None
+
+        if not is_financial_question(
+            question=normalized_question,
+            module=normalized_module,
+        ):
+            return {
+                "question": normalized_question,
+                "mode": normalized_mode,
+                "module": normalized_module,
+                "supported": False,
+                "answer": FINANCIAL_SCOPE_MESSAGE,
+                "topics": [],
+                "sources": [],
+                "suggested_followups": FINANCIAL_SCOPE_FOLLOWUPS,
+            }
+
+        if not is_financial_question(
+            question=normalized_question,
+            module=normalized_module,
+        ):
+            return {
+                "question": normalized_question,
+                "mode": normalized_mode,
+                "module": normalized_module,
+                "supported": False,
+                "answer": FINANCIAL_SCOPE_MESSAGE,
+                "topics": [],
+                "sources": [],
+                "suggested_followups": FINANCIAL_SCOPE_FOLLOWUPS,
+            }
 
         topics = self._detect_topics(
             question=normalized_question,
