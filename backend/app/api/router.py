@@ -17,6 +17,7 @@ from app.api.v1 import (
     persistence,
     portfolio,
     returns_stats,
+    reports,
     risk,
     roboadvisor,
     stress,
@@ -49,3 +50,6 @@ api_router.include_router(roboadvisor.router, prefix="/roboadvisor", tags=["Robo
 api_router.include_router(perri.router, prefix="/perri", tags=["Perri"])
 api_router.include_router(persistence.router, prefix="/persistence", tags=["Persistence"])
 api_router.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
+api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
+
+
