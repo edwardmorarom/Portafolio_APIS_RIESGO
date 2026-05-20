@@ -16,7 +16,7 @@ class InvestorPreferencesRequest(BaseModel):
     )
     risk_profile: str = Field(
         default="conservador",
-        description="Perfil: conservador, arriesgado, minimo_riesgo, maxima_utilidad, cero_riesgo",
+        description="Perfil: conservador, moderado o agresivo",
     )
     horizon_type: str = Field(
         default="1y",
@@ -66,7 +66,7 @@ class InvestorPreferencesRequest(BaseModel):
     @classmethod
     def validate_risk_profile(cls, v: str) -> str:
         value = v.strip().lower()
-        allowed = {"conservador", "arriesgado", "minimo_riesgo", "maxima_utilidad", "cero_riesgo"}
+        allowed = {"conservador", "moderado", "agresivo"}
         if value not in allowed:
             raise ValueError("risk_profile no válido")
         return value
@@ -131,3 +131,13 @@ class InvestorPreferencesResponse(BaseModel):
     mode: str
     target_return_annual: float | None = None
     message: str
+class KYCProfileRequest(BaseModel):
+    age: int = Field(..., ge=18, le=100, description="Edad del inversionista")
+    experience: int = Field(..., ge=0, le=60, description="Anios de experiencia invirtiendo")
+    tolerance: int = Field(..., ge=1, le=5, description="Tolerancia al riesgo de 1 a 5")
+
+
+class KYCProfileResponse(BaseModel):
+    suggested_profile: str
+    score: int
+    explanation: str
