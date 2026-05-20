@@ -745,7 +745,7 @@ python -m app.jobs.run_perri_optimization
 
 ```powershell
 $env:PYTHONPATH="backend"
-python -m compileall backendpp
+python -m compileall backend pp
 python -m compileall frontend
 python -m pytest tests -v
 ```
@@ -822,7 +822,7 @@ Antes de cada commit:
 
 ```powershell
 git status
-python -m compileall backendpp
+python -m compileall backend pp
 python -m compileall frontend
 $env:PYTHONPATH="backend"
 python -m pytest tests -v
@@ -876,3 +876,20 @@ El proyecto trabaja sobre una moneda base comun, USD, para evitar errores metodo
 Perri usa precios persistidos en SQLite, no calculos improvisados en frontend. Esto permite reproducibilidad, automatizacion y trazabilidad.
 
 Machine Learning se implementa como componente backend reproducible mediante entrenamiento, persistencia del modelo y consumo por endpoint.
+
+## Actualización reciente: KYC y reportes ejecutivos
+
+El proyecto incorpora dos módulos adicionales en Streamlit:
+
+- Módulo 13 - Perfil de Riesgo KYC: calcula un perfil sugerido conservador, moderado o agresivo a partir de edad, experiencia y tolerancia al riesgo.
+- Módulo 14 - Reportes Ejecutivos: consume el endpoint /api/v1/reports/executive-summary y presenta un resumen institucional PDF-ready.
+
+Flujo integrado:
+
+KYC -> perfil sugerido -> session_state -> Markowitz / RoboAdvisor -> Reporte ejecutivo
+
+Endpoint backend agregado:
+
+GET /api/v1/reports/executive-summary
+
+Este endpoint consolida información institucional sobre perfil del inversionista, riesgo de mercado, optimización, Machine Learning, chatbot experto y stack técnico.
