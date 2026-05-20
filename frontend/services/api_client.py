@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 from dataclasses import dataclass
@@ -345,6 +345,14 @@ class ApiClient:
             include_api_key=True,
         )
 
+
+    # ---------- KYC / Investor profile ----------
+    def suggest_kyc_profile(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post(
+            "/investor/kyc/profile",
+            json_payload=payload,
+            include_api_key=True,
+        )
     # ---------- RoboAdvisor ----------
     # ---------- Perri ----------
     def get_perri_latest(self) -> dict[str, Any]:
@@ -358,8 +366,8 @@ class ApiClient:
 
     def post_roboadvisor_suggest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
-        Envía el perfil del cliente y sus activos manuales para recibir 
-        una sugerencia de portafolio híbrido institucional.
+        EnvÃ­a el perfil del cliente y sus activos manuales para recibir 
+        una sugerencia de portafolio hÃ­brido institucional.
         """
         return self.post(
             "/roboadvisor/suggest",
@@ -379,3 +387,4 @@ class ApiClient:
 @st.cache_resource
 def get_api_client() -> ApiClient:
     return ApiClient()
+
