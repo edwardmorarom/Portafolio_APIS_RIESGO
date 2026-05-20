@@ -30,6 +30,13 @@ def _read_secret(key: str, default: str | None = None) -> str | None:
 
     value = os.getenv(key, default)
     return str(value) if value is not None else None
+
+    # ---------- Reports ----------
+    def get_executive_summary_report(self) -> dict[str, Any]:
+        return self.get(
+            "/reports/executive-summary",
+            include_api_key=True,
+        )
     # ---------- Machine Learning ----------
     def predict_ml_return(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self.post(
@@ -376,6 +383,13 @@ class ApiClient:
         )
 
 
+
+    # ---------- Reports ----------
+    def get_executive_summary_report(self) -> dict[str, Any]:
+        return self.get(
+            "/reports/executive-summary",
+            include_api_key=True,
+        )
     # ---------- Machine Learning ----------
     def predict_ml_return(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self.post(
@@ -387,5 +401,6 @@ class ApiClient:
 @st.cache_resource
 def get_api_client() -> ApiClient:
     return ApiClient()
+
 
 

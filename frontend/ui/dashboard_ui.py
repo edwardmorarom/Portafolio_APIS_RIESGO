@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from html import escape
 
 import streamlit as st
@@ -9,13 +9,13 @@ from ui.theme import build_global_css, image_to_base64, safe_text
 NAV_ITEMS = [
     ("Inicio", "app.py"),
     ("0 Contexto", "pages/0_Contextualizacion.py"),
-    ("1 Técnico", "pages/01_Tecnico.py"),
+    ("1 TÃ©cnico", "pages/01_Tecnico.py"),
     ("2 Rendimientos", "pages/02_Rendimientos.py"),
     ("3 GARCH", "pages/03_Garch.py"),
     ("4 CAPM", "pages/04_Capm.py"),
     ("5 VaR/CVaR", "pages/05_Var_Cvar.py"),
     ("6 Markowitz", "pages/06_Markowitz.py"),
-    ("7 Señales", "pages/07_Señales.py"),
+    ("7 SeÃ±ales", "pages/07_SeÃ±ales.py"),
     ("8 Macro", "pages/08_Macro_Benchmark.py"),
     ("9 Renta fija", "pages/09_Renta_Fija.py"),
     ("10 Opciones", "pages/10_Opciones.py"),
@@ -31,7 +31,7 @@ def aplicar_estilos_globales(modo: str = "General"):
 
 def render_sidebar_brand(
     title: str = "Dashboard Riesgo",
-    subtitle: str = "Universidad Santo Tomás",
+    subtitle: str = "Universidad Santo TomÃ¡s",
     logo_path: str = "frontend/assets/escudo_santo_tomas.png",
 ):
     logo_b64 = image_to_base64(logo_path)
@@ -81,7 +81,7 @@ def render_sidebar_session():
         unsafe_allow_html=True,
     )
 
-    if st.sidebar.button("Cerrar sesión", key="sidebar_logout", use_container_width=True):
+    if st.sidebar.button("Cerrar sesiÃ³n", key="sidebar_logout", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_role = None
         st.session_state.user_name = None
@@ -90,21 +90,21 @@ def render_sidebar_session():
 
 def render_sidebar_panel(
     modo_default: str = "General",
-    filtros_label: str = "Opciones Del Módulo",
+    filtros_label: str = "Opciones Del MÃ³dulo",
     filtros_expanded: bool = False,
 ):
     st.sidebar.markdown(
-        '<div style="font-size:0.92rem;font-weight:700;color:var(--accent-main);margin:0.15rem 0 0.45rem 0;">Modo De Visualización</div>',
+        '<div style="font-size:0.92rem;font-weight:700;color:var(--accent-main);margin:0.15rem 0 0.45rem 0;">Modo De VisualizaciÃ³n</div>',
         unsafe_allow_html=True,
     )
 
     modo = st.sidebar.radio(
-        "Modo De Visualización",
-        ["General", "Estadístico"],
+        "Modo De VisualizaciÃ³n",
+        ["General", "EstadÃ­stico"],
         index=0 if modo_default == "General" else 1,
         key="sidebar_modo_visualizacion",
         label_visibility="collapsed",
-        help="General resume e interpreta. Estadístico profundiza más en lectura técnica y detalle analítico.",
+        help="General resume e interpreta. EstadÃ­stico profundiza mÃ¡s en lectura tÃ©cnica y detalle analÃ­tico.",
     )
 
     filtros_sidebar = st.sidebar.expander(filtros_label, expanded=filtros_expanded)
@@ -122,7 +122,7 @@ def render_top_navigation():
         <div class="top-shell">
             <div>
                 <div class="top-brand">Portafolio Riesgo USTA</div>
-                <div class="top-subtitle">Riesgo cuantitativo, valoración y optimización institucional</div>
+                <div class="top-subtitle">Riesgo cuantitativo, valoraciÃ³n y optimizaciÃ³n institucional</div>
             </div>
             <div class="top-session">
                 <span>{safe_text(user_name)}</span>
@@ -133,7 +133,7 @@ def render_top_navigation():
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="nav-ordered-label">Navegación de módulos</div>', unsafe_allow_html=True)
+    st.markdown('<div class="nav-ordered-label">NavegaciÃ³n de mÃ³dulos</div>', unsafe_allow_html=True)
 
     items_per_row = 7
     for start in range(0, len(NAV_ITEMS), items_per_row):
@@ -146,19 +146,19 @@ def render_top_navigation():
 
 def render_filter_panel(
     modo_default: str = "General",
-    filtros_label: str = "Parámetros Del Módulo",
+    filtros_label: str = "ParÃ¡metros Del MÃ³dulo",
     filtros_expanded: bool = False,
 ):
     panel = st.expander(filtros_label, expanded=filtros_expanded)
 
     with panel:
         modo = st.radio(
-            "Modo de visualización",
-            ["General", "Estadístico"],
+            "Modo de visualizaciÃ³n",
+            ["General", "EstadÃ­stico"],
             index=0 if modo_default == "General" else 1,
             key="top_modo_visualizacion",
             horizontal=True,
-            help="General resume e interpreta. Estadístico prioriza detalle técnico y lectura cuantitativa.",
+            help="General resume e interpreta. EstadÃ­stico prioriza detalle tÃ©cnico y lectura cuantitativa.",
         )
 
     return modo, panel
@@ -299,3 +299,4 @@ def toolbar_label(texto: str):
         f'<div class="ui-toolbar-label">{safe_text(texto)}</div>',
         unsafe_allow_html=True,
     )
+
