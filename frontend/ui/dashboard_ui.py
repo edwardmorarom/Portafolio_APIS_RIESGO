@@ -21,6 +21,7 @@ NAV_ITEMS = [
     ("10 Opciones", "pages/10_Opciones.py"),
     ("11 Stress", "pages/11_Stress_Testing.py"),
     ("12 ML", "pages/12_Machine_Learning.py"),
+    ("13 Perfil", "pages/13_Perfil_Riesgo.py"),
 ]
 
 
