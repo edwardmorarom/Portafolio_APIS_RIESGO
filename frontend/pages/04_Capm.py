@@ -542,7 +542,7 @@ render_info_card(
     "Clasificación obtenida",
     f"La clasificación obtenida es: {classification}. Esta etiqueta resume si el activo se comporta de forma más agresiva, defensiva o cercana al mercado.",
 )
-st.dataframe(table_df, width="stretch", hide_index=True)
+st.dataframe(table_df, use_container_width=True, hide_index=True)
 
 seccion("Regresión CAPM")
 
@@ -572,7 +572,7 @@ fig_reg = _build_regression_figure(
     clean_view=clean_view,
 )
 
-st.plotly_chart(fig_reg, width="stretch")
+st.plotly_chart(fig_reg, use_container_width=True)
 
 if points_df.empty:
     st.warning(

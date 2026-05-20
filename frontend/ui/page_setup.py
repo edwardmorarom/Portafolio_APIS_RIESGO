@@ -3,8 +3,8 @@ from __future__ import annotations
 import streamlit as st
 from ui.dashboard_ui import (
     aplicar_estilos_globales,
-    render_sidebar_brand,
-    render_sidebar_panel,
+    render_filter_panel,
+    render_top_navigation,
 )
 
 
@@ -15,6 +15,8 @@ def setup_dashboard_page(
     modo_default: str = "General",
     filtros_label: str = "Parámetros Del Módulo",
     filtros_expanded: bool = False,
+    page_title: str | None = None,
+    page_icon: str | None = None,
 ):
     # --- CAPA DE SEGURIDAD GLOBAL ---
     # Protege todas las páginas de la carpeta 'pages/'
@@ -22,15 +24,20 @@ def setup_dashboard_page(
         st.switch_page("app.py")
     # --------------------------------
 
+    try:
+        st.set_page_config(
+            page_title=page_title or title,
+            page_icon=page_icon,
+            layout="wide",
+        )
+    except st.errors.StreamlitAPIException:
+        pass
+
     aplicar_estilos_globales(modo="General")
 
-    render_sidebar_brand(
-        title=title,
-        subtitle=subtitle,
-        logo_path=logo_path,
-    )
+    render_top_navigation()
 
-    modo, filtros_sidebar = render_sidebar_panel(
+    modo, filtros_panel = render_filter_panel(
         modo_default=modo_default,
         filtros_label=filtros_label,
         filtros_expanded=filtros_expanded,
@@ -38,4 +45,4 @@ def setup_dashboard_page(
 
     aplicar_estilos_globales(modo=modo)
 
-    return modo, filtros_sidebar
+    return modo, filtros_panel

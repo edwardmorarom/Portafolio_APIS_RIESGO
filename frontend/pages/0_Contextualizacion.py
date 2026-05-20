@@ -218,7 +218,7 @@ def _render_role_card(profile: dict[str, str]):
             '">'
             '<div style="position:absolute;left:0;top:0;width:100%;height:4px;'
             'background:linear-gradient(90deg,var(--accent-main),var(--accent-second));"></div>'
-            '<div style="font-size:0.80rem;font-weight:900;letter-spacing:0.08em;'
+            '<div style="font-size:0.80rem;font-weight:900;letter-spacing:0;'
             'text-transform:uppercase;color:var(--text-muted);margin-bottom:0.65rem;">'
             'Rol en portafolio'
             '</div>'
@@ -234,7 +234,7 @@ def _render_role_card(profile: dict[str, str]):
 
 def _render_financial_card(profile: dict[str, str], asset: dict):
     country = asset.get("country", "N/D")
-    base_tag = "S?" if asset.get("default") else "No"
+    base_tag = "Sí" if asset.get("default") else "No"
     asset_type = asset.get("asset_type") or "N/D"
     benchmark_ticker = asset.get("benchmark_ticker") or "N/D"
     benchmark_description = asset.get("benchmark_description") or "Benchmark no especificado"
@@ -251,14 +251,14 @@ def _render_financial_card(profile: dict[str, str], asset: dict):
             'padding:1rem 1.1rem;'
             'overflow:hidden;'
             '">'
-            '<div style="font-size:0.80rem;font-weight:900;letter-spacing:0.08em;'
+            '<div style="font-size:0.80rem;font-weight:900;letter-spacing:0;'
             'text-transform:uppercase;color:var(--text-muted);margin-bottom:0.7rem;">'
             'Lectura financiera del activo'
             '</div>'
             f'<div style="font-size:0.96rem;line-height:1.65;color:var(--text-soft);'
             f'font-weight:600;margin-bottom:0.85rem;">{safe_text(profile["tesis"])}</div>'
             '<div style="display:flex;flex-wrap:wrap;gap:0.45rem;margin-bottom:0.8rem;">'
-            f'<span class="ui-chip"><strong>Pa?s:</strong>&nbsp;{safe_text(country)}</span>'
+            f'<span class="ui-chip"><strong>País:</strong>&nbsp;{safe_text(country)}</span>'
             f'<span class="ui-chip"><strong>Activo base:</strong>&nbsp;{base_tag}</span>'
             f'<span class="ui-chip"><strong>Clase:</strong>&nbsp;{safe_text(asset_type)}</span>'
             f'<span class="ui-chip"><strong>Benchmark:</strong>&nbsp;{safe_text(benchmark_ticker)}</span>'
@@ -266,7 +266,7 @@ def _render_financial_card(profile: dict[str, str], asset: dict):
             '</div>'
             f'<div style="font-size:0.92rem;line-height:1.58;color:var(--text-soft);font-weight:600;">'
             f'<strong>Riesgo:</strong> {safe_text(profile["riesgo"])}<br>'
-            f'<strong>Benchmark metodol?gico:</strong> {safe_text(benchmark_description)}<br>'
+            f'<strong>Benchmark metodológico:</strong> {safe_text(benchmark_description)}<br>'
             f'<strong>Lectura de portafolio:</strong> {safe_text(profile["lectura"])}'
             '</div>'
             '</div>'
@@ -374,7 +374,7 @@ def _render_rf_and_benchmark_tab():
         },
     ]
 
-    st.dataframe(pd.DataFrame(conversion_rows), width="stretch", hide_index=True)
+    st.dataframe(pd.DataFrame(conversion_rows), use_container_width=True, hide_index=True)
 
     seccion("Tasa libre de riesgo")
 
@@ -415,7 +415,7 @@ def _render_rf_and_benchmark_tab():
         },
     ]
 
-    st.dataframe(pd.DataFrame(rf_rows), width="stretch", hide_index=True)
+    st.dataframe(pd.DataFrame(rf_rows), use_container_width=True, hide_index=True)
 
     render_meta_row(
         [
@@ -446,7 +446,7 @@ def _render_rf_and_benchmark_tab():
         }
     ]
 
-    st.dataframe(pd.DataFrame(benchmark_rows), width="stretch", hide_index=True)
+    st.dataframe(pd.DataFrame(benchmark_rows), use_container_width=True, hide_index=True)
 
     render_info_card(
         "Relación entre Rf, moneda y benchmark",

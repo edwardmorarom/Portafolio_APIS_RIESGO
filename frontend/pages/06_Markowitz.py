@@ -999,7 +999,7 @@ with tab1:
     else:
         st.dataframe(
             top_portfolios_df,
-            width="stretch",
+            use_container_width=True,
             hide_index=True,
         )
 
@@ -1083,13 +1083,13 @@ with tab2:
             show_corr_table = st.checkbox("Ver tabla de correlación", value=False, key="markowitz_corr_table")
 
         fig_corr = _build_corr_heatmap(corr_df, modo=modo, clean_view=corr_clean)
-        st.plotly_chart(fig_corr, width="stretch")
+        st.plotly_chart(fig_corr, use_container_width=True)
         plot_card_footer(
             "La matriz de correlación ayuda a identificar qué activos se mueven parecido y cuáles aportan diversificación."
         )
 
         if show_corr_table and not corr_df.empty:
-            st.dataframe(corr_df, width="stretch")
+            st.dataframe(corr_df, use_container_width=True)
 
     with g2:
         plot_card_header(
@@ -1121,7 +1121,7 @@ with tab2:
             show_optimal=show_optimal,
             clean_view=frontier_clean,
         )
-        st.plotly_chart(fig_frontier, width="stretch")
+        st.plotly_chart(fig_frontier, use_container_width=True)
         plot_card_footer(
             "La frontera eficiente resume las mejores combinaciones riesgo-retorno encontradas. "
             "El punto seleccionado depende del perfil o del retorno objetivo configurado."
@@ -1154,7 +1154,7 @@ with tab3:
             "El backend no devolvió pesos para el portafolio seleccionado.",
         )
     else:
-        st.dataframe(selected_df, width="stretch", hide_index=True)
+        st.dataframe(selected_df, use_container_width=True, hide_index=True)
 
     seccion("Composición de portafolios óptimos")
 
@@ -1167,7 +1167,7 @@ with tab3:
             modo=modo,
             caption="Ordenado de mayor a menor participación.",
         )
-        st.dataframe(min_var_df, width="stretch", hide_index=True)
+        st.dataframe(min_var_df, use_container_width=True, hide_index=True)
 
     with c2:
         plot_card_header(
@@ -1176,7 +1176,7 @@ with tab3:
             modo=modo,
             caption="Ordenado de mayor a menor participación.",
         )
-        st.dataframe(max_sharpe_df, width="stretch", hide_index=True)
+        st.dataframe(max_sharpe_df, use_container_width=True, hide_index=True)
 
     if use_target_return:
         seccion("Optimización con retorno objetivo")
@@ -1209,7 +1209,7 @@ with tab3:
             tarjeta_kpi("Volatilidad", _format_pct(target_vol), subtexto="Riesgo asociado al retorno objetivo.")
 
         with t2:
-            st.dataframe(target_df, width="stretch", hide_index=True)
+            st.dataframe(target_df, use_container_width=True, hide_index=True)
 
     if profile_suggestion:
         seccion("Portafolio sugerido por perfil")
@@ -1229,7 +1229,7 @@ with tab3:
             )
 
         with s2:
-            st.dataframe(profile_df, width="stretch", hide_index=True)
+            st.dataframe(profile_df, use_container_width=True, hide_index=True)
 
     seccion("Pesos manuales de referencia")
 
@@ -1241,7 +1241,7 @@ with tab3:
         ),
     )
 
-    st.dataframe(reference_df, width="stretch", hide_index=True)
+    st.dataframe(reference_df, use_container_width=True, hide_index=True)
 
     seccion("Interpretación")
 

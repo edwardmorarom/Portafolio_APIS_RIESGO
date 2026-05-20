@@ -770,7 +770,7 @@ with tab2:
         clean_view=clean_view,
     )
 
-    st.plotly_chart(fig_dist, width="stretch")
+    st.plotly_chart(fig_dist, use_container_width=True)
 
     plot_card_footer(
         "VaR y CVaR son pérdidas positivas como métrica, pero se dibujan con signo negativo para representar la cola izquierda de los retornos."
@@ -779,7 +779,7 @@ with tab2:
 with tab3:
     seccion("Comparación VaR / CVaR")
 
-    st.dataframe(comparison_df, width="stretch", hide_index=True)
+    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
 
     seccion("Interpretación")
 

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: portafolio-riesgo-api
+    runtime: docker
+    plan: free
+    branch: backend
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        value: sqlite:///./data/portafolio_riesgo.db
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:8501,http://127.0.0.1:8501
