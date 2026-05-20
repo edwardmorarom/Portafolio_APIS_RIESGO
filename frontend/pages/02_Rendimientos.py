@@ -319,7 +319,7 @@ def _render_test_card(
         <div class="ui-test-card">
             <div class="ui-test-head">
                 <div class="ui-test-title">{title}</div>
-                <span class="ui-help" title="{conclusion}">?</span>
+                <span class="ui-help" title="{conclusion}"></span>
             </div>
             <div class="ui-test-value">{metric_label}: {value_text}</div>
             <div class="ui-test-conclusion">{short_conclusion}</div>
@@ -332,7 +332,7 @@ def _render_test_card(
 def _help_badge(text: str):
     st.markdown(
         f"""
-        <span class="ui-help" title="{text}">?</span>
+        <span class="ui-help" title="{text}"></span>
         """,
         unsafe_allow_html=True,
     )

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import streamlit as st
+from ui.chatbot_widget import render_floating_chatbot
 from ui.dashboard_ui import (
     aplicar_estilos_globales,
-    render_filter_panel,
+    render_invisible_filter_panel,
+    render_sidebar_brand,
+    render_sidebar_session,
     render_top_navigation,
 )
 
@@ -35,14 +38,14 @@ def setup_dashboard_page(
 
     aplicar_estilos_globales(modo="General")
 
+    render_sidebar_brand(title=title, subtitle=subtitle, logo_path=logo_path)
+    render_sidebar_session()
+
     render_top_navigation()
 
-    modo, filtros_panel = render_filter_panel(
-        modo_default=modo_default,
-        filtros_label=filtros_label,
-        filtros_expanded=filtros_expanded,
-    )
+    modo, filtros_panel = render_invisible_filter_panel()
 
     aplicar_estilos_globales(modo=modo)
+    render_floating_chatbot(module=title, mode=modo)
 
     return modo, filtros_panel

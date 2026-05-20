@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import altair as alt
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -17,6 +18,7 @@ from ui.dashboard_ui import (
     toolbar_label,
 )
 from ui.page_setup import setup_dashboard_page
+from ui.altair_style import bar_chart, horizontal_rule, line_chart
 from ui.plot_style import add_reference_line, style_plotly_figure
 
 
@@ -477,6 +479,264 @@ def _plot_stochastic(
     )
 
 
+# Altair overrides used by the page render below. The legacy Plotly builders are
+# kept above only to minimize churn in this deployed Streamlit app.
+def _melt_chart_data(df: pd.DataFrame, columns: dict[str, str]) -> pd.DataFrame:
+    selected = ["date", *columns.keys()]
+    existing = [column for column in selected if column in df.columns]
+
+    if "date" not in existing or len(existing) <= 1:
+        return pd.DataFrame({"date": [], "serie": [], "value": []})
+
+    out = df[existing].copy()
+    out = out.rename(columns=columns)
+    out = out.melt(id_vars="date", var_name="serie", value_name="value")
+    out["value"] = pd.to_numeric(out["value"], errors="coerce")
+    return out.dropna(subset=["date", "value"])
+
+
+def _empty_chart(df: pd.DataFrame, modo: str, y_title: str, height: int = 390) -> alt.Chart:
+    if "date" in df and len(df):
+        empty_date = pd.to_datetime(df["date"]).iloc[:1]
+    else:
+        empty_date = pd.to_datetime([])
+
+    empty = pd.DataFrame(
+        {
+            "date": empty_date,
+            "serie": ["Sin capas visibles"] if len(empty_date) else [],
+            "value": [0.0] if len(empty_date) else [],
+        }
+    )
+
+    return line_chart(
+        empty,
+        modo=modo,
+        x="date",
+        y="value",
+        color="serie",
+        series_names=["Sin capas visibles"],
+        y_title=y_title,
+        height=height,
+    )
+
+
+def _plot_price_ma(
+    df: pd.DataFrame,
+    modo: str,
+    sma_window: int,
+    ema_window: int,
+    show_price: bool,
+    show_sma: bool,
+    show_ema: bool,
+) -> alt.Chart:
+    columns: dict[str, str] = {}
+    if show_price:
+        columns["close"] = "Precio"
+    if show_sma:
+        columns[f"sma_{sma_window}"] = f"SMA {sma_window}"
+    if show_ema:
+        columns[f"ema_{ema_window}"] = f"EMA {ema_window}"
+
+    data = _melt_chart_data(df, columns)
+    if data.empty:
+        return _empty_chart(df, modo=modo, y_title="Precio")
+
+    return line_chart(
+        data,
+        modo=modo,
+        x="date",
+        y="value",
+        color="serie",
+        series_names=list(columns.values()),
+        y_title="Precio",
+        height=390,
+        stroke_width=2,
+    )
+
+
+def _plot_rsi(
+    df: pd.DataFrame,
+    modo: str,
+    rsi_window: int,
+    show_line: bool,
+    show_levels: bool,
+) -> alt.Chart:
+    layers: list[alt.Chart] = []
+
+    if show_line:
+        data = _melt_chart_data(df, {f"rsi_{rsi_window}": f"RSI {rsi_window}"})
+        if not data.empty:
+            layers.append(
+                line_chart(
+                    data,
+                    modo=modo,
+                    x="date",
+                    y="value",
+                    color="serie",
+                    series_names=[f"RSI {rsi_window}"],
+                    y_title="RSI",
+                    height=320,
+                    y_scale=alt.Scale(domain=[0, 100]),
+                    stroke_width=2,
+                )
+            )
+
+    if show_levels:
+        layers.extend(
+            [
+                horizontal_rule(70, modo=modo, label="Sobrecompra 70", color="#DC2626"),
+                horizontal_rule(30, modo=modo, label="Sobreventa 30", color="#059669"),
+            ]
+        )
+
+    if not layers:
+        return _empty_chart(df, modo=modo, y_title="RSI", height=320)
+
+    return alt.layer(*layers).resolve_scale(color="independent")
+
+
+def _plot_bollinger(
+    df: pd.DataFrame,
+    modo: str,
+    boll_window: int,
+    show_price: bool,
+    show_mid: bool,
+    show_up: bool,
+    show_low: bool,
+) -> alt.Chart:
+    columns: dict[str, str] = {}
+    if show_price:
+        columns["close"] = "Precio"
+    if show_mid:
+        columns[f"bb_mid_{boll_window}"] = "Media"
+    if show_up:
+        columns[f"bb_up_{boll_window}"] = "Banda sup."
+    if show_low:
+        columns[f"bb_low_{boll_window}"] = "Banda inf."
+
+    data = _melt_chart_data(df, columns)
+    if data.empty:
+        return _empty_chart(df, modo=modo, y_title="Precio", height=320)
+
+    return line_chart(
+        data,
+        modo=modo,
+        x="date",
+        y="value",
+        color="serie",
+        series_names=list(columns.values()),
+        y_title="Precio",
+        height=320,
+        stroke_width=2,
+    )
+
+
+def _plot_macd(
+    df: pd.DataFrame,
+    modo: str,
+    show_macd: bool,
+    show_signal: bool,
+    show_hist: bool,
+) -> alt.Chart:
+    layers: list[alt.Chart] = []
+
+    line_columns: dict[str, str] = {}
+    if show_macd:
+        line_columns["macd"] = "MACD"
+    if show_signal:
+        line_columns["macd_signal"] = "Señal"
+
+    line_data = _melt_chart_data(df, line_columns)
+    if not line_data.empty:
+        layers.append(
+            line_chart(
+                line_data,
+                modo=modo,
+                x="date",
+                y="value",
+                color="serie",
+                series_names=list(line_columns.values()),
+                y_title="Valor MACD",
+                height=320,
+                stroke_width=2,
+            )
+        )
+
+    if show_hist and "macd_hist" in df:
+        hist_df = df[["date", "macd_hist"]].copy()
+        hist_df["macd_hist"] = pd.to_numeric(hist_df["macd_hist"], errors="coerce")
+        hist_df = hist_df.dropna(subset=["date", "macd_hist"])
+        if not hist_df.empty:
+            layers.append(
+                bar_chart(
+                    hist_df,
+                    modo=modo,
+                    x="date",
+                    y="macd_hist",
+                    color_condition=alt.condition(
+                        alt.datum.macd_hist >= 0,
+                        alt.value("#059669"),
+                        alt.value("#DC2626"),
+                    ),
+                    y_title="Valor MACD",
+                    height=320,
+                )
+            )
+
+    if not layers:
+        return _empty_chart(df, modo=modo, y_title="Valor MACD", height=320)
+
+    return alt.layer(*layers).resolve_scale(color="independent")
+
+
+def _plot_stochastic(
+    df: pd.DataFrame,
+    modo: str,
+    stoch_window: int,
+    show_k: bool,
+    show_d: bool,
+    show_levels: bool,
+) -> alt.Chart:
+    columns: dict[str, str] = {}
+    if show_k:
+        columns[f"stoch_k_{stoch_window}"] = "%K"
+    if show_d:
+        columns[f"stoch_d_{stoch_window}"] = "%D"
+
+    data = _melt_chart_data(df, columns)
+    layers: list[alt.Chart] = []
+
+    if not data.empty:
+        layers.append(
+            line_chart(
+                data,
+                modo=modo,
+                x="date",
+                y="value",
+                color="serie",
+                series_names=list(columns.values()),
+                y_title="Estocástico",
+                height=320,
+                y_scale=alt.Scale(domain=[0, 100]),
+                stroke_width=2,
+            )
+        )
+
+    if show_levels:
+        layers.extend(
+            [
+                horizontal_rule(80, modo=modo, label="Sobrecompra 80", color="#DC2626"),
+                horizontal_rule(20, modo=modo, label="Sobreventa 20", color="#059669"),
+            ]
+        )
+
+    if not layers:
+        return _empty_chart(df, modo=modo, y_title="Estocástico", height=320)
+
+    return alt.layer(*layers).resolve_scale(color="independent")
+
+
 assets, help_map, load_error = _fetch_assets_and_help()
 
 modo, filtros_sidebar = setup_dashboard_page(
@@ -777,7 +1037,7 @@ fig_price = _plot_price_ma(
     show_sma=show_sma,
     show_ema=show_ema,
 )
-st.plotly_chart(fig_price, use_container_width=True)
+st.altair_chart(fig_price, use_container_width=True)
 plot_card_footer(_interpret_trend(close_now, sma_now, ema_now))
 
 g1, g2 = st.columns(2, gap="large")
@@ -797,12 +1057,14 @@ with g1:
     with r2:
         rsi_levels = st.checkbox("Niveles 30/70", value=True, key="tec_rsi_levels")
 
-    fig_rsi = _plot_rsi(df, modo=modo, rsi_window=rsi_window, show_levels=rsi_levels)
-    if not rsi_line:
-        for trace in fig_rsi.data:
-            trace.visible = "legendonly"
-
-    st.plotly_chart(fig_rsi, use_container_width=True)
+    fig_rsi = _plot_rsi(
+        df,
+        modo=modo,
+        rsi_window=rsi_window,
+        show_line=rsi_line,
+        show_levels=rsi_levels,
+    )
+    st.altair_chart(fig_rsi, use_container_width=True)
     plot_card_footer(_interpret_rsi(rsi_now))
 
 with g2:
@@ -833,7 +1095,7 @@ with g2:
         show_up=show_boll_up,
         show_low=show_boll_low,
     )
-    st.plotly_chart(fig_boll, use_container_width=True)
+    st.altair_chart(fig_boll, use_container_width=True)
     plot_card_footer(_interpret_bollinger(close_now, bb_low_now, bb_up_now))
 
 g3, g4 = st.columns(2, gap="large")
@@ -870,7 +1132,7 @@ with g3:
         show_hist=show_hist,
     )
 
-    st.plotly_chart(fig_macd, use_container_width=True)
+    st.altair_chart(fig_macd, use_container_width=True)
 
     plot_card_footer(
         _interpret_macd(macd_now, macd_signal_now, macd_hist_now)
@@ -901,17 +1163,12 @@ with g4:
         df=df,
         modo=modo,
         stoch_window=stoch_window,
+        show_k=show_stoch_k,
+        show_d=show_stoch_d,
         show_levels=show_stoch_levels,
     )
 
-    for trace in fig_stoch.data:
-        name = str(getattr(trace, "name", "")).lower()
-        if "%k" in name:
-            trace.visible = True if show_stoch_k else "legendonly"
-        elif "%d" in name:
-            trace.visible = True if show_stoch_d else "legendonly"
-
-    st.plotly_chart(fig_stoch, use_container_width=True)
+    st.altair_chart(fig_stoch, use_container_width=True)
 
     plot_card_footer(
         _interpret_stochastic(stoch_k_now, stoch_d_now)

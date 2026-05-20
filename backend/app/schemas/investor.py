@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import date
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -20,7 +20,7 @@ class InvestorPreferencesRequest(BaseModel):
     )
     horizon_type: str = Field(
         default="1y",
-        description="Horizonte: 1y, 3y, 5y o custom",
+        description="Horizonte: 1y, 2y, 3y, 5y o custom",
     )
     start: str | None = Field(default=None, description="Fecha inicial si horizon_type=custom")
     end: str | None = Field(default=None, description="Fecha final si horizon_type=custom")
@@ -75,8 +75,8 @@ class InvestorPreferencesRequest(BaseModel):
     @classmethod
     def validate_horizon_type(cls, v: str) -> str:
         value = v.strip().lower()
-        if value not in {"1y", "3y", "5y", "custom"}:
-            raise ValueError("horizon_type debe ser 1y, 3y, 5y o custom")
+        if value not in {"1y", "2y", "3y", "5y", "custom"}:
+            raise ValueError("horizon_type debe ser 1y, 2y, 3y, 5y o custom")
         return value
 
     @field_validator("return_type")

@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_chip_row, render_info_card, render_meta_row
-from ui.dashboard_ui import header_dashboard, nota, seccion, tarjeta_kpi
+from ui.dashboard_ui import aplicar_estilos_globales, header_dashboard, nota, seccion, tarjeta_kpi
 from ui.page_setup import setup_dashboard_page
 from ui.portfolio_config import render_global_portfolio_config
 from ui.theme import build_global_css, image_to_base64, safe_text
@@ -39,34 +40,13 @@ MODULE_GROUPS = {
 }
 
 
-MODULE_GROUPS = {
-    "Mercado y contexto": [
-        ("Módulo 0", "Contextualización", "Universo de activos, moneda, Rf y benchmark.", "pages/0_Contextualizacion.py"),
-        ("Módulo 1", "Técnico", "Precio, medias móviles, RSI, Bollinger, MACD y estocástico.", "pages/01_Tecnico.py"),
-        ("Módulo 2", "Rendimientos", "Distribución, normalidad, QQ plot y estadística descriptiva.", "pages/02_Rendimientos.py"),
-        ("Módulo 8", "Macro y benchmark", "Tasa libre de riesgo, FX, alpha, tracking error e IR.", "pages/08_Macro_Benchmark.py"),
-    ],
-    "Riesgo cuantitativo": [
-        ("Módulo 3", "GARCH", "ARCH, GARCH, EGARCH, diagnóstico y pronóstico de volatilidad.", "pages/03_Garch.py"),
-        ("Módulo 4", "CAPM", "Beta, alpha, retorno esperado y lectura por activo o portafolio.", "pages/04_Capm.py"),
-        ("Módulo 5", "VaR/CVaR", "VaR histórico, paramétrico, Monte Carlo, CVaR y Kupiec.", "pages/05_Var_Cvar.py"),
-        ("Módulo 11", "Stress testing", "Escenarios adversos de tasa, mercado y volatilidad.", "pages/11_Stress_Testing.py"),
-    ],
-    "Optimización y modelos": [
-        ("Módulo 6", "Markowitz", "Frontera eficiente, mínimos, Sharpe y comparación Perri.", "pages/06_Markowitz.py"),
-        ("Módulo 7", "Señales", "Lectura integrada de señales técnicas por activo.", "pages/07_Señales.py"),
-        ("Módulo 9", "Renta fija", "Nelson-Siegel, curva de tasas, duración y convexidad.", "pages/09_Renta_Fija.py"),
-        ("Módulo 10", "Opciones", "Black-Scholes, Greeks, payoff y sensibilidad.", "pages/10_Opciones.py"),
-        ("Módulo 12", "Machine Learning", "Predicción de retorno con variables de riesgo y mercado.", "pages/12_Machine_Learning.py"),
-    ],
-}
-
-
 def _init_session_state() -> None:
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
         st.session_state.user_role = None
         st.session_state.user_name = None
+
+
 
 
 def _load_users() -> list[dict]:
@@ -80,41 +60,51 @@ def _load_users() -> list[dict]:
     return users if isinstance(users, list) else []
 
 
-def _users_json_path() -> Path:
-    return Path("backend/data/users.json")
 
 
-def _load_users_for_registration() -> list[dict]:
-    users_path = _users_json_path()
-
-    if not users_path.exists():
-        return []
-
-    payload = json.loads(users_path.read_text(encoding="utf-8-sig"))
-    users = payload.get("users", [])
-
-    return users if isinstance(users, list) else []
 
 
-def _save_users_for_registration(users: list[dict]) -> None:
-    users_path = _users_json_path()
-    users_path.parent.mkdir(parents=True, exist_ok=True)
-    users_path.write_text(
-        json.dumps({"users": users}, ensure_ascii=False, indent=4),
-        encoding="utf-8",
-    )
 
 
-def _username_exists_for_registration(username: str) -> bool:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def _save_users(users: list[dict]) -> None:
+    USERS_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    with USERS_PATH.open("w", encoding="utf-8") as file:
+        json.dump({"users": users}, file, ensure_ascii=False, indent=4)
+
+
+def _username_exists(username: str) -> bool:
     username = str(username or "").strip().lower()
 
     return any(
         str(user.get("username", "")).strip().lower() == username
-        for user in _load_users_for_registration()
+        for user in _load_users()
     )
 
 
-def _risk_profile_from_registration(age: int, experience: int, tolerance: int, objective: str) -> str:
+def _profile_from_registration(
+    *,
+    age: int,
+    experience: int,
+    tolerance: int,
+    objective: str,
+) -> str:
     score = 0
 
     if age <= 30:
@@ -161,26 +151,25 @@ def registrar_usuario(
     full_name = str(full_name or "").strip()
 
     if len(username) < 4:
-        return False, "El usuario debe tener mnimo 4 caracteres."
+        return False, "El usuario debe tener m?nimo 4 caracteres."
 
     if len(password) < 6:
-        return False, "La contrasea debe tener mnimo 6 caracteres."
+        return False, "La contrase?a debe tener m?nimo 6 caracteres."
 
     if not full_name:
         return False, "Debes ingresar tu nombre completo."
 
-    if _username_exists_for_registration(username):
+    if _username_exists(username):
         return False, "Ese usuario ya existe. Prueba con otro nombre de usuario."
 
-    fallback_profile = _risk_profile_from_registration(
+    fallback_profile = _profile_from_registration(
         age=int(age),
         experience=int(experience),
         tolerance=int(tolerance),
         objective=investment_objective,
     )
 
-    users = _load_users_for_registration()
-
+    users = _load_users()
     users.append(
         {
             "username": username,
@@ -191,43 +180,126 @@ def registrar_usuario(
                 "age": int(age),
                 "experience": int(experience),
                 "tolerance": int(tolerance),
-                "investment_objective": investment_objective,
                 "preferred_horizon": None,
+                "investment_objective": investment_objective,
                 "fallback_profile": fallback_profile,
             },
         }
     )
 
-    _save_users_for_registration(users)
+    _save_users(users)
 
     return True, "Usuario registrado correctamente."
 
-def verificar_login(username, password):
+
+def verificar_login(username: str, password: str) -> bool:
     username = str(username or "").strip().lower()
 
-    try:
-        with open("backend/data/users.json", "r", encoding="utf-8-sig") as f:
-            db = json.load(f)
+    for user in _load_users():
+        current_username = str(user.get("username", "")).strip().lower()
 
-        for u in db.get("users", []):
-            current_username = str(u.get("username", "")).strip().lower()
+        if current_username == username and user.get("password") == password:
+            user_kyc = user.get("kyc", {}) or {}
 
-            if current_username == username and u.get("password") == password:
-                user_kyc = u.get("kyc", {}) or {}
-
-                st.session_state.logged_in = True
-                st.session_state.user_role = u.get("role", "user")
-                st.session_state.user_name = u.get("full_name", username)
-                st.session_state.user_username = u.get("username", username)
-                st.session_state.user_kyc_data = user_kyc
-                st.session_state.user_preferred_horizon = user_kyc.get("preferred_horizon")
-                st.session_state.kyc_profile = user_kyc.get("fallback_profile")
-                return True
-
-    except FileNotFoundError:
-        st.error("Base de datos de usuarios no encontrada.")
+            st.session_state.logged_in = True
+            st.session_state.user_role = user.get("role", "user")
+            st.session_state.user_name = user.get("full_name", username)
+            st.session_state.user_username = user.get("username", username)
+            st.session_state.user_kyc_data = user_kyc
+            st.session_state.user_preferred_horizon = user_kyc.get("preferred_horizon")
+            st.session_state.kyc_profile = user_kyc.get("fallback_profile")
+            return True
 
     return False
+
+def _render_superuser_users_panel() -> None:
+    if st.session_state.get("user_role") != "superuser":
+        return
+
+    with st.expander("Panel superusuario ? Usuarios registrados", expanded=False):
+        users = _load_users()
+
+        if not users:
+            st.info("No hay usuarios registrados.")
+            return
+
+        rows = []
+
+        for user in users:
+            kyc = user.get("kyc", {}) or {}
+
+            rows.append(
+                {
+                    "Usuario": user.get("username", "N/D"),
+                    "Nombre": user.get("full_name", "N/D"),
+                    "Rol": user.get("role", "user"),
+                    "Edad": kyc.get("age", "N/D"),
+                    "Experiencia": kyc.get("experience", "N/D"),
+                    "Tolerancia": kyc.get("tolerance", "N/D"),
+                    "Horizonte": kyc.get("preferred_horizon", "N/D"),
+                    "Objetivo": kyc.get("investment_objective", "N/D"),
+                    "Perfil sugerido": str(kyc.get("fallback_profile", "pendiente")).upper(),
+                }
+            )
+
+        df = pd.DataFrame(rows)
+
+        st.caption(
+            "Vista administrativa. Por seguridad no se muestran contrase?as."
+        )
+
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+
+def _render_superuser_users_panel() -> None:
+    if st.session_state.get("user_role") != "superuser":
+        return
+
+    with st.expander("Panel superusuario ? Usuarios registrados", expanded=False):
+        users = _load_users()
+
+        if not users:
+            st.info("No hay usuarios registrados.")
+            return
+
+        rows = []
+
+        for user in users:
+            kyc = user.get("kyc", {}) or {}
+
+            rows.append(
+                {
+                    "Usuario": user.get("username", "N/D"),
+                    "Nombre": user.get("full_name", "N/D"),
+                    "Rol": user.get("role", "user"),
+                    "Edad": kyc.get("age", "N/D"),
+                    "Experiencia": kyc.get("experience", "N/D"),
+                    "Tolerancia": kyc.get("tolerance", "N/D"),
+                    "Horizonte": kyc.get("preferred_horizon", "N/D"),
+                    "Objetivo": kyc.get("investment_objective", "N/D"),
+                    "Perfil sugerido": str(kyc.get("fallback_profile", "pendiente")).upper(),
+                }
+            )
+
+        df = pd.DataFrame(rows)
+
+        st.caption(
+            "Vista administrativa. Por seguridad no se muestran contrase?as."
+        )
+
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+
 
 def _logout() -> None:
     st.session_state.logged_in = False
@@ -254,6 +326,12 @@ def _login_css() -> str:
         [data-testid="stSidebarNav"],
         [data-testid="collapsedControl"] {
             display: none !important;
+        }
+
+        header[data-testid="stHeader"] {
+            background: transparent !important;
+            box-shadow: none !important;
+            border-bottom: none !important;
         }
 
         .block-container {
@@ -291,9 +369,25 @@ def _login_css() -> str:
             box-shadow: 0 18px 44px rgba(0, 0, 0, 0.20);
             backdrop-filter: blur(18px);
         }
+
+        .login-card-title {
+            color: #F8FAFC !important;
+            font-size: 1.35rem;
+            font-weight: 900;
+        }
+
+        .login-card-subtitle {
+            color: #BFD7FF !important;
+            font-size: 0.92rem;
+            margin-top: 0.25rem;
+        }
+
+        div[data-testid="stTabs"] button p {
+            color: #D8E6FF !important;
+            font-weight: 900 !important;
+        }
     </style>
     """
-
 
 def _logo_html() -> str:
     logo_b64 = image_to_base64(LOGO_PATH)
@@ -305,7 +399,7 @@ def _logo_html() -> str:
 def _render_login() -> None:
     st.set_page_config(
         page_title="Acceso | Portafolio Riesgo USTA",
-        page_icon="🔐",
+        page_icon="?",
         layout="wide",
         initial_sidebar_state="collapsed",
     )
@@ -329,7 +423,7 @@ def _render_login() -> None:
                 </div>
                 <div class="login-title" style="position:relative;z-index:1;margin-top:4.2rem;">Welcome back...</div>
                 <div class="login-subtitle" style="position:relative;z-index:1;">
-                    Riesgo, valoración, optimización y automatización Perri en un entorno financiero profesional.
+                    Riesgo, valoraci?n, optimizaci?n y automatizaci?n Perri en un entorno financiero profesional.
                 </div>
                 <div class="login-trust-row" style="position:relative;z-index:1;">
                     <span class="login-trust">FastAPI</span>
@@ -343,45 +437,55 @@ def _render_login() -> None:
         )
 
     with right:
-        st.markdown(
-            """
-            <div class="login-card-header">
-                <div class="login-card-title">Sign in</div>
-                <div class="login-card-subtitle">Ingresa con tus credenciales asignadas.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        login_tab, register_tab = st.tabs(["Ingresar", "Registrarme"])
 
-        with st.form("login_form"):
-            username = st.text_input("Usuario", placeholder="Usuario")
-            password = st.text_input("Contraseña", type="password", placeholder="Contraseña")
-            submitted = st.form_submit_button("Ingresar", use_container_width=True)
+        with login_tab:
+            st.markdown(
+                """
+                <div class="login-card-header">
+                    <div class="login-card-title">Sign in</div>
+                    <div class="login-card-subtitle">Ingresa con tus credenciales asignadas o con tu cuenta registrada.</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-            if submitted:
-                if verificar_login(username.strip(), password):
-                    st.success(f"Bienvenido, {st.session_state.user_name}.")
-                    st.rerun()
-                else:
-                    st.error("Usuario o contraseña incorrectos.")
+            with st.form("login_form"):
+                username = st.text_input("Usuario", placeholder="Usuario")
+                password = st.text_input("Contrase?a", type="password", placeholder="Contrase?a")
+                submitted = st.form_submit_button("Ingresar", use_container_width=True)
 
+                if submitted:
+                    if verificar_login(username.strip(), password):
+                        st.success(f"Bienvenido, {st.session_state.user_name}.")
+                        st.rerun()
+                    else:
+                        st.error("Usuario o contrase?a incorrectos.")
 
-        with st.expander("No tienes cuenta Crear cuenta nueva", expanded=False):
-            st.caption("Registra tus datos personales para estimar tu perfil de riesgo inicial.")
+        with register_tab:
+            st.markdown(
+                """
+                <div class="login-card-header">
+                    <div class="login-card-title">Crear cuenta</div>
+                    <div class="login-card-subtitle">Registra tus datos para estimar tu perfil de riesgo inicial.</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             with st.form("register_form"):
-                full_name = st.text_input("Nombre completo", placeholder="Ej: Juan Prez")
-                new_username = st.text_input("Usuario nuevo", placeholder="Mnimo 4 caracteres")
-                new_password = st.text_input("Contrasea nueva", type="password", placeholder="Mnimo 6 caracteres")
-                confirm_password = st.text_input("Confirmar contrasea", type="password")
+                full_name = st.text_input("Nombre completo", placeholder="Ej: Juan P?rez")
+                new_username = st.text_input("Usuario nuevo", placeholder="M?nimo 4 caracteres")
+                new_password = st.text_input("Contrase?a", type="password", placeholder="M?nimo 6 caracteres")
+                confirm_password = st.text_input("Confirmar contrase?a", type="password")
 
-                col_reg_1, col_reg_2 = st.columns(2)
+                c1, c2 = st.columns(2)
 
-                with col_reg_1:
+                with c1:
                     age = st.number_input("Edad", min_value=18, max_value=150, value=30, step=1)
                     experience = st.number_input("Experiencia invirtiendo", min_value=0, max_value=100, value=1, step=1)
 
-                with col_reg_2:
+                with c2:
                     tolerance = st.slider("Tolerancia al riesgo", min_value=1, max_value=5, value=3)
                     investment_objective = st.selectbox(
                         "Objetivo principal",
@@ -391,7 +495,7 @@ def _render_login() -> None:
                             "crecimiento",
                         ],
                         format_func=lambda value: {
-                            "preservacion_capital": "Preservacin de capital",
+                            "preservacion_capital": "Preservaci?n de capital",
                             "crecimiento_controlado": "Crecimiento controlado",
                             "crecimiento": "Crecimiento agresivo",
                         }.get(value, value),
@@ -402,7 +506,7 @@ def _render_login() -> None:
 
                 if register_submitted:
                     if new_password != confirm_password:
-                        st.error("Las contraseas no coinciden.")
+                        st.error("Las contrase?as no coinciden.")
                     else:
                         ok, message = registrar_usuario(
                             username=new_username,
@@ -417,9 +521,11 @@ def _render_login() -> None:
                         if not ok:
                             st.error(message)
                         else:
-                            st.success("Cuenta creada correctamente. Ya puedes ingresar con ese usuario y contrasea.")
-    st.stop()
+                            verificar_login(new_username, new_password)
+                            st.success("Cuenta creada correctamente. Ingresando al dashboard...")
+                            st.rerun()
 
+    st.stop()
 
 def _render_module_card(module: tuple[str, str, str, str]) -> None:
     code, title, description, page_path = module
@@ -509,81 +615,34 @@ def _render_session_tab() -> None:
 
 
 def _render_home() -> None:
-    modo, filtros_panel = setup_dashboard_page(
+    modo, _filtros_panel = setup_dashboard_page(
         title="Dashboard Riesgo",
-        subtitle="Universidad Santo Tomás",
-        filtros_label="Parámetros generales",
+        subtitle="Universidad Santo Tom?s",
+        filtros_label="Inicio",
         filtros_expanded=False,
         page_title="Dashboard Riesgo",
-        page_icon="📊",
+        page_icon="?",
     )
 
-    with filtros_panel:
-        st.caption("Panel de inicio")
-        st.write("Usa las pestañas superiores para navegar por módulos y este panel para opciones generales.")
-
     header_dashboard(
-        "Centro de análisis de portafolio",
-        "Riesgo, valoración, optimización, señales y automatización institucional en una sola experiencia.",
+        "Inicio del portafolio",
+        "Configura el portafolio global y luego consulta el centro de an?lisis desde el M?dulo 0.",
         modo=modo,
     )
 
-    role = st.session_state.get("user_role")
-    render_meta_row(
-        {
-            "Usuario": st.session_state.get("user_name", "N/D"),
-            "Rol": _role_label(role),
-            "Interfaz": "Diseño profesional",
-            "Modo": modo,
-        }
+    render_info_card(
+        "Centro de an?lisis movido al M?dulo 0",
+        (
+            "El resumen institucional, la navegaci?n por m?dulos y el estado del backend ahora se consultan "
+            "en Contextualizaci?n. El Inicio queda reservado para definir el portafolio inicial."
+        ),
     )
 
+    st.page_link(
+        "pages/0_Contextualizacion.py",
+        label="Abrir M?dulo 0 ? Centro de an?lisis",
+        use_container_width=True,
+    )
 
-    seccion("Configuracin inicial global del portafolio")
+    seccion("Configuraci?n inicial global del portafolio")
     render_global_portfolio_config()
-
-    tab_home, tab_modules, tab_status, tab_session = st.tabs(
-        ["Resumen", "Módulos", "Estado", "Sesión"]
-    )
-
-    with tab_home:
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            tarjeta_kpi("Cobertura", "13", subtexto="Módulos Streamlit")
-        with c2:
-            tarjeta_kpi("Backend", "FastAPI", subtexto="Servicios financieros")
-        with c3:
-            tarjeta_kpi("Perri", "1y · 3y · 5y", subtexto="Horizontes institucionales")
-        with c4:
-            tarjeta_kpi("Modelo", "ML", subtexto="Predicción de retorno")
-
-        seccion("Flujo recomendado")
-        cols = st.columns(3, gap="large")
-        with cols[0]:
-            render_info_card("1. Contexto", "Revisa activos, moneda, tasa libre de riesgo y benchmark.")
-        with cols[1]:
-            render_info_card("2. Riesgo", "Evalúa volatilidad, CAPM, VaR/CVaR, GARCH y stress testing.")
-        with cols[2]:
-            render_info_card("3. Decisión", "Contrasta Markowitz, señales, Perri, RoboAdvisor y ML.")
-
-        if role == "superuser":
-            nota("Modo superusuario activo: el diseño queda preparado para paneles de auditoría, KYC y gestión institucional.")
-        else:
-            nota("Modo cliente activo: navegación enfocada en consulta, simulación y lectura financiera.")
-
-    with tab_modules:
-        _render_modules_tab()
-
-    with tab_status:
-        _render_status_tab()
-
-    with tab_session:
-        _render_session_tab()
-
-
-_init_session_state()
-
-if not st.session_state.logged_in:
-    _render_login()
-
-_render_home()

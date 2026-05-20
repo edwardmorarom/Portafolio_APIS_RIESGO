@@ -732,7 +732,7 @@ with filtros_sidebar:
     st.markdown("---")
     st.subheader("🤖 Perri - Robo-Advisor Cuantitativo")
     
-    num_sugeridos = st.slider("Activos totales deseados", 2, 15, 5, key="robo_num_assets", help="¿De cuántos activos quieres el portafolio final?")
+    num_sugeridos = st.slider("Activos totales deseados", 2, 15, 5, key="robo_num_assets", help="¿De cuántos activos quieres el portafolio final")
     
     if st.button("Generar sugerencia con Perri", use_container_width=True):
         with st.spinner("Consultando reserva institucional y optimizando..."):

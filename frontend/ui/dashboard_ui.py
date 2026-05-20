@@ -1,6 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 from html import escape
+from contextlib import nullcontext
 
+import json
+from pathlib import Path
 import streamlit as st
 
 from ui.theme import build_global_css, image_to_base64, safe_text
@@ -9,13 +12,13 @@ from ui.theme import build_global_css, image_to_base64, safe_text
 NAV_ITEMS = [
     ("Inicio", "app.py"),
     ("0 Contexto", "pages/0_Contextualizacion.py"),
-    ("1 TÃ©cnico", "pages/01_Tecnico.py"),
+    ("1 Técnico", "pages/01_Tecnico.py"),
     ("2 Rendimientos", "pages/02_Rendimientos.py"),
     ("3 GARCH", "pages/03_Garch.py"),
     ("4 CAPM", "pages/04_Capm.py"),
     ("5 VaR/CVaR", "pages/05_Var_Cvar.py"),
     ("6 Markowitz", "pages/06_Markowitz.py"),
-    ("7 SeÃ±ales", "pages/07_SeÃ±ales.py"),
+    ("7 Señales", "pages/07_Señales.py"),
     ("8 Macro", "pages/08_Macro_Benchmark.py"),
     ("9 Renta fija", "pages/09_Renta_Fija.py"),
     ("10 Opciones", "pages/10_Opciones.py"),
@@ -25,13 +28,36 @@ NAV_ITEMS = [
 ]
 
 
+def _navigation_items() -> list[tuple[str, str]]:
+    return [
+        ("Inicio", "app.py"),
+        ("0 Contexto", "pages/0_Contextualizacion.py"),
+        ("1 Técnico", "pages/01_Tecnico.py"),
+        ("2 Rendimientos", "pages/02_Rendimientos.py"),
+        ("3 GARCH", "pages/03_Garch.py"),
+        ("4 CAPM", "pages/04_Capm.py"),
+        ("5 VaR/CVaR", "pages/05_Var_Cvar.py"),
+        ("6 Markowitz", "pages/06_Markowitz.py"),
+        ("7 Señales", "pages/07_Señales.py"),
+        ("8 Macro", "pages/08_Macro_Benchmark.py"),
+        ("9 Renta fija", "pages/09_Renta_Fija.py"),
+        ("10 Opciones", "pages/10_Opciones.py"),
+        ("11 Stress", "pages/11_Stress_Testing.py"),
+        ("12 ML", "pages/12_Machine_Learning.py"),
+        ("13 Perfil", "pages/13_Perfil_Riesgo.py"),
+    ]
+
+
+NAV_ITEMS = _navigation_items()
+
+
 def aplicar_estilos_globales(modo: str = "General"):
     st.markdown(build_global_css(modo), unsafe_allow_html=True)
 
 
 def render_sidebar_brand(
     title: str = "Dashboard Riesgo",
-    subtitle: str = "Universidad Santo TomÃ¡s",
+    subtitle: str = "Universidad Santo Tomás",
     logo_path: str = "frontend/assets/escudo_santo_tomas.png",
 ):
     logo_b64 = image_to_base64(logo_path)
@@ -63,48 +89,250 @@ def render_sidebar_brand(
     )
 
 
+
+
+
+
+
+def _persist_user_session_data(
+    *,
+    username: str,
+    full_name: str,
+    kyc_data: dict,
+) -> tuple[bool, str]:
+    users_path = Path(__file__).resolve().parents[2] / "backend" / "data" / "users.json"
+
+    username = str(username or "").strip().lower()
+    full_name = str(full_name or "").strip()
+
+    if not username or username == "n/d":
+        return False, "No se encontr el username de la sesin. Cierra sesin e ingresa nuevamente."
+
+    if not users_path.exists():
+        return False, f"No existe el archivo de usuarios: {users_path}"
+
+    try:
+        payload = json.loads(users_path.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        return False, f"No fue posible leer users.json: {exc}"
+
+    users = payload.get("users", [])
+    if not isinstance(users, list):
+        return False, "users.json no tiene una lista vlida de usuarios."
+
+    user_found = None
+    for user in users:
+        current_username = str(user.get("username", "")).strip().lower()
+        if current_username == username:
+            user_found = user
+            break
+
+    if user_found is None:
+        return False, f"No se encontr el usuario '{username}' en users.json."
+
+    if full_name:
+        user_found["full_name"] = full_name
+
+    current_kyc = user_found.get("kyc", {}) or {}
+
+    current_kyc["age"] = int(kyc_data.get("age", current_kyc.get("age", 30)))
+    current_kyc["experience"] = int(kyc_data.get("experience", current_kyc.get("experience", 0)))
+
+    user_found["kyc"] = current_kyc
+
+    try:
+        users_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=4),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        return False, f"No fue posible guardar users.json: {exc}"
+
+    return True, "Datos personales guardados correctamente."
+
+
 def render_sidebar_session():
     if not st.session_state.get("logged_in"):
         return
 
     user_name = st.session_state.get("user_name") or "Usuario"
+    username = st.session_state.get("user_username") or "N/D"
     role = st.session_state.get("user_role") or "user"
     role_label = "Superusuario" if role == "superuser" else "Cliente"
 
+    user_kyc = st.session_state.get("user_kyc_data", {}) or {}
+    portfolio_config = st.session_state.get("portfolio_config", {}) or {}
+
+    profile = (
+        st.session_state.get("kyc_profile")
+        or portfolio_config.get("risk_profile")
+        or user_kyc.get("fallback_profile")
+        or "pendiente"
+    )
+
+    age = int(user_kyc.get("age", 30))
+    experience = int(user_kyc.get("experience", 2))
+
+    tickers = portfolio_config.get("tickers", []) or []
+    weights = portfolio_config.get("weights_pct", []) or []
+    horizon = portfolio_config.get("horizon_type") or "PENDIENTE"
+    base_currency = portfolio_config.get("base_currency", "USD")
+
     st.sidebar.markdown(
         f"""
-        <div class="sidebar-session">
-            <div class="sidebar-session-name">{safe_text(user_name)}</div>
-            <div class="sidebar-session-role">{safe_text(role_label)}</div>
+        <div class="sidebar-profile-card">
+            <div class="sidebar-profile-title">Mi usuario</div>
+            <div class="sidebar-profile-grid">
+                <div class="sidebar-profile-item">
+                    <span class="sidebar-profile-label">Nombre</span>
+                    <strong class="sidebar-profile-value">{safe_text(user_name)}</strong>
+                </div>
+                <div class="sidebar-profile-item">
+                    <span class="sidebar-profile-label">Usuario</span>
+                    <strong class="sidebar-profile-value">{safe_text(username)}</strong>
+                </div>
+                <div class="sidebar-profile-item">
+                    <span class="sidebar-profile-label">Rol</span>
+                    <strong class="sidebar-profile-value">{safe_text(role_label)}</strong>
+                </div>
+                <div class="sidebar-profile-item">
+                    <span class="sidebar-profile-label">Perfil de riesgo</span>
+                    <strong class="sidebar-profile-value">{safe_text(str(profile).upper())}</strong>
+                </div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    if st.sidebar.button("Cerrar sesiÃ³n", key="sidebar_logout", use_container_width=True):
+    st.sidebar.divider()
+
+    with st.sidebar.expander("Configurar datos personales", expanded=False):
+        st.caption("Estos datos actualizan la sesin actual y se guardan en el registro del usuario.")
+
+        with st.form("sidebar_personal_data_form"):
+            new_full_name = st.text_input(
+                "Nombre completo",
+                value=str(user_name),
+                key="sidebar_user_full_name",
+            )
+
+            new_age = st.number_input(
+                "Edad",
+                min_value=18,
+                max_value=150,
+                value=age,
+                step=1,
+                key="sidebar_user_age",
+            )
+
+            new_experience = st.number_input(
+                "Experiencia invirtiendo",
+                min_value=0,
+                max_value=100,
+                value=experience,
+                step=1,
+                key="sidebar_user_experience",
+            )
+
+            submitted = st.form_submit_button(
+                "Guardar datos personales",
+                use_container_width=True,
+            )
+
+            if submitted:
+                updated_kyc = dict(user_kyc)
+                updated_kyc["age"] = int(new_age)
+                updated_kyc["experience"] = int(new_experience)
+
+                ok, message = _persist_user_session_data(
+                    username=username,
+                    full_name=new_full_name,
+                    kyc_data=updated_kyc,
+                )
+
+                st.session_state.user_name = new_full_name
+                st.session_state.user_kyc_data = updated_kyc
+
+                if ok:
+                    st.success(message)
+                else:
+                    st.warning(message)
+
+                st.rerun()
+
+    st.sidebar.divider()
+
+    st.sidebar.subheader("Portafolio activo")
+
+    c1, c2 = st.sidebar.columns(2)
+    with c1:
+        st.metric("Activos", len(tickers))
+    with c2:
+        st.metric("Moneda", base_currency)
+
+    st.sidebar.markdown(
+        f"""
+        <div class="sidebar-portfolio-summary">
+            <div class="sidebar-portfolio-summary-title">Resumen de riesgo</div>
+            <div class="sidebar-portfolio-summary-grid">
+                <div class="sidebar-portfolio-summary-item">
+                    <span>Riesgo asumido</span>
+                    <strong>{safe_text(str(profile).upper())}</strong>
+                </div>
+                <div class="sidebar-portfolio-summary-item">
+                    <span>Horizonte</span>
+                    <strong>{safe_text(str(horizon).upper())}</strong>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if tickers:
+        with st.sidebar.expander("Ver tickers y pesos", expanded=False):
+            for index, ticker in enumerate(tickers):
+                weight = weights[index] if index < len(weights) else None
+                if weight is None:
+                    st.write(f"- {ticker}")
+                else:
+                    st.write(f"- {ticker}: {float(weight):.2f}%")
+    else:
+        st.caption("An no hay portafolio global guardado.")
+
+    st.sidebar.divider()
+
+    if st.sidebar.button("Cerrar sesin", key="sidebar_logout", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_role = None
         st.session_state.user_name = None
+        st.session_state.user_username = None
+        st.session_state.user_kyc_data = {}
+        st.session_state.user_preferred_horizon = None
+        st.session_state.portfolio_config = {}
+        st.session_state.robo_portfolio = []
         st.switch_page("app.py")
+
 
 
 def render_sidebar_panel(
     modo_default: str = "General",
-    filtros_label: str = "Opciones Del MÃ³dulo",
+    filtros_label: str = "Opciones Del Módulo",
     filtros_expanded: bool = False,
 ):
     st.sidebar.markdown(
-        '<div style="font-size:0.92rem;font-weight:700;color:var(--accent-main);margin:0.15rem 0 0.45rem 0;">Modo De VisualizaciÃ³n</div>',
+        '<div style="font-size:0.92rem;font-weight:700;color:var(--accent-main);margin:0.15rem 0 0.45rem 0;">Modo De Visualización</div>',
         unsafe_allow_html=True,
     )
 
     modo = st.sidebar.radio(
-        "Modo De VisualizaciÃ³n",
-        ["General", "EstadÃ­stico"],
+        "Modo De Visualización",
+        ["General", "Estadístico"],
         index=0 if modo_default == "General" else 1,
         key="sidebar_modo_visualizacion",
         label_visibility="collapsed",
-        help="General resume e interpreta. EstadÃ­stico profundiza mÃ¡s en lectura tÃ©cnica y detalle analÃ­tico.",
+        help="General resume e interpreta. Estadístico profundiza mÃ¡s en lectura tÃ©cnica y detalle analÃ­tico.",
     )
 
     filtros_sidebar = st.sidebar.expander(filtros_label, expanded=filtros_expanded)
@@ -113,40 +341,134 @@ def render_sidebar_panel(
 
 
 def render_top_navigation():
-    user_name = st.session_state.get("user_name") or "Usuario"
-    role = st.session_state.get("user_role") or "user"
-    role_label = "Superusuario" if role == "superuser" else "Cliente"
+    import inspect
+    from pathlib import Path as _Path
+
+    nav_items = [
+        ("Inicio", "app.py"),
+        ("0 Contexto", "pages/0_Contextualizacion.py"),
+        ("1 T?cnico", "pages/01_Tecnico.py"),
+        ("2 Rendimientos", "pages/02_Rendimientos.py"),
+        ("3 GARCH", "pages/03_Garch.py"),
+        ("4 CAPM", "pages/04_Capm.py"),
+        ("5 VaR/CVaR", "pages/05_Var_Cvar.py"),
+        ("6 Markowitz", "pages/06_Markowitz.py"),
+        ("7 Se?ales", "pages/07_Señales.py"),
+        ("8 Macro", "pages/08_Macro_Benchmark.py"),
+        ("9 Renta fija", "pages/09_Renta_Fija.py"),
+        ("10 Opciones", "pages/10_Opciones.py"),
+        ("11 Stress", "pages/11_Stress_Testing.py"),
+        ("12 ML", "pages/12_Machine_Learning.py"),
+        ("13 Perfil", "pages/13_Perfil_Riesgo.py"),
+    ]
+
+    nav_items = _navigation_items()
+    page_names = {_Path(page_path).name for _, page_path in nav_items}
+    current_name = "app.py"
+
+    for frame in inspect.stack():
+        candidate = _Path(frame.filename).name
+        if candidate in page_names:
+            current_name = candidate
+            break
 
     st.markdown(
-        f"""
-        <div class="top-shell">
-            <div>
-                <div class="top-brand">Portafolio Riesgo USTA</div>
-                <div class="top-subtitle">Riesgo cuantitativo, valoraciÃ³n y optimizaciÃ³n institucional</div>
-            </div>
-            <div class="top-session">
-                <span>{safe_text(user_name)}</span>
-                <strong>{safe_text(role_label)}</strong>
-            </div>
-        </div>
+        """
+        <style>
+            .top-nav-active-pill {
+                width: 100%;
+                min-height: 2.55rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                border-radius: 999px;
+                padding: 0.45rem 0.70rem;
+                background: linear-gradient(135deg, #8A1538 0%, #B91C1C 100%);
+                color: #FFFFFF !important;
+                -webkit-text-fill-color: #FFFFFF !important;
+                font-size: 0.82rem;
+                font-weight: 900;
+                line-height: 1.2;
+                box-shadow: 0 8px 20px rgba(138, 21, 56, 0.22);
+                border: 1px solid rgba(255,255,255,0.20);
+                margin-bottom: 0.18rem;
+            }
+
+            .top-nav-active-caption {
+                color: #64748B !important;
+                -webkit-text-fill-color: #64748B !important;
+                font-size: 0.68rem;
+                font-weight: 800;
+                text-align: center;
+                margin-bottom: 0.22rem;
+            }
+
+            [data-testid="stPageLink"] a {
+                min-height: 2.55rem !important;
+                border-radius: 999px !important;
+                font-weight: 850 !important;
+                text-align: center !important;
+                white-space: normal !important;
+                line-height: 1.2 !important;
+                padding: 0.48rem 0.62rem !important;
+                overflow: visible !important;
+            }
+
+            [data-testid="stPageLink"] p {
+                white-space: normal !important;
+                line-height: 1.2 !important;
+                text-align: center !important;
+                overflow-wrap: normal !important;
+                word-break: keep-all !important;
+            }
+        </style>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="nav-ordered-label">NavegaciÃ³n de mÃ³dulos</div>', unsafe_allow_html=True)
+    # 15 m?dulos en 3 filas de 5 para que el texto no quede apretado.
+    for row_start in range(0, len(nav_items), 5):
+        cols = st.columns(5, gap="small")
+        row_items = nav_items[row_start:row_start + 5]
 
-    items_per_row = 7
-    for start in range(0, len(NAV_ITEMS), items_per_row):
-        row_items = NAV_ITEMS[start:start + items_per_row]
-        cols = st.columns(len(row_items))
         for col, (label, page_path) in zip(cols, row_items):
+            page_name = _Path(page_path).name
+
             with col:
-                st.page_link(page_path, label=label, use_container_width=True)
+                if page_name == current_name:
+                    st.markdown(
+                        f"""
+                        <div class="top-nav-active-pill">{safe_text(label)}</div>
+                        <div class="top-nav-active-caption">Actual</div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.page_link(
+                        page_path,
+                        label=label,
+                        use_container_width=True,
+                    )
+
+
+def render_invisible_filter_panel():
+    """
+    Panel tcnico vaco para mantener compatibilidad con pginas que hacen:
+
+        modo, filtros_sidebar = setup_dashboard_page(...)
+        with filtros_sidebar:
+            ...
+
+    Ya no muestra el bloque visual de 'Parmetros generales' ni el selector
+    'Modo de visualizacin'.
+    """
+    return "General", nullcontext()
 
 
 def render_filter_panel(
     modo_default: str = "General",
-    filtros_label: str = "ParÃ¡metros Del MÃ³dulo",
+    filtros_label: str = "Parámetros Del Módulo",
     filtros_expanded: bool = False,
 ):
     panel = st.expander(filtros_label, expanded=filtros_expanded)
@@ -154,11 +476,11 @@ def render_filter_panel(
     with panel:
         modo = st.radio(
             "Modo de visualizaciÃ³n",
-            ["General", "EstadÃ­stico"],
+            ["General", "Estadístico"],
             index=0 if modo_default == "General" else 1,
             key="top_modo_visualizacion",
             horizontal=True,
-            help="General resume e interpreta. EstadÃ­stico prioriza detalle tÃ©cnico y lectura cuantitativa.",
+            help="General resume e interpreta. Estadístico prioriza detalle técnico y lectura cuantitativa.",
         )
 
     return modo, panel
@@ -221,7 +543,7 @@ def titulo_con_ayuda(titulo: str, help_text: str, nivel: int = 3):
         f"""
         <div style="display:flex;align-items:center;gap:0.30rem;margin-bottom:0.25rem;">
             <{tag} style="margin:0;">{safe_text(titulo)}</{tag}>
-            <span class="ui-help" title="{safe_text(help_text)}">?</span>
+            <span class="ui-help" title="{safe_text(help_text)}"></span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -247,7 +569,7 @@ def tarjeta_kpi(
     help_safe = safe_text(help_text)
     subtexto_safe = safe_text(subtexto)
 
-    help_html = f'<span class="ui-help" title="{help_safe}">?</span>' if help_safe else ""
+    help_html = f'<span class="ui-help" title="{help_safe}"></span>' if help_safe else ""
     delta_html = f'<div class="ui-kpi-delta {delta_class}">{delta_safe}</div>' if delta_safe else ""
     subtexto_html = f'<div class="ui-kpi-sub">{subtexto_safe}</div>' if subtexto_safe else ""
 
@@ -268,7 +590,7 @@ def tarjeta_kpi(
 
 def plot_card_header(titulo: str, help_text: str = "", modo: str = "General", caption: str = ""):
     caption_html = f'<div class="ui-plot-caption">{safe_text(caption)}</div>' if caption else ""
-    help_html = f'<span class="ui-help" title="{safe_text(help_text)}">?</span>' if help_text else ""
+    help_html = f'<span class="ui-help" title="{safe_text(help_text)}"></span>' if help_text else ""
 
     st.markdown(
         f"""

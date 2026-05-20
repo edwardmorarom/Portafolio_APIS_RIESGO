@@ -267,7 +267,7 @@ def compact_help_card(title: str, help_text: str, caption: str = ""):
             <div class="ui-plot-head-top">
                 <div style="display:flex;align-items:center;gap:0.35rem;margin:0;">
                     <div class="ui-plot-title">{title}</div>
-                    <span class="ui-help" title="{help_text}">?</span>
+                    <span class="ui-help" title="{help_text}"></span>
                 </div>
             </div>
             {caption_html}

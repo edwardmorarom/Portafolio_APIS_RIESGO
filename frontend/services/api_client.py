@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 from dataclasses import dataclass
@@ -167,6 +167,10 @@ class ApiClient:
     # ---------- Help ----------
     def get_help_catalog(self) -> dict[str, Any]:
         return self.get("/help/catalog")
+
+    # ---------- Chatbot ----------
+    def ask_chatbot(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post("/chatbot/ask", json_payload=payload)
 
     # ---------- Market ----------
     def get_prices(self, ticker: str, start: str, end: str) -> dict[str, Any]:
@@ -364,10 +368,10 @@ class ApiClient:
     # ---------- Perri ----------
     def get_perri_latest(self) -> dict[str, Any]:
         """
-        Consulta la ?ltima optimizaci?n institucional precalculada de Perri.
+        Consulta la ultima optimizacion institucional precalculada de Perri.
 
         Este endpoint evita recalcular Markowitz desde el frontend y permite
-        cargar r?pido los portafolios de 1, 3 y 5 a?os para 5 y 10 activos.
+        cargar rapido los portafolios de 1, 3 y 5 anios para 5 y 10 activos.
         """
         return self.get("/perri/latest")
 

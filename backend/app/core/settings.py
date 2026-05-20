@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     )
     min_obs_var: int = Field(default=60, ge=30, le=5000, description="Observaciones mÃ­nimas para VaR")
     min_obs_capm: int = Field(default=60, ge=30, le=5000, description="Observaciones mÃ­nimas para CAPM")
-    min_obs_portfolio: int = Field(default=60, ge=30, le=5000, description="Observaciones mÃ­nimas para optimizaciÃ³n")
+    min_obs_portfolio: int = Field(default=60, ge=30, le=5000, description="Observaciones mÃ­nimas para optimización")
 
     model_config = SettingsConfigDict(
         env_file=".env",

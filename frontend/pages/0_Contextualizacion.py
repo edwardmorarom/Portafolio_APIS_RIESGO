@@ -18,6 +18,51 @@ from ui.theme import image_to_base64, safe_text
 from services.api_client import get_api_client, ApiClientError
 
 
+
+CONTEXT_MODULE_GROUPS = {
+    "Mercado y contexto": [
+        {"code": "Mdulo 0", "title": "Contextualizacin", "description": "Universo de activos, moneda, Rf y benchmark.", "path": "pages/0_Contextualizacion.py"},
+        {"code": "Mdulo 1", "title": "T?cnico", "description": "Precio, medias mviles, RSI, Bollinger, MACD y estocstico.", "path": "pages/01_Tecnico.py"},
+        {"code": "Mdulo 2", "title": "Rendimientos", "description": "Distribucin, normalidad, QQ plot y estadstica descriptiva.", "path": "pages/02_Rendimientos.py"},
+        {"code": "Mdulo 8", "title": "Macro y benchmark", "description": "Tasa libre de riesgo, FX, alpha, tracking error e IR.", "path": "pages/08_Macro_Benchmark.py"},
+    ],
+    "Riesgo cuantitativo": [
+        {"code": "Mdulo 3", "title": "GARCH", "description": "ARCH, GARCH, EGARCH, diagnstico y pronstico de volatilidad.", "path": "pages/03_Garch.py"},
+        {"code": "Mdulo 4", "title": "CAPM", "description": "Beta, alpha, retorno esperado y lectura por activo o portafolio.", "path": "pages/04_Capm.py"},
+        {"code": "Mdulo 5", "title": "VaR/CVaR", "description": "VaR histrico, paramtrico, Monte Carlo, CVaR y Kupiec.", "path": "pages/05_Var_Cvar.py"},
+        {"code": "Mdulo 11", "title": "Stress testing", "description": "Escenarios adversos de tasa, mercado y volatilidad.", "path": "pages/11_Stress_Testing.py"},
+    ],
+    "Optimizacin y modelos": [
+        {"code": "Mdulo 6", "title": "Markowitz", "description": "Frontera eficiente, mnimos, Sharpe y comparacin Perri.", "path": "pages/06_Markowitz.py"},
+        {"code": "Mdulo 7", "title": "Se?ales", "description": "Lectura integrada de seales tcnicas por activo.", "path": "pages/07_Señales.py"},
+        {"code": "Mdulo 9", "title": "Renta fija", "description": "Nelson-Siegel, curva de tasas, duracin y convexidad.", "path": "pages/09_Renta_Fija.py"},
+        {"code": "Mdulo 10", "title": "Opciones", "description": "Black-Scholes, Greeks, payoff y sensibilidad.", "path": "pages/10_Opciones.py"},
+        {"code": "Mdulo 12", "title": "Machine Learning", "description": "Prediccin de retorno con variables de riesgo y mercado.", "path": "pages/12_Machine_Learning.py"},
+    ],
+}
+CONTEXT_MODULE_GROUPS = {
+    "Mercado y contexto": [
+        {"code": "Módulo 0", "title": "Contextualización", "description": "Universo de activos, moneda, Rf y benchmark.", "path": "pages/0_Contextualizacion.py"},
+        {"code": "Módulo 1", "title": "Técnico", "description": "Precio, medias móviles, RSI, Bollinger, MACD y estocástico.", "path": "pages/01_Tecnico.py"},
+        {"code": "Módulo 2", "title": "Rendimientos", "description": "Distribución, normalidad, QQ plot y estadística descriptiva.", "path": "pages/02_Rendimientos.py"},
+        {"code": "Módulo 8", "title": "Macro y benchmark", "description": "Tasa libre de riesgo, FX, alpha, tracking error e IR.", "path": "pages/08_Macro_Benchmark.py"},
+    ],
+    "Riesgo cuantitativo": [
+        {"code": "Módulo 3", "title": "GARCH", "description": "ARCH, GARCH, EGARCH, diagnóstico y pronóstico de volatilidad.", "path": "pages/03_Garch.py"},
+        {"code": "Módulo 4", "title": "CAPM", "description": "Beta, alpha, retorno esperado y lectura por activo o portafolio.", "path": "pages/04_Capm.py"},
+        {"code": "Módulo 5", "title": "VaR/CVaR", "description": "VaR histórico, paramétrico, Monte Carlo, CVaR y Kupiec.", "path": "pages/05_Var_Cvar.py"},
+        {"code": "Módulo 11", "title": "Stress testing", "description": "Escenarios adversos de tasa, mercado y volatilidad.", "path": "pages/11_Stress_Testing.py"},
+    ],
+    "Optimización y modelos": [
+        {"code": "Módulo 6", "title": "Markowitz", "description": "Frontera eficiente, mínimos, Sharpe y comparación Perri.", "path": "pages/06_Markowitz.py"},
+        {"code": "Módulo 7", "title": "Señales", "description": "Lectura integrada de señales técnicas por activo.", "path": "pages/07_Señales.py"},
+        {"code": "Módulo 9", "title": "Renta fija", "description": "Nelson-Siegel, curva de tasas, duración y convexidad.", "path": "pages/09_Renta_Fija.py"},
+        {"code": "Módulo 10", "title": "Opciones", "description": "Black-Scholes, Greeks, payoff y sensibilidad.", "path": "pages/10_Opciones.py"},
+        {"code": "Módulo 12", "title": "Machine Learning", "description": "Predicción de retorno con variables de riesgo y mercado.", "path": "pages/12_Machine_Learning.py"},
+    ],
+}
+
+
 LOGO_BY_TICKER = {
     "BP.L": "frontend/assets/logos/bp.png",
     "CA.PA": "frontend/assets/logos/carrefour.png",
@@ -165,6 +210,109 @@ def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict[str, str]], str
 
 def _chunks(items: list[dict], size: int) -> list[list[dict]]:
     return [items[i:i + size] for i in range(0, len(items), size)]
+
+
+
+def _render_context_module_card(module: dict) -> None:
+    st.markdown(
+        f"""
+        <div class="module-card">
+            <div class="module-card-kicker">{safe_text(module["code"])}</div>
+            <div class="module-card-title">{safe_text(module["title"])}</div>
+            <div class="module-card-body">{safe_text(module["description"])}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.page_link(
+        module["path"],
+        label=f"Abrir {module['title']}",
+        use_container_width=True,
+    )
+
+
+def _render_context_modules_tab() -> None:
+    group_tabs = st.tabs(list(CONTEXT_MODULE_GROUPS.keys()))
+
+    for tab, (_, modules) in zip(group_tabs, CONTEXT_MODULE_GROUPS.items()):
+        with tab:
+            for row_start in range(0, len(modules), 2):
+                cols = st.columns(2, gap="large")
+                for col, module in zip(cols, modules[row_start:row_start + 2]):
+                    with col:
+                        _render_context_module_card(module)
+
+
+def _render_context_status_tab() -> None:
+    client = get_api_client()
+
+    try:
+        root = client.get_root()
+        health = client.get_health()
+        system = client.get("/system/status")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            tarjeta_kpi("Backend", str(health.get("status", "N/D")).upper(), subtexto="FastAPI")
+        with c2:
+            tarjeta_kpi("Versin", str(root.get("version", system.get("app_version", "N/D"))), subtexto="API")
+        with c3:
+            tarjeta_kpi(
+                "ML",
+                "Activo" if system.get("ml_enabled") else "Inactivo",
+                subtexto=system.get("ml_model_version", "N/D"),
+            )
+
+        render_meta_row(
+            {
+                "Entorno": health.get("env", "N/D"),
+                "Prefijo API": system.get("api_prefix", "/api/v1"),
+                "Chatbot": f"{system.get('chatbot_provider', 'local')}  {system.get('chatbot_model', 'N/D')}",
+            }
+        )
+    except ApiClientError as exc:
+        st.warning(f"No fue posible consultar el backend: {exc.message}")
+    except Exception as exc:
+        st.warning(f"No fue posible consultar el backend: {exc}")
+
+
+def _render_analysis_center(modo: str) -> None:
+    seccion("Centro de anlisis de portafolio")
+
+    render_meta_row(
+        {
+            "Usuario": st.session_state.get("user_name", "N/D"),
+            "Rol": "Superusuario" if st.session_state.get("user_role") == "superuser" else "Cliente",
+            "Interfaz": "Diseo profesional",
+            "Modo": modo,
+        }
+    )
+
+    tab_home, tab_modules, tab_status = st.tabs(["Resumen", "Módulos", "Estado"])
+
+    with tab_home:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            tarjeta_kpi("Cobertura", "13", subtexto="M?dulos Streamlit")
+        with c2:
+            tarjeta_kpi("Backend", "FastAPI", subtexto="Servicios financieros")
+        with c3:
+            tarjeta_kpi("Modelo", "ML", subtexto="Predicci?n de retorno")
+
+        seccion("Flujo recomendado")
+        cols = st.columns(3, gap="large")
+        with cols[0]:
+            render_info_card("1. Contexto", "Revisa activos, moneda, tasa libre de riesgo y benchmark.")
+        with cols[1]:
+            render_info_card("2. Riesgo", "Evala volatilidad, CAPM, VaR/CVaR, GARCH y stress testing.")
+        with cols[2]:
+            render_info_card("3. Decisin", "Contrasta Markowitz, seales, Perri, RoboAdvisor y ML.")
+
+    with tab_modules:
+        _render_context_modules_tab()
+
+    with tab_status:
+        _render_context_status_tab()
 
 
 def _render_logo_card(ticker: str):
@@ -319,15 +467,12 @@ def _render_asset_block(asset: dict, modo: str):
 def _render_rf_and_benchmark_tab():
     seccion("Moneda base y conversión histórica a USD")
 
+
     render_info_card(
-        "Nota metodológica sobre moneda",
+        "Nota metodol?gica sobre moneda",
         (
-            "Los precios descargados desde yfinance pueden venir en la moneda de cotización de cada mercado. "
-            "Por ejemplo, BP cotiza en Londres, Carrefour en euros, Couche-Tard en dólares canadienses, "
-            "FEMSA en pesos mexicanos y Seven & i en yenes japoneses. "
-            "Para evitar mezclar monedas dentro de una misma matriz de rendimientos, el backend convierte "
-            "históricamente los precios a USD usando la divisa correspondiente antes de calcular rendimientos, "
-            "CAPM, VaR/CVaR, GARCH y Markowitz."
+            "Los activos pueden cotizar en monedas distintas, pero el an?lisis se estandariza en USD. "
+            "As?, rendimientos, CAPM, VaR/CVaR, GARCH y Markowitz quedan comparables."
         ),
     )
 
@@ -378,13 +523,13 @@ def _render_rf_and_benchmark_tab():
 
     seccion("Tasa libre de riesgo")
 
+
+
     render_info_card(
         "Criterio usado para la Rf",
         (
-            "Después de convertir los activos a USD, el proyecto usa una tasa libre de riesgo común en USD. "
-            "Esto permite calcular Sharpe, CAPM y Markowitz con un criterio homogéneo. "
-            "No se usa una Rf diferente por activo dentro de Markowitz, porque eso mezclaría tasas de monedas "
-            "distintas y haría menos comparable la frontera eficiente."
+            "Se usa una tasa libre de riesgo com?n en USD para mantener consistencia "
+            "en Sharpe, CAPM y Markowitz."
         ),
     )
 
@@ -427,13 +572,12 @@ def _render_rf_and_benchmark_tab():
 
     seccion("Benchmark del portafolio")
 
+
+
     render_info_card(
         "Benchmark usado: ACWI",
         (
-            "El benchmark del proyecto es ACWI, una referencia global de renta variable. "
-            "Se utiliza porque el portafolio combina activos de diferentes países y no sería adecuado "
-            "compararlo únicamente contra un índice local. ACWI permite evaluar si el portafolio internacional "
-            "genera un desempeño razonable frente a una referencia global diversificada."
+            "ACWI funciona como referencia global porque el portafolio combina activos de varios pa?ses."
         ),
     )
 
@@ -448,12 +592,11 @@ def _render_rf_and_benchmark_tab():
 
     st.dataframe(pd.DataFrame(benchmark_rows), use_container_width=True, hide_index=True)
 
+
     render_info_card(
-        "Relación entre Rf, moneda y benchmark",
+        "Relaci?n entre Rf, moneda y benchmark",
         (
-            "La conversión histórica a USD permite que los retornos de los activos sean comparables entre sí. "
-            "Una vez todo está expresado en una moneda común, se usa una Rf en USD y un benchmark global en USD. "
-            "Así, las métricas de Sharpe, beta, alpha y frontera eficiente quedan alineadas bajo el mismo marco metodológico."
+            "USD, Rf en USD y ACWI alinean las m?tricas de riesgo y desempe?o bajo el mismo marco metodol?gico."
         ),
     )
 
@@ -513,6 +656,8 @@ else:
         "En modo estadístico, esta vista enfatiza que el portafolio no está concentrado en una sola región ni en una sola fuente de riesgo: mezcla activos con sensibilidades sectoriales, cambiarias y macroeconómicas diferentes."
     )
 
+_render_analysis_center(modo)
+
 tab_activos, tab_rf_benchmark = st.tabs(
     ["Activos del portafolio", "Moneda, Rf y benchmark"]
 )
@@ -570,28 +715,73 @@ with tab_activos:
             help_text="Número de países representados en el universo actual.",
         )
 
-    render_meta_row(
-        [
-            ("Benchmark global de referencia", "ACWI"),
-            ("Moneda metodológica", "USD"),
-            ("Modo", modo),
-            ("Fuente", "API backend /assets"),
-        ]
-    )
 
-    render_meta_row(
-        [
-            ("Activos habilitados para Perri", str(len(perri_assets))),
-            (
-                "Clases de activo",
-                " · ".join([f"{k}: {v}" for k, v in sorted(by_asset_type.items())]),
-            ),
-            (
-                "Benchmarks metodológicos",
-                " · ".join([f"{k}: {v}" for k, v in sorted(by_benchmark.items())]),
-            ),
-        ]
-    )
+    seccion("Marco metodol?gico del universo")
+
+    metodologia_1, metodologia_2, metodologia_3, metodologia_4 = st.columns(4)
+
+    with metodologia_1:
+        tarjeta_kpi(
+            "Benchmark global",
+            "ACWI",
+            subtexto="Referencia metodol?gica.",
+            help_text="Benchmark global usado para comparar desempe?o, CAPM, beta y alpha.",
+        )
+
+    with metodologia_2:
+        tarjeta_kpi(
+            "Moneda",
+            "USD",
+            subtexto="Base metodol?gica.",
+            help_text="Todos los activos se trabajan en d?lares para mantener comparabilidad.",
+        )
+
+    with metodologia_3:
+        tarjeta_kpi(
+            "Modo",
+            modo,
+            subtexto="Vista activa.",
+            help_text="Modo de lectura usado en el tablero.",
+        )
+
+    with metodologia_4:
+        tarjeta_kpi(
+            "Fuente",
+            "API",
+            subtexto="Backend /assets.",
+            help_text="Universo cargado desde el endpoint de activos del backend.",
+        )
+
+    seccion("Cobertura t?cnica para Perri")
+
+    clases_txt = " ? ".join([f"{k}: {v}" for k, v in sorted(by_asset_type.items())])
+    benchmarks_txt = " ? ".join([f"{k}: {v}" for k, v in sorted(by_benchmark.items())])
+
+    perri_col, clases_col, benchmark_col = st.columns(3)
+
+    with perri_col:
+        tarjeta_kpi(
+            "Activos Perri",
+            str(len(perri_assets)),
+            subtexto="Habilitados para RoboAdvisor.",
+            help_text="Cantidad de activos disponibles para la l?gica de Perri y portafolios recomendados.",
+        )
+
+    with clases_col:
+        tarjeta_kpi(
+            "Clases de activo",
+            str(len(by_asset_type)),
+            subtexto="Tipos representados.",
+            help_text=clases_txt,
+        )
+
+    with benchmark_col:
+        tarjeta_kpi(
+            "Benchmarks",
+            str(len(by_benchmark)),
+            subtexto="Referencias metodol?gicas.",
+            help_text=benchmarks_txt,
+        )
 
     if show_general_read:
         render_info_card(
@@ -618,32 +808,105 @@ with tab_activos:
         ),
     )
 
-    seccion("Activos del universo")
 
-    filtered_assets = default_assets if show_default_only else assets
+    seccion("Activos seleccionados para el an?lisis")
 
-    if view_mode == "Un activo" and selected_label:
-        filtered_assets = [asset_map[selected_label]]
-    elif view_mode == "Resumen":
-        filtered_assets = default_assets
+    portfolio_config = st.session_state.get("portfolio_config", {}) or {}
+    selected_tickers = [
+        str(ticker).upper()
+        for ticker in portfolio_config.get("tickers", []) or []
+    ]
+
+    asset_by_ticker = {
+        str(asset.get("ticker", "")).upper(): asset
+        for asset in assets
+    }
+
+    if selected_tickers:
+        filtered_assets = [
+            asset_by_ticker[ticker]
+            for ticker in selected_tickers
+            if ticker in asset_by_ticker
+        ]
+        missing_tickers = [
+            ticker
+            for ticker in selected_tickers
+            if ticker not in asset_by_ticker
+        ]
+
+        if missing_tickers:
+            st.warning(
+                "Algunos tickers seleccionados no est?n disponibles en el universo del backend: "
+                + ", ".join(missing_tickers)
+            )
+    else:
+        if view_mode == "Un activo" and selected_label:
+            filtered_assets = [asset_map[selected_label]]
+        elif view_mode == "Resumen":
+            filtered_assets = default_assets
+        else:
+            filtered_assets = assets
 
     if not filtered_assets:
-        st.warning("No hay activos para mostrar con el filtro actual.")
+        st.warning("No hay activos para mostrar con la configuraci?n actual.")
         st.stop()
 
-    if view_mode == "Un activo":
-        for asset in filtered_assets:
-            _render_asset_block(asset, modo)
-    else:
-        for pair in _chunks(filtered_assets, 2):
-            col_a, col_b = st.columns(2, gap="large")
+    compact_rows = []
 
-            with col_a:
-                _render_asset_block(pair[0], modo)
+    for asset in filtered_assets:
+        profile = _build_asset_profile(
+            name=asset.get("name", ""),
+            ticker=asset.get("ticker", ""),
+            country=asset.get("country", ""),
+            is_default=bool(asset.get("default")),
+        )
 
-            if len(pair) > 1:
-                with col_b:
-                    _render_asset_block(pair[1], modo)
+        risk_text = profile.get("riesgo", "N/D")
+        risk_lower = risk_text.lower()
+
+        if "medio-alto" in risk_lower:
+            risk_level = "Medio-alto"
+        elif "alto" in risk_lower:
+            risk_level = "Alto"
+        elif "medio" in risk_lower:
+            risk_level = "Medio"
+        elif "bajo" in risk_lower:
+            risk_level = "Bajo"
+        else:
+            risk_level = "Variable"
+
+        compact_rows.append(
+            {
+                "Ticker": asset.get("ticker", "N/D"),
+                "Activo": asset.get("name", "N/D"),
+                "Pa?s": asset.get("country", "N/D"),
+                "Clase": asset.get("asset_type", "N/D"),
+                "Riesgo": risk_level,
+                "Benchmark": asset.get("benchmark_ticker", "N/D"),
+            }
+        )
+
+    st.dataframe(
+        pd.DataFrame(compact_rows),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Ticker": st.column_config.TextColumn("Ticker", width="small"),
+            "Activo": st.column_config.TextColumn("Activo", width="medium"),
+            "Pa?s": st.column_config.TextColumn("Pa?s", width="small"),
+            "Clase": st.column_config.TextColumn("Clase", width="medium"),
+            "Riesgo": st.column_config.TextColumn("Riesgo", width="small"),
+            "Benchmark": st.column_config.TextColumn("Benchmark", width="small"),
+        },
+    )
+
+    render_info_card(
+        "Lectura del universo seleccionado",
+        (
+            "Esta tabla resume ?nicamente los activos seleccionados en la configuraci?n inicial del portafolio. "
+            "La lectura extendida por activo se retira de esta vista para mantener el M?dulo 0 como contexto ejecutivo."
+        ),
+    )
 
 with tab_rf_benchmark:
     _render_rf_and_benchmark_tab()

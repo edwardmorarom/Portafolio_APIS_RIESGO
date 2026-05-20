@@ -87,7 +87,7 @@ def build_global_css(modo: str = "General") -> str:
 
     css = """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
     :root {
         --app-bg-start: __APP_BG_START__;
@@ -136,10 +136,13 @@ def build_global_css(modo: str = "General") -> str:
         max-width: 1320px;
     }
 
-    [data-testid="stSidebar"],
     [data-testid="stSidebarNav"],
     [data-testid="collapsedControl"] {
         display: none !important;
+    }
+
+    [data-testid="stSidebar"] {
+        display: block !important;
     }
 
     h1, h2, h3, h4, h5, h6 {
@@ -1201,7 +1204,722 @@ def build_global_css(modo: str = "General") -> str:
             -webkit-text-fill-color: #F8FAFC !important;
         }
     }
-    </style>
+
+    div[data-testid="stDataFrame"] {
+        border-radius: 18px !important;
+        overflow: hidden !important;
+        border: 1px solid rgba(148, 163, 184, 0.24) !important;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12) !important;
+    }
+
+    div[data-testid="stDataFrame"] * {
+        font-size: 0.82rem !important;
+        font-weight: 650 !important;
+    }
+
+    div[data-testid="stDataFrame"] [role="columnheader"] {
+        background: linear-gradient(135deg, var(--accent-main), var(--accent-second)) !important;
+        color: #ffffff !important;
+        font-weight: 900 !important;
+    }
+
+    .sidebar-user-card {
+        background: linear-gradient(180deg, #ffffff 0%, #F7FAFC 100%);
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-radius: 18px;
+        padding: 0.95rem;
+        margin: 0.65rem 0 0.75rem 0;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.10);
+    }
+
+    .sidebar-user-eyebrow {
+        color: var(--accent-main) !important;
+        font-size: 0.72rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        margin-bottom: 0.35rem;
+    }
+
+    .sidebar-user-name {
+        color: #0F172A !important;
+        font-size: 0.96rem;
+        font-weight: 900;
+        line-height: 1.25;
+        margin-bottom: 0.25rem;
+    }
+
+    .sidebar-user-role {
+        display: inline-flex;
+        padding: 0.22rem 0.58rem;
+        border-radius: 999px;
+        background: #EAF2FF;
+        border: 1px solid rgba(37, 99, 235, 0.18);
+        color: #1D4ED8 !important;
+        font-size: 0.72rem;
+        font-weight: 900;
+        margin-bottom: 0.65rem;
+    }
+
+    .sidebar-user-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.45rem;
+    }
+
+    .sidebar-user-grid div {
+        background: #F8FAFC;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 12px;
+        padding: 0.55rem 0.65rem;
+    }
+
+    .sidebar-user-grid span {
+        display: block;
+        color: #64748B !important;
+        font-size: 0.70rem;
+        font-weight: 850;
+        text-transform: uppercase;
+        margin-bottom: 0.12rem;
+    }
+
+    .sidebar-user-grid strong {
+        display: block;
+        color: #0F172A !important;
+        font-size: 0.86rem;
+        font-weight: 900;
+    }
+
+    .sidebar-portfolio-card {
+        margin-top: 0.75rem;
+    }
+
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #07111F 0%, #0B1424 100%) !important;
+    }
+
+    [data-testid="stSidebar"] .stToggle label,
+    [data-testid="stSidebar"] .stToggle p,
+    [data-testid="stSidebar"] .stForm label,
+    [data-testid="stSidebar"] .stForm p,
+    [data-testid="stSidebar"] .stCaptionContainer,
+    [data-testid="stSidebar"] .stMarkdown,
+    [data-testid="stSidebar"] .stMarkdown p {
+        color: #E2E8F0 !important;
+        -webkit-text-fill-color: #E2E8F0 !important;
+    }
+
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] textarea {
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        caret-color: #0F172A !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 10px !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="select"] div,
+    [data-testid="stSidebar"] [data-baseweb="input"] div {
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+    }
+
+    [data-testid="stSidebar"] button {
+        font-weight: 850 !important;
+    }
+
+    .sidebar-user-card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        border-radius: 18px;
+        padding: 0.95rem;
+        margin: 0.70rem 0 0.75rem 0;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.10);
+    }
+
+    .sidebar-user-eyebrow {
+        color: #64748B !important;
+        font-size: 0.68rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.38rem;
+    }
+
+    .sidebar-user-name {
+        color: #0F172A !important;
+        font-size: 1.00rem;
+        font-weight: 900;
+        line-height: 1.25;
+        margin-bottom: 0.32rem;
+    }
+
+    .sidebar-user-role {
+        display: inline-flex;
+        padding: 0.24rem 0.58rem;
+        border-radius: 999px;
+        background: #EAF2FF;
+        border: 1px solid rgba(37, 99, 235, 0.16);
+        color: #2563EB !important;
+        font-size: 0.72rem;
+        font-weight: 900;
+        margin-bottom: 0.72rem;
+    }
+
+    .sidebar-user-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.45rem;
+    }
+
+    .sidebar-user-grid div {
+        background: #F8FAFC;
+        border: 1px solid rgba(148, 163, 184, 0.20);
+        border-radius: 12px;
+        padding: 0.55rem 0.65rem;
+    }
+
+    .sidebar-user-grid span {
+        display: block;
+        color: #64748B !important;
+        font-size: 0.70rem;
+        font-weight: 850;
+        text-transform: uppercase;
+        margin-bottom: 0.14rem;
+    }
+
+    .sidebar-user-grid strong {
+        display: block;
+        color: #0F172A !important;
+        font-size: 0.88rem;
+        font-weight: 900;
+    }
+
+    .sidebar-portfolio-card {
+        margin-top: 0.80rem;
+    }
+
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0F3D91 0%, #123C88 100%) !important;
+    }
+
+    [data-testid="stSidebar"] .stExpander {
+        background: rgba(255,255,255,0.08) !important;
+        border: 1px solid rgba(255,255,255,0.14) !important;
+        border-radius: 14px !important;
+    }
+
+    [data-testid="stSidebar"] .stExpander summary,
+    [data-testid="stSidebar"] .stExpander label,
+    [data-testid="stSidebar"] .stExpander p,
+    [data-testid="stSidebar"] .stCaptionContainer,
+    [data-testid="stSidebar"] .stMarkdown,
+    [data-testid="stSidebar"] .stMarkdown p {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+    }
+
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] textarea {
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        caret-color: #0F172A !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 10px !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="input"] input,
+    [data-testid="stSidebar"] [data-baseweb="select"] input {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="select"] > div,
+    [data-testid="stSidebar"] [data-baseweb="input"] > div {
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        border-radius: 10px !important;
+    }
+
+    [data-testid="stSidebar"] .stSlider label,
+    [data-testid="stSidebar"] .stNumberInput label,
+    [data-testid="stSidebar"] .stSelectbox label {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+        font-weight: 800 !important;
+    }
+
+    [data-testid="stSidebar"] button {
+        font-weight: 850 !important;
+    }
+
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+        box-shadow: none !important;
+        border-bottom: none !important;
+    }
+
+    div[data-testid="stToolbar"] {
+        background: transparent !important;
+    }
+
+
+    /* Reparacin final barra lateral */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0B3A89 0%, #082B68 100%) !important;
+    }
+
+    [data-testid="stSidebar"] * {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+    }
+
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] textarea,
+    [data-testid="stSidebar"] [data-baseweb="input"] input,
+    [data-testid="stSidebar"] [data-baseweb="select"] input {
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        caret-color: #0F172A !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stMetric"] {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        border-radius: 14px !important;
+        padding: 0.65rem !important;
+    }
+
+    [data-testid="stSidebar"] details {
+        background: rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        border-radius: 14px !important;
+        padding: 0.25rem 0.45rem !important;
+    }
+
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+        box-shadow: none !important;
+        border-bottom: none !important;
+    }
+
+    div[data-testid="stToolbar"] {
+        background: transparent !important;
+    }
+
+    .sidebar-profile-card {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 18px;
+        padding: 1rem 0.95rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+    }
+
+    .sidebar-profile-title {
+        color: #F8FAFC;
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin-bottom: 0.85rem;
+    }
+
+    .sidebar-profile-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+    }
+
+    .sidebar-profile-item {
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(15, 23, 42, 0.10);
+        border-radius: 14px;
+        padding: 0.7rem 0.8rem;
+    }
+
+    .sidebar-profile-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #475569 !important;
+        margin-bottom: 0.2rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .sidebar-profile-value {
+        display: block;
+        font-size: 0.94rem;
+        font-weight: 700;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+    }
+
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] textarea,
+    [data-testid="stSidebar"] select,
+    [data-testid="stSidebar"] [data-baseweb="input"] input,
+    [data-testid="stSidebar"] [data-baseweb="base-input"] input,
+    [data-testid="stSidebar"] [data-baseweb="select"] > div,
+    [data-testid="stSidebar"] [data-baseweb="select"] span {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        caret-color: #0F172A !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="input"] {
+        background: #FFFFFF !important;
+        border-radius: 12px !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background: #FFFFFF !important;
+        border-radius: 12px !important;
+    }
+
+    [data-testid="stSidebar"] svg {
+        color: inherit;
+    }
+    /* =========================================================
+       FIX FINAL: contraste real en sidebar
+       ========================================================= */
+
+    /* Tarjetas blancas del usuario y del logo */
+    [data-testid="stSidebar"] .sidebar-profile-card,
+    [data-testid="stSidebar"] .sidebar-user-card,
+    [data-testid="stSidebar"] .sidebar-brand,
+    [data-testid="stSidebar"] .sidebar-brand-card,
+    [data-testid="stSidebar"] .brand-card,
+    [data-testid="stSidebar"] div.sidebar-profile-item,
+    [data-testid="stSidebar"] div.sidebar-user-grid div {
+        background: rgba(255, 255, 255, 0.96) !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        border-color: rgba(15, 23, 42, 0.12) !important;
+    }
+
+    /* Texto dentro de tarjetas blancas */
+    [data-testid="stSidebar"] .sidebar-profile-card *,
+    [data-testid="stSidebar"] .sidebar-user-card *,
+    [data-testid="stSidebar"] .sidebar-brand *,
+    [data-testid="stSidebar"] .sidebar-brand-card *,
+    [data-testid="stSidebar"] .brand-card *,
+    [data-testid="stSidebar"] .sidebar-profile-item *,
+    [data-testid="stSidebar"] .sidebar-user-grid div * {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        opacity: 1 !important;
+        text-shadow: none !important;
+    }
+
+    /* Etiquetas secundarias dentro de tarjetas */
+    [data-testid="stSidebar"] .sidebar-profile-label,
+    [data-testid="stSidebar"] .sidebar-user-grid span,
+    [data-testid="stSidebar"] .sidebar-user-eyebrow,
+    [data-testid="stSidebar"] .sidebar-brand p,
+    [data-testid="stSidebar"] .sidebar-brand-card p,
+    [data-testid="stSidebar"] .brand-card p {
+        color: #475569 !important;
+        -webkit-text-fill-color: #475569 !important;
+        opacity: 1 !important;
+    }
+
+    /* Valores fuertes dentro de tarjetas */
+    [data-testid="stSidebar"] .sidebar-profile-value,
+    [data-testid="stSidebar"] .sidebar-user-grid strong,
+    [data-testid="stSidebar"] .sidebar-user-name,
+    [data-testid="stSidebar"] .sidebar-brand h1,
+    [data-testid="stSidebar"] .sidebar-brand h2,
+    [data-testid="stSidebar"] .sidebar-brand h3,
+    [data-testid="stSidebar"] .sidebar-brand-card h1,
+    [data-testid="stSidebar"] .sidebar-brand-card h2,
+    [data-testid="stSidebar"] .brand-card h1,
+    [data-testid="stSidebar"] .brand-card h2 {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        opacity: 1 !important;
+    }
+
+    /* Expander sobre fondo azul */
+    [data-testid="stSidebar"] details,
+    [data-testid="stSidebar"] details summary {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+    }
+
+    [data-testid="stSidebar"] details p,
+    [data-testid="stSidebar"] details label,
+    [data-testid="stSidebar"] details span {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+    }
+
+    /* Campos blancos: texto SIEMPRE oscuro */
+    [data-testid="stSidebar"] input,
+    [data-testid="stSidebar"] textarea,
+    [data-testid="stSidebar"] select,
+    [data-testid="stSidebar"] [data-baseweb="input"] input,
+    [data-testid="stSidebar"] [data-baseweb="base-input"] input,
+    [data-testid="stSidebar"] [data-baseweb="select"] input,
+    [data-testid="stSidebar"] [data-baseweb="select"] span,
+    [data-testid="stSidebar"] [data-baseweb="select"] div {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        caret-color: #0F172A !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stSidebar"] [data-baseweb="input"] > div,
+    [data-testid="stSidebar"] [data-baseweb="base-input"],
+    [data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        border-radius: 12px !important;
+    }
+
+    /* Flecha del select en campo blanco */
+    [data-testid="stSidebar"] [data-baseweb="select"] svg {
+        color: #0F172A !important;
+        fill: #0F172A !important;
+    }
+
+    /* Botones internos */
+    [data-testid="stSidebar"] button {
+        opacity: 1 !important;
+    }
+
+
+    /* =========================================================
+       FIX FINAL: expander datos personales visible
+       ========================================================= */
+
+    [data-testid="stSidebar"] details {
+        background: #FFFFFF !important;
+        border: 1px solid rgba(15, 23, 42, 0.14) !important;
+        border-radius: 16px !important;
+        padding: 0.45rem 0.60rem !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18) !important;
+    }
+
+    [data-testid="stSidebar"] details summary,
+    [data-testid="stSidebar"] details summary *,
+    [data-testid="stSidebar"] details p,
+    [data-testid="stSidebar"] details label,
+    [data-testid="stSidebar"] details span,
+    [data-testid="stSidebar"] details div,
+    [data-testid="stSidebar"] details .stCaptionContainer,
+    [data-testid="stSidebar"] details .stCaptionContainer *,
+    [data-testid="stSidebar"] details .stMarkdown,
+    [data-testid="stSidebar"] details .stMarkdown * {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        opacity: 1 !important;
+        text-shadow: none !important;
+    }
+
+    [data-testid="stSidebar"] details summary {
+        font-weight: 900 !important;
+        font-size: 0.88rem !important;
+    }
+
+    [data-testid="stSidebar"] details .stCaptionContainer,
+    [data-testid="stSidebar"] details .stCaptionContainer p {
+        color: #334155 !important;
+        -webkit-text-fill-color: #334155 !important;
+        font-weight: 750 !important;
+        line-height: 1.35 !important;
+    }
+
+    [data-testid="stSidebar"] details input,
+    [data-testid="stSidebar"] details textarea,
+    [data-testid="stSidebar"] details select,
+    [data-testid="stSidebar"] details [data-baseweb="input"] input,
+    [data-testid="stSidebar"] details [data-baseweb="base-input"] input,
+    [data-testid="stSidebar"] details [data-baseweb="select"] input,
+    [data-testid="stSidebar"] details [data-baseweb="select"] span,
+    [data-testid="stSidebar"] details [data-baseweb="select"] div {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        caret-color: #0F172A !important;
+        opacity: 1 !important;
+    }
+
+    [data-testid="stSidebar"] details button,
+    [data-testid="stSidebar"] details button *,
+    [data-testid="stSidebar"] details [data-testid="stFormSubmitButton"] button,
+    [data-testid="stSidebar"] details [data-testid="stFormSubmitButton"] button * {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        font-weight: 900 !important;
+    }
+
+    [data-testid="stSidebar"] details svg {
+        color: #0F172A !important;
+        fill: #0F172A !important;
+    }
+
+
+    /* =========================================================
+       FIX DEFINITIVO: ttulo del expander visible
+       ========================================================= */
+
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] {
+        background: #FFFFFF !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(15, 23, 42, 0.14) !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18) !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details,
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details summary {
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        opacity: 1 !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details summary *,
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details summary p,
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details summary span,
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details summary div,
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details summary label {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        opacity: 1 !important;
+        font-weight: 900 !important;
+        text-shadow: none !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details summary svg {
+        color: #0F172A !important;
+        fill: #0F172A !important;
+        stroke: #0F172A !important;
+        opacity: 1 !important;
+    }
+
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details[open] summary,
+    section[data-testid="stSidebar"] div[data-testid="stExpander"] details[open] summary * {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        opacity: 1 !important;
+    }
+
+
+    /* =========================================================
+       Tarjeta resumen de riesgo en sidebar
+       ========================================================= */
+
+    [data-testid="stSidebar"] .sidebar-portfolio-summary {
+        background: rgba(255, 255, 255, 0.96) !important;
+        border: 1px solid rgba(15, 23, 42, 0.12) !important;
+        border-radius: 16px !important;
+        padding: 0.85rem !important;
+        margin: 0.55rem 0 0.75rem 0 !important;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16) !important;
+    }
+
+    [data-testid="stSidebar"] .sidebar-portfolio-summary-title {
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        font-size: 0.90rem !important;
+        font-weight: 900 !important;
+        margin-bottom: 0.65rem !important;
+    }
+
+    [data-testid="stSidebar"] .sidebar-portfolio-summary-grid {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 0.55rem !important;
+    }
+
+    [data-testid="stSidebar"] .sidebar-portfolio-summary-item {
+        background: #F8FAFC !important;
+        border: 1px solid rgba(148, 163, 184, 0.28) !important;
+        border-radius: 12px !important;
+        padding: 0.62rem 0.70rem !important;
+    }
+
+    [data-testid="stSidebar"] .sidebar-portfolio-summary-item span {
+        display: block !important;
+        color: #64748B !important;
+        -webkit-text-fill-color: #64748B !important;
+        font-size: 0.68rem !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+        margin-bottom: 0.16rem !important;
+    }
+
+    [data-testid="stSidebar"] .sidebar-portfolio-summary-item strong {
+        display: block !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        font-size: 0.92rem !important;
+        font-weight: 950 !important;
+        line-height: 1.25 !important;
+    }
+
+    /* =========================================================
+       FIX VISUAL: rojo institucional en configuracin portafolio
+       ========================================================= */
+
+    /* Chips seleccionados del multiselect de acciones */
+    [data-testid="stMain"] [data-baseweb="tag"] {
+        background: linear-gradient(135deg, #8A1538 0%, #B91C1C 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.22) !important;
+        border-radius: 999px !important;
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        font-weight: 850 !important;
+        box-shadow: 0 8px 18px rgba(138, 21, 56, 0.22) !important;
+    }
+
+    [data-testid="stMain"] [data-baseweb="tag"] span,
+    [data-testid="stMain"] [data-baseweb="tag"] p,
+    [data-testid="stMain"] [data-baseweb="tag"] div {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        font-weight: 850 !important;
+    }
+
+    [data-testid="stMain"] [data-baseweb="tag"] svg {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+        stroke: #FFFFFF !important;
+    }
+
+    /* Botones submit de formularios en el contenido principal */
+    [data-testid="stMain"] [data-testid="stFormSubmitButton"] button {
+        background: linear-gradient(135deg, #8A1538 0%, #B91C1C 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 14px !important;
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        font-weight: 900 !important;
+        box-shadow: 0 10px 24px rgba(138, 21, 56, 0.24) !important;
+    }
+
+    [data-testid="stMain"] [data-testid="stFormSubmitButton"] button:hover {
+        background: linear-gradient(135deg, #7A1232 0%, #991B1B 100%) !important;
+        border-color: rgba(255, 255, 255, 0.26) !important;
+        box-shadow: 0 12px 28px rgba(138, 21, 56, 0.30) !important;
+        transform: translateY(-1px);
+    }
+
+    [data-testid="stMain"] [data-testid="stFormSubmitButton"] button *,
+    [data-testid="stMain"] [data-testid="stFormSubmitButton"] button p {
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        font-weight: 900 !important;
+    }
+
+</style>
     """
 
     for key, value in theme.items():

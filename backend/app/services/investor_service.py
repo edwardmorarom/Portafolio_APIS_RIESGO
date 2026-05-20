@@ -79,6 +79,9 @@ class InvestorService:
         if payload.horizon_type == "1y":
             start = today - timedelta(days=365)
             end = today
+        elif payload.horizon_type == "2y":
+            start = today - timedelta(days=365 * 2)
+            end = today
         elif payload.horizon_type == "3y":
             start = today - timedelta(days=365 * 3)
             end = today
