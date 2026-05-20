@@ -679,15 +679,23 @@ with filtros_sidebar:
         help="Cantidad de combinaciones simuladas para construir la nube de portafolios y la frontera eficiente.",
     )
 
+    kyc_profile = st.session_state.get("kyc_profile")
+
+    profile_options = ["Sin perfil", "Mínimo riesgo", "Máxima utilidad", "Arriesgado"]
+
+    default_profile_index = 0
+    if kyc_profile == "conservador":
+        default_profile_index = 1
+    elif kyc_profile == "moderado":
+        default_profile_index = 2
+    elif kyc_profile == "agresivo":
+        default_profile_index = 3
+
     risk_profile_label = st.selectbox(
         "Perfil del inversor",
-        ["Sin perfil", "Mínimo riesgo", "Máxima utilidad", "Arriesgado"],
-        index=0,
+        profile_options,
+        index=default_profile_index,
         key="markowitz_investor_profile",
-        help=(
-            "Sin perfil permite editar pesos manualmente. "
-            "Mínimo riesgo, Máxima utilidad y Arriesgado usan pesos sugeridos por el modelo."
-        ),
     )
 
     use_target_return = st.checkbox(
