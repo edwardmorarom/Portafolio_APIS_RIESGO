@@ -18,7 +18,7 @@ from ui.dashboard_ui import (
     toolbar_label,
 )
 from ui.page_setup import setup_dashboard_page
-from ui.altair_style import bar_chart, horizontal_rule, line_chart, style_altair_chart
+from ui.altair_style import bar_chart, horizontal_rule, line_chart
 from ui.plot_style import add_reference_line, style_plotly_figure
 
 
@@ -509,18 +509,15 @@ def _empty_chart(df: pd.DataFrame, modo: str, y_title: str, height: int = 390) -
         }
     )
 
-    return style_altair_chart(
-        line_chart(
-            empty,
-            modo=modo,
-            x="date",
-            y="value",
-            color="serie",
-            series_names=["Sin capas visibles"],
-            y_title=y_title,
-            height=height,
-        ),
+    return line_chart(
+        empty,
         modo=modo,
+        x="date",
+        y="value",
+        color="serie",
+        series_names=["Sin capas visibles"],
+        y_title=y_title,
+        height=height,
     )
 
 
@@ -545,19 +542,16 @@ def _plot_price_ma(
     if data.empty:
         return _empty_chart(df, modo=modo, y_title="Precio")
 
-    return style_altair_chart(
-        line_chart(
-            data,
-            modo=modo,
-            x="date",
-            y="value",
-            color="serie",
-            series_names=list(columns.values()),
-            y_title="Precio",
-            height=390,
-            stroke_width=2,
-        ),
+    return line_chart(
+        data,
         modo=modo,
+        x="date",
+        y="value",
+        color="serie",
+        series_names=list(columns.values()),
+        y_title="Precio",
+        height=390,
+        stroke_width=2,
     )
 
 
@@ -599,10 +593,7 @@ def _plot_rsi(
     if not layers:
         return _empty_chart(df, modo=modo, y_title="RSI", height=320)
 
-    return style_altair_chart(
-        alt.layer(*layers).resolve_scale(color="independent"),
-        modo=modo,
-    )
+    return alt.layer(*layers).resolve_scale(color="independent")
 
 
 def _plot_bollinger(
@@ -628,19 +619,16 @@ def _plot_bollinger(
     if data.empty:
         return _empty_chart(df, modo=modo, y_title="Precio", height=320)
 
-    return style_altair_chart(
-        line_chart(
-            data,
-            modo=modo,
-            x="date",
-            y="value",
-            color="serie",
-            series_names=list(columns.values()),
-            y_title="Precio",
-            height=320,
-            stroke_width=2,
-        ),
+    return line_chart(
+        data,
         modo=modo,
+        x="date",
+        y="value",
+        color="serie",
+        series_names=list(columns.values()),
+        y_title="Precio",
+        height=320,
+        stroke_width=2,
     )
 
 
@@ -699,10 +687,7 @@ def _plot_macd(
     if not layers:
         return _empty_chart(df, modo=modo, y_title="Valor MACD", height=320)
 
-    return style_altair_chart(
-        alt.layer(*layers).resolve_scale(color="independent"),
-        modo=modo,
-    )
+    return alt.layer(*layers).resolve_scale(color="independent")
 
 
 def _plot_stochastic(
@@ -749,10 +734,7 @@ def _plot_stochastic(
     if not layers:
         return _empty_chart(df, modo=modo, y_title="Estocástico", height=320)
 
-    return style_altair_chart(
-        alt.layer(*layers).resolve_scale(color="independent"),
-        modo=modo,
-    )
+    return alt.layer(*layers).resolve_scale(color="independent")
 
 
 assets, help_map, load_error = _fetch_assets_and_help()

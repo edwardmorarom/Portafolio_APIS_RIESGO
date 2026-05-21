@@ -823,30 +823,12 @@ def build_global_css(modo: str = "General") -> str:
     .ui-plot-foot {
         background: linear-gradient(180deg, #ffffff 0%, var(--panel-bg-2) 100%);
         border: 1px solid var(--border-soft);
-        border-left: 4px solid var(--accent-main);
         border-radius: 16px;
-        padding: 0.78rem 0.95rem 0.85rem 0.95rem;
+        padding: 0.78rem 0.95rem;
         margin-top: 0.1rem;
         margin-bottom: 1rem;
         color: var(--text-soft) !important;
         box-shadow: var(--shadow-main);
-    }
-
-    .ui-plot-foot-label {
-        color: var(--accent-main) !important;
-        font-size: 0.72rem;
-        font-weight: 950;
-        line-height: 1.1;
-        margin-bottom: 0.22rem;
-        text-transform: uppercase;
-        letter-spacing: 0;
-    }
-
-    .ui-plot-foot-text {
-        color: var(--text-soft) !important;
-        font-size: 0.92rem;
-        font-weight: 650;
-        line-height: 1.42;
     }
 
     .ui-toolbar-label {

@@ -279,7 +279,7 @@ def _build_base100_chart(benchmark_payload: dict, modo: str, clean_view: bool) -
         show_ygrid=not clean_view,
     )
     fig.update_layout(
-        margin=dict(l=70, r=34, t=112, b=64),
+        margin=dict(l=24, r=24, t=58, b=24),
         plot_bgcolor="#EEF4FF" if modo == "General" else "#FBEAF1",
     )
     return fig

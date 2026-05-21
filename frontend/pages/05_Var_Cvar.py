@@ -326,7 +326,7 @@ def _build_distribution_figure(
         plot_bgcolor="#EEF4FF" if modo == "General" else "#F8EAF1",
         paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
-        margin=dict(l=70, r=36, t=104, b=64),
+        margin=dict(l=24, r=24, t=84, b=24),
     )
 
     if line_specs:

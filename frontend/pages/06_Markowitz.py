@@ -469,7 +469,7 @@ def _build_corr_heatmap(corr_df: pd.DataFrame, modo: str, clean_view: bool) -> g
         show_ygrid=not clean_view,
     )
     fig.update_layout(
-        margin=dict(l=82, r=84, t=42, b=78),
+        margin=dict(l=24, r=24, t=24, b=24),
         showlegend=False,
         plot_bgcolor="#EEF4FF" if modo == "General" else "#FBEAF1",
     )
@@ -579,14 +579,14 @@ def _build_frontier_figure(
         show_ygrid=not clean_view,
     )
     fig.update_layout(
-        margin=dict(l=70, r=42, t=120, b=64),
+        margin=dict(l=24, r=24, t=26, b=24),
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.20,
+            y=1.12,
             xanchor="left",
             x=0.0,
-            bgcolor="rgba(255,255,255,0.94)",
+            bgcolor="rgba(255,255,255,0.82)",
             bordercolor="rgba(148,163,184,0.22)",
             borderwidth=1,
             font=dict(size=10),

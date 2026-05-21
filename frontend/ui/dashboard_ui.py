@@ -611,12 +611,7 @@ def plot_card_header(titulo: str, help_text: str = "", modo: str = "General", ca
 
 def plot_card_footer(texto: str):
     st.markdown(
-        (
-            '<div class="ui-plot-foot">'
-            '<div class="ui-plot-foot-label">Lectura facil</div>'
-            f'<div class="ui-plot-foot-text">{safe_text(texto)}</div>'
-            '</div>'
-        ),
+        f'<div class="ui-plot-foot">{safe_text(texto)}</div>',
         unsafe_allow_html=True,
     )
 
