@@ -51,7 +51,6 @@ with filtros_panel:
         hide_index=True,
         use_container_width=True,
         num_rows="dynamic",
-        help="Agrega puntos de la curva. Cada fila combina vencimiento en anos y tasa observada en decimal.",
         column_config={
             "Vencimiento (años)": st.column_config.NumberColumn("Vencimiento (años)", min_value=0.25, step=0.25, format="%.2f"),
             "Tasa observada": st.column_config.NumberColumn("Tasa observada", min_value=0.0, max_value=1.0, step=0.001, format="%.4f"),

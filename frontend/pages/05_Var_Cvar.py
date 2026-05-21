@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -179,10 +181,71 @@ def _extract_kupiec(payload: dict) -> dict:
 def _extract_kupiec_tests(payload: dict) -> dict[str, dict]:
     tests = payload.get("kupiec_tests")
     if isinstance(tests, dict) and tests:
-        return {str(key): value for key, value in tests.items() if isinstance(value, dict)}
+        normalized: dict[str, dict] = {}
+        aliases = {
+            "historical": "historical",
+            "historic": "historical",
+            "historico": "historical",
+            "histórico": "historical",
+            "parametric": "parametric",
+            "parametrico": "parametric",
+            "paramétrico": "parametric",
+            "monte_carlo": "monte_carlo",
+            "monte carlo": "monte_carlo",
+            "mc": "monte_carlo",
+        }
+        for key, value in tests.items():
+            if isinstance(value, dict):
+                normalized[aliases.get(str(key).strip().lower(), str(key))] = value
+        return normalized
 
     legacy = _extract_kupiec(payload)
     return {"historical": legacy} if legacy else {}
+
+
+def _kupiec_from_returns(payload: dict, var_daily, alpha: float, method: str) -> dict:
+    returns_s = _extract_distribution_series(payload)
+    if returns_s.empty or var_daily is None:
+        return {}
+
+    returns_s = pd.to_numeric(returns_s, errors="coerce").dropna()
+    if returns_s.empty:
+        return {}
+
+    n = int(len(returns_s))
+    var_value = abs(float(var_daily))
+    expected_rate = max(1e-12, min(1 - float(alpha), 1 - 1e-12))
+    violations = int((returns_s < -var_value).sum())
+    observed_rate = violations / n if n else 0.0
+    expected_violations = n * expected_rate
+
+    pi_hat = max(1e-12, min(observed_rate, 1 - 1e-12))
+    log_l_null = ((n - violations) * math.log(1 - expected_rate)) + (violations * math.log(expected_rate))
+    log_l_alt = ((n - violations) * math.log(1 - pi_hat)) + (violations * math.log(pi_hat))
+    lr_stat = max(0.0, -2.0 * (log_l_null - log_l_alt))
+    p_value = math.erfc(math.sqrt(lr_stat / 2.0))
+
+    if p_value >= 0.05:
+        decision = "No se rechaza cobertura adecuada"
+        interpretation = "No se rechaza que el modelo tenga una proporción adecuada de excepciones."
+    elif observed_rate > expected_rate:
+        decision = "Se rechaza cobertura adecuada"
+        interpretation = "Se rechaza la cobertura adecuada; el VaR puede estar subestimando el riesgo."
+    else:
+        decision = "Se rechaza cobertura adecuada"
+        interpretation = "Se rechaza la cobertura adecuada; el VaR puede estar sobreestimando el riesgo."
+
+    return {
+        "method": method,
+        "observations": n,
+        "violations": violations,
+        "expected_violations": expected_violations,
+        "observed_rate": observed_rate,
+        "lr_stat": lr_stat,
+        "p_value": p_value,
+        "decision": decision,
+        "interpretation": interpretation,
+    }
 
 
 def _comparison_table(payload: dict, portfolio_value: float) -> pd.DataFrame:
@@ -221,6 +284,7 @@ def _comparison_table(payload: dict, portfolio_value: float) -> pd.DataFrame:
 def _kupiec_comparison_table(payload: dict) -> pd.DataFrame:
     rows = []
     tests = _extract_kupiec_tests(payload)
+    alpha = float(payload.get("alpha", active_confidence_level()))
 
     for key, label in [
         ("historical", "Histórico"),
@@ -228,15 +292,21 @@ def _kupiec_comparison_table(payload: dict) -> pd.DataFrame:
         ("monte_carlo", "Monte Carlo"),
     ]:
         method = payload.get(key, {})
-        test = tests.get(key, {})
-        if not isinstance(method, dict) or not isinstance(test, dict):
+        if not isinstance(method, dict):
             continue
+        test = tests.get(key, {})
+        fallback_test = _kupiec_from_returns(payload, method.get("var_daily"), alpha=alpha, method=f"VaR {label}")
+        if not isinstance(test, dict):
+            test = {}
+        if fallback_test:
+            for field, value in fallback_test.items():
+                if test.get(field) in (None, "", "N/D"):
+                    test[field] = value
 
         rows.append(
             {
                 "Método": str(test.get("method") or label),
                 "VaR": _format_pct(method.get("var_daily")),
-                "CVaR": _format_pct(method.get("cvar_daily")),
                 "Observaciones": test.get("observations", "N/D"),
                 "Excepciones observadas": test.get("violations", "N/D"),
                 "Excepciones esperadas": _format_num(test.get("expected_violations"), 2),

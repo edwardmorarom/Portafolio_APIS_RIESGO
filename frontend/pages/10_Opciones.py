@@ -102,14 +102,18 @@ if result:
     with c6:
         tarjeta_kpi("Rho", format_number(greeks["rho"], decimals=4), subtexto="Sensibilidad a tasas", help_text="Sensibilidad del precio ante cambios en la tasa libre de riesgo.")
 
-    render_meta_row(
-        {
-            "Tipo": option_type.upper(),
-            "Spot": format_money(spot_price),
-            "Strike": format_money(strike_price),
-            "Volatilidad": format_percent(volatility),
-            "T": f"{format_number(time_to_maturity)} años",
-        }
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {"Campo": "Tipo", "Valor": option_type.upper()},
+                {"Campo": "Spot", "Valor": format_money(spot_price)},
+                {"Campo": "Strike", "Valor": format_money(strike_price)},
+                {"Campo": "Volatilidad", "Valor": format_percent(volatility)},
+                {"Campo": "T", "Valor": f"{format_number(time_to_maturity)} anos"},
+            ]
+        ),
+        use_container_width=True,
+        hide_index=True,
     )
 else:
     render_info_card("Valoración pendiente", "Ejecuta el cálculo para obtener precio teórico y Greeks.")

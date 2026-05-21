@@ -135,13 +135,12 @@ def _build_technical_view(
     df[f"bb_up_{boll_window}"] = bb_mid + 2.0 * bb_std
     df[f"bb_low_{boll_window}"] = bb_mid - 2.0 * bb_std
 
-    min_periods = max(3, min(stoch_window, max(len(df), 1)))
-    low_n = low.rolling(stoch_window, min_periods=min_periods).min()
-    high_n = high.rolling(stoch_window, min_periods=min_periods).max()
+    low_n = low.rolling(stoch_window, min_periods=stoch_window).min()
+    high_n = high.rolling(stoch_window, min_periods=stoch_window).max()
     denom = (high_n - low_n).replace(0, np.nan)
-    df[f"stoch_k_{stoch_window}"] = 100 * (close - low_n) / denom
-    df[f"stoch_k_{stoch_window}"] = df[f"stoch_k_{stoch_window}"].clip(lower=0, upper=100)
-    df[f"stoch_d_{stoch_window}"] = df[f"stoch_k_{stoch_window}"].rolling(3, min_periods=1).mean()
+    raw_k = (100 * (close - low_n) / denom).clip(lower=0, upper=100)
+    df[f"stoch_k_{stoch_window}"] = raw_k.rolling(3, min_periods=3).mean()
+    df[f"stoch_d_{stoch_window}"] = df[f"stoch_k_{stoch_window}"].rolling(3, min_periods=3).mean()
 
     ema_fast = close.ewm(span=12, adjust=False).mean()
     ema_slow = close.ewm(span=26, adjust=False).mean()
@@ -304,9 +303,7 @@ def _plotly_rsi(
         add_reference_line(fig, 70)
         add_reference_line(fig, 30)
 
-    fig.update_yaxes(range=[0, 100])
-
-    return style_plotly_figure(
+    result = style_plotly_figure(
         fig,
         modo=modo,
         title="RSI",
@@ -315,6 +312,9 @@ def _plotly_rsi(
         show_xgrid=False,
         show_ygrid=True,
     )
+    
+    result.update_yaxes(range=[0, 100])
+    return result
 
 
 def _plotly_bollinger(
@@ -459,37 +459,42 @@ def _plotly_stochastic(
     show_levels: bool,
 ) -> go.Figure:
     fig = go.Figure()
+    chart_df = df[["date", f"stoch_k_{stoch_window}", f"stoch_d_{stoch_window}"]].copy()
+    chart_df[f"stoch_k_{stoch_window}"] = pd.to_numeric(chart_df[f"stoch_k_{stoch_window}"], errors="coerce")
+    chart_df[f"stoch_d_{stoch_window}"] = pd.to_numeric(chart_df[f"stoch_d_{stoch_window}"], errors="coerce")
+    chart_df = chart_df.dropna(subset=[f"stoch_k_{stoch_window}", f"stoch_d_{stoch_window}"])
 
     fig.add_trace(
         go.Scatter(
-            x=df["date"],
-            y=df[f"stoch_k_{stoch_window}"],
+            x=chart_df["date"],
+            y=chart_df[f"stoch_k_{stoch_window}"],
             mode="lines",
             name="%K",
-            line=dict(width=2.4, color="#1D4ED8"),
+            line=dict(width=2.2, color="#38BDF8"),
+            hovertemplate="%{x|%Y-%m-%d}<br>%K: %{y:.2f}<extra></extra>",
+            connectgaps=False,
             visible=True if show_k else "legendonly",
         )
     )
 
     fig.add_trace(
         go.Scatter(
-            x=df["date"],
-            y=df[f"stoch_d_{stoch_window}"],
+            x=chart_df["date"],
+            y=chart_df[f"stoch_d_{stoch_window}"],
             mode="lines",
             name="%D",
-            line=dict(width=2.7, dash="dash", color="#F97316"),
+            line=dict(width=2.4, dash="dash", color="#F97316"),
+            hovertemplate="%{x|%Y-%m-%d}<br>%D: %{y:.2f}<extra></extra>",
+            connectgaps=False,
             visible=True if show_d else "legendonly",
         )
     )
-
 
     if show_levels:
         add_reference_line(fig, 80)
         add_reference_line(fig, 20)
 
-    fig.update_yaxes(range=[0, 100])
-
-    return style_plotly_figure(
+    result = style_plotly_figure(
         fig,
         modo=modo,
         title="Oscilador Estocástico",
@@ -498,6 +503,10 @@ def _plotly_stochastic(
         show_xgrid=False,
         show_ygrid=True,
     )
+    
+    result.update_yaxes(range=[0, 100])
+    result.update_layout(height=420, hovermode="x unified")
+    return result
 
 
 # Altair overrides used by the page render below. The legacy Plotly builders are
