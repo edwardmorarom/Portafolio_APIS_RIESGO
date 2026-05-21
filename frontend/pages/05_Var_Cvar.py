@@ -14,8 +14,18 @@ from ui.dashboard_ui import (
     seccion,
     tarjeta_kpi,
 )
+from ui.dashboard_filters import chip_toggles
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
+from ui.portfolio_state import (
+    HORIZON_OPTIONS,
+    active_assets,
+    active_confidence_level,
+    active_custom_dates,
+    horizon_index,
+    render_portfolio_scope_note,
+    weights_for_tickers,
+)
 
 
 PORTFOLIO_ASSETS = [
@@ -56,32 +66,23 @@ def _resolve_dates(
     return pd.Timestamp(start_date).normalize(), pd.Timestamp(end_date).normalize()
 
 
-def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:
+def _weights_editor(sidebar_container, selected_assets: list[dict]) -> tuple[list[float], float]:
     with sidebar_container:
-        st.markdown("**Pesos del portafolio (%)**")
-        weights_pct: list[float] = []
-
-        for asset in PORTFOLIO_ASSETS:
-            value = st.number_input(
-                asset["ticker"],
-                min_value=0.0,
-                max_value=100.0,
-                value=20.0,
-                step=1.0,
-                key=f"{key_prefix}_{asset['ticker']}",
-                format="%.2f",
-            )
-            weights_pct.append(float(value))
-
-        total_pct = float(sum(weights_pct))
+        st.markdown("**Pesos del portafolio activo**")
+        tickers = [asset["ticker"] for asset in selected_assets]
+        weights_decimals, total_pct = weights_for_tickers(tickers)
+        weights_pct = [weight * 100.0 for weight in weights_decimals]
+        st.dataframe(
+            pd.DataFrame({"Ticker": tickers, "Peso": [f"{weight:.2f}%" for weight in weights_pct]}),
+            use_container_width=True,
+            hide_index=True,
+        )
         st.caption(f"Total asignado: {total_pct:.2f}%")
 
-        if total_pct > 100.0 + 1e-6:
-            st.error("Los pesos no pueden superar 100%.")
-        elif abs(total_pct - 100.0) > 1e-6:
-            st.warning("Para calcular VaR/CVaR, los pesos deben sumar exactamente 100%.")
+        if abs(total_pct - 100.0) > 1e-4:
+            st.warning("Los pesos se normalizaron para el cálculo de riesgo.")
 
-    return [w / 100.0 for w in weights_pct], total_pct
+    return weights_decimals, 100.0 if weights_decimals else 0.0
 
 
 def _format_pct(x) -> str:
@@ -188,6 +189,15 @@ def _extract_kupiec(payload: dict) -> dict:
     return {}
 
 
+def _extract_kupiec_tests(payload: dict) -> dict[str, dict]:
+    tests = payload.get("kupiec_tests")
+    if isinstance(tests, dict) and tests:
+        return {str(key): value for key, value in tests.items() if isinstance(value, dict)}
+
+    legacy = _extract_kupiec(payload)
+    return {"historical": legacy} if legacy else {}
+
+
 def _comparison_table(payload: dict, portfolio_value: float) -> pd.DataFrame:
     rows = []
 
@@ -215,6 +225,39 @@ def _comparison_table(payload: dict, portfolio_value: float) -> pd.DataFrame:
                 "CVaR monetario diario": _format_money(_money_risk(portfolio_value, cvar_daily)),
                 "VaR anualizado": _format_pct(var_annualized),
                 "CVaR anualizado": _format_pct(cvar_annualized),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+def _kupiec_comparison_table(payload: dict) -> pd.DataFrame:
+    rows = []
+    tests = _extract_kupiec_tests(payload)
+
+    for key, label in [
+        ("historical", "Histórico"),
+        ("parametric", "Paramétrico"),
+        ("monte_carlo", "Monte Carlo"),
+    ]:
+        method = payload.get(key, {})
+        test = tests.get(key, {})
+        if not isinstance(method, dict) or not isinstance(test, dict):
+            continue
+
+        rows.append(
+            {
+                "Método": str(test.get("method") or label),
+                "VaR": _format_pct(method.get("var_daily")),
+                "CVaR": _format_pct(method.get("cvar_daily")),
+                "Observaciones": test.get("observations", "N/D"),
+                "Excepciones observadas": test.get("violations", "N/D"),
+                "Excepciones esperadas": _format_num(test.get("expected_violations"), 2),
+                "Tasa observada": _format_pct(test.get("observed_rate")),
+                "LR Kupiec": _format_num(test.get("lr_stat"), 4),
+                "p-value": _format_num(test.get("p_value"), 4),
+                "Decisión": str(test.get("decision", "N/D")),
+                "Interpretación": str(test.get("interpretation", "N/D")),
             }
         )
 
@@ -447,12 +490,19 @@ modo, filtros_sidebar = setup_dashboard_page(
 )
 
 today = pd.Timestamp.today().normalize()
+portfolio_assets = active_assets() or PORTFOLIO_ASSETS
+stored_custom_start, stored_custom_end = active_custom_dates()
+default_custom_start = stored_custom_start or (today - pd.DateOffset(years=1)).date()
+default_custom_end = stored_custom_end or today.date()
+default_alpha_pct = active_confidence_level(0.95) * 100.0
 
 with filtros_sidebar:
+    render_portfolio_scope_note()
+
     horizonte = st.selectbox(
         "Horizonte de análisis",
-        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"],
-        index=3,
+        HORIZON_OPTIONS,
+        index=horizon_index(),
         key="var_horizonte_backend",
     )
 
@@ -463,14 +513,14 @@ with filtros_sidebar:
         with c1:
             custom_start = st.date_input(
                 "Fecha inicial",
-                value=(today - pd.DateOffset(years=1)).date(),
+                value=default_custom_start,
                 max_value=today.date(),
                 key="var_custom_start",
             )
         with c2:
             custom_end = st.date_input(
                 "Fecha final",
-                value=today.date(),
+                value=default_custom_end,
                 max_value=today.date(),
                 key="var_custom_end",
             )
@@ -479,7 +529,7 @@ with filtros_sidebar:
         "Nivel de confianza (%)",
         min_value=95.0,
         max_value=99.99,
-        value=95.0,
+        value=float(default_alpha_pct),
         step=0.01,
         key="var_alpha_manual",
         format="%.2f",
@@ -529,7 +579,7 @@ with filtros_sidebar:
         key="var_mc_sims",
     )
 
-    weights_decimals, total_pct = _weights_editor(filtros_sidebar, "var_weight")
+    weights_decimals, total_pct = _weights_editor(filtros_sidebar, portfolio_assets)
 
 start_date, end_date = _resolve_dates(
     horizonte=horizonte,
@@ -547,7 +597,7 @@ risk_error = None
 
 if abs(total_pct - 100.0) <= 1e-6:
     payload, risk_error = _fetch_var(
-        tickers=[a["ticker"] for a in PORTFOLIO_ASSETS],
+        tickers=[a["ticker"] for a in portfolio_assets],
         weights=weights_decimals,
         start=start_date.strftime("%Y-%m-%d"),
         end=end_date.strftime("%Y-%m-%d"),
@@ -583,6 +633,7 @@ if risk_error:
 returns_s = _extract_distribution_series(payload)
 kupiec = _extract_kupiec(payload)
 comparison_df = _comparison_table(payload, portfolio_value=portfolio_value)
+kupiec_df = _kupiec_comparison_table(payload)
 
 render_meta_row(
     [
@@ -746,19 +797,19 @@ with tab2:
         caption="Las líneas se grafican como pérdidas negativas para quedar ubicadas correctamente en la cola izquierda.",
     )
 
-    t1, t2, t3, t4 = st.columns(4)
-
-    with t1:
-        show_hist = st.checkbox("Histograma", value=True, key="var_show_hist")
-
-    with t2:
-        show_var = st.checkbox("Líneas VaR", value=True, key="var_show_var")
-
-    with t3:
-        show_cvar = st.checkbox("Líneas CVaR", value=True, key="var_show_cvar")
-
-    with t4:
-        clean_view = st.checkbox("Vista limpia", value=False, key="var_clean_view")
+    layer_state = chip_toggles(
+        [
+            ("hist", "Histograma", True),
+            ("var", "Líneas VaR", True),
+            ("cvar", "Líneas CVaR", True),
+            ("clean", "Vista limpia", False),
+        ],
+        key_prefix="var_layers",
+    )
+    show_hist = layer_state["hist"]
+    show_var = layer_state["var"]
+    show_cvar = layer_state["cvar"]
+    clean_view = layer_state["clean"]
 
     fig_dist = _build_distribution_figure(
         returns_s=returns_s,
@@ -796,36 +847,13 @@ with tab3:
 
     seccion("Backtesting VaR - Test de Kupiec")
 
-    k1, k2, k3 = st.columns(3)
-
-    with k1:
-        tarjeta_kpi(
-            "Violaciones",
-            str(_method_metric({"tmp": kupiec}, "tmp", "violations") or "N/D"),
-            subtexto="Excesos observados frente al umbral estimado.",
-            help_text="Cuenta cuántas veces la pérdida observada superó el VaR estimado.",
-        )
-
-    with k2:
-        tarjeta_kpi(
-            "Observadas (%)",
-            _format_pct(_method_metric({"tmp": kupiec}, "tmp", "observed_rate")),
-            subtexto="Tasa real registrada en la muestra.",
-            help_text="Proporción de violaciones observadas en la muestra histórica.",
-        )
-
-    with k3:
-        tarjeta_kpi(
-            "Esperadas (%)",
-            _format_pct(_method_metric({"tmp": kupiec}, "tmp", "expected_rate")),
-            subtexto="Tasa teórica coherente con el nivel de confianza.",
-            help_text="Si la confianza es 95%, la tasa esperada de violaciones es cercana al 5%.",
-        )
+    st.dataframe(kupiec_df, use_container_width=True, hide_index=True)
 
     render_info_card(
-        "Conclusión de Kupiec",
-        str(
-            _method_metric({"tmp": kupiec}, "tmp", "conclusion")
-            or "El backend no devolvió una conclusión textual de backtesting para este cálculo."
+        "Lectura de Kupiec",
+        (
+            "Kupiec evalúa VaR, no CVaR directamente. Si p-value >= 0.05 no se rechaza que el modelo tenga "
+            "una proporción adecuada de excepciones. Si p-value < 0.05 se rechaza la cobertura adecuada y el VaR "
+            "puede estar subestimando o sobreestimando el riesgo."
         ),
     )

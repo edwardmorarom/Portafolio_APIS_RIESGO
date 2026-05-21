@@ -64,10 +64,17 @@ class VarMethodResult(BaseModel):
 
 
 class KupiecBacktestResult(BaseModel):
-    violations: int = Field(..., description="Número de violaciones observadas")
-    observed_rate: float = Field(..., description="Frecuencia observada de violaciones")
-    expected_rate: float = Field(..., description="Frecuencia esperada de violaciones")
+    method: str = Field(..., description="Método de VaR evaluado")
+    var_daily: float = Field(..., description="VaR diario usado como umbral de backtesting")
+    observations: int = Field(..., description="Número de observaciones usadas en el test")
+    violations: int = Field(..., description="Número de excepciones observadas")
+    expected_violations: float = Field(..., description="Número esperado de excepciones")
+    observed_rate: float = Field(..., description="Frecuencia observada de excepciones")
+    expected_rate: float = Field(..., description="Frecuencia esperada de excepciones")
+    lr_stat: float = Field(..., description="Estadístico LR del test de Kupiec")
     p_value: float = Field(..., description="P-value del test de Kupiec")
+    decision: str = Field(..., description="Decisión estadística del test")
+    interpretation: str = Field(..., description="Interpretación breve del backtesting")
     conclusion: str = Field(..., description="Conclusión textual del backtesting")
 
 
@@ -95,5 +102,9 @@ class PortfolioVarResponse(BaseModel):
 
     kupiec_test: KupiecBacktestResult | None = Field(
         default=None,
-        description="Backtesting VaR con test de Kupiec",
+        description="Backtesting VaR histórico con test de Kupiec. Campo mantenido por compatibilidad.",
+    )
+    kupiec_tests: dict[str, KupiecBacktestResult] = Field(
+        default_factory=dict,
+        description="Backtesting de Kupiec separado por método: historical, parametric y monte_carlo",
     )

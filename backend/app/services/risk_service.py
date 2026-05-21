@@ -158,42 +158,71 @@ class RiskService:
             "distribution": self._distribution_label(distribution),
         }
 
-    def _kupiec_test(self, portfolio_returns: pd.Series, alpha: float, var_daily: float) -> dict:
+    def _kupiec_test(
+        self,
+        portfolio_returns: pd.Series,
+        alpha: float,
+        var_daily: float,
+        method: str,
+    ) -> dict:
         n = int(len(portfolio_returns))
+        expected_rate = 1 - alpha
+        expected_violations = n * expected_rate
+
         if n == 0:
             return {
+                "method": method,
+                "var_daily": float(var_daily),
+                "observations": 0,
                 "violations": 0,
+                "expected_violations": 0.0,
                 "observed_rate": 0.0,
-                "expected_rate": 1 - alpha,
+                "expected_rate": expected_rate,
+                "lr_stat": 0.0,
                 "p_value": 1.0,
+                "decision": "Sin datos suficientes",
+                "interpretation": "No hay observaciones suficientes para aplicar Kupiec.",
                 "conclusion": "No hay observaciones suficientes para aplicar Kupiec.",
             }
 
         violations = int((portfolio_returns < -var_daily).sum())
         observed_rate = violations / n
-        expected_rate = 1 - alpha
 
-        if violations == 0 or violations == n:
-            p_value = 0.0 if violations != int(round(n * expected_rate)) else 1.0
+        eps = 1e-12
+        pi_hat = min(max(observed_rate, eps), 1 - eps)
+        expected = min(max(expected_rate, eps), 1 - eps)
+
+        log_l_null = ((n - violations) * np.log(1 - expected)) + (violations * np.log(expected))
+        log_l_alt = ((n - violations) * np.log(1 - pi_hat)) + (violations * np.log(pi_hat))
+        lr_uc = max(0.0, float(-2.0 * (log_l_null - log_l_alt)))
+        p_value = float(1.0 - chi2.cdf(lr_uc, df=1))
+
+        decision = "No se rechaza cobertura adecuada" if p_value >= 0.05 else "Se rechaza cobertura adecuada"
+
+        if p_value >= 0.05:
+            interpretation = "No se rechaza que el modelo tenga una proporción adecuada de excepciones."
+        elif observed_rate > expected_rate:
+            interpretation = "Se rechaza la cobertura adecuada; el VaR puede estar subestimando el riesgo."
         else:
-            pi_hat = violations / n
-
-            log_l_null = ((n - violations) * np.log(1 - expected_rate)) + (violations * np.log(expected_rate))
-            log_l_alt = ((n - violations) * np.log(1 - pi_hat)) + (violations * np.log(pi_hat))
-            lr_uc = -2.0 * (log_l_null - log_l_alt)
-            p_value = float(1.0 - chi2.cdf(lr_uc, df=1))
+            interpretation = "Se rechaza la cobertura adecuada; el VaR puede estar sobreestimando el riesgo."
 
         conclusion = (
-            "No se rechaza la calibración del VaR con el test de Kupiec al 5%."
-            if p_value >= 0.05
-            else "Se rechaza la calibración del VaR con el test de Kupiec al 5%."
+            f"{method}: {interpretation} "
+            f"Excepciones observadas {violations}/{n}; esperadas {expected_violations:.2f}."
         )
 
         return {
+            "method": method,
+            "var_daily": float(var_daily),
+            "observations": n,
             "violations": violations,
+            "expected_violations": float(expected_violations),
             "observed_rate": float(observed_rate),
             "expected_rate": float(expected_rate),
+            "lr_stat": float(lr_uc),
             "p_value": float(p_value),
+            "decision": decision,
+            "interpretation": interpretation,
             "conclusion": conclusion,
         }
 
@@ -242,11 +271,26 @@ class RiskService:
             distribution=distribution,
         )
 
-        kupiec_test = self._kupiec_test(
-            portfolio_returns=portfolio_returns,
-            alpha=alpha,
-            var_daily=historical["var_daily"],
-        )
+        kupiec_tests = {
+            "historical": self._kupiec_test(
+                portfolio_returns=portfolio_returns,
+                alpha=alpha,
+                var_daily=historical["var_daily"],
+                method="VaR histórico",
+            ),
+            "parametric": self._kupiec_test(
+                portfolio_returns=portfolio_returns,
+                alpha=alpha,
+                var_daily=parametric["var_daily"],
+                method="VaR paramétrico",
+            ),
+            "monte_carlo": self._kupiec_test(
+                portfolio_returns=portfolio_returns,
+                alpha=alpha,
+                var_daily=monte_carlo["var_daily"],
+                method="VaR Monte Carlo",
+            ),
+        }
 
         return {
             "tickers": [t.upper() for t in tickers],
@@ -261,5 +305,6 @@ class RiskService:
             "monte_carlo": monte_carlo,
             "portfolio_returns": [float(x) for x in portfolio_returns.tolist()],
             "simulated_returns": [float(x) for x in simulated_returns.tolist()],
-            "kupiec_test": kupiec_test,
+            "kupiec_test": kupiec_tests["historical"],
+            "kupiec_tests": kupiec_tests,
         }

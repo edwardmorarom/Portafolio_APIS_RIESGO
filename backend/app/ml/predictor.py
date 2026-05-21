@@ -6,6 +6,14 @@ import numpy as np
 
 MODEL_PATH = Path(__file__).resolve().parent / "model.joblib"
 MODEL_VERSION = "1.0.0"
+MODEL_TYPE = "LinearRegression"
+MODEL_TARGET = "Retorno esperado del portafolio"
+MODEL_FEATURES = ["volatility", "sharpe_ratio", "var_95", "beta", "market_return"]
+MODEL_METRICS = {
+    "training_samples": 500,
+    "validation": "Datos sintéticos reproducibles con semilla 42",
+    "expected_use": "Apoyo predictivo académico, no señal causal ni recomendación automática",
+}
 
 
 class MLPredictor:
@@ -30,6 +38,11 @@ class MLPredictor:
         return {
             "model_loaded": self.is_loaded(),
             "model_version": MODEL_VERSION,
+            "model_type": MODEL_TYPE,
+            "target": MODEL_TARGET,
+            "features": MODEL_FEATURES,
+            "metrics": MODEL_METRICS,
+            "singleton": True,
             "model_path": str(MODEL_PATH),
             "model_size_bytes": MODEL_PATH.stat().st_size if MODEL_PATH.exists() else 0,
         }

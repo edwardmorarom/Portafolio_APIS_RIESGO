@@ -7,6 +7,7 @@ from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import header_dashboard, nota, seccion, tarjeta_kpi
 from ui.page_setup import setup_dashboard_page
+from ui.portfolio_state import active_benchmark, active_horizon_label, active_tickers
 
 
 modo, filtros_panel = setup_dashboard_page(
@@ -22,6 +23,10 @@ client = get_api_client()
 
 with filtros_panel:
     st.caption("Reporte ejecutivo institucional PDF-ready.")
+    st.caption(
+        f"Portafolio activo: {', '.join(active_tickers()) or 'N/D'} · "
+        f"Horizonte: {active_horizon_label()} · Benchmark: {active_benchmark()}"
+    )
 
 header_dashboard(
     "Reportes ejecutivos",
@@ -58,7 +63,7 @@ render_meta_row(
 )
 
 nota(
-    "Este reporte funciona como base ejecutiva para documentar KYC, riesgo, optimización, ML, chatbot y arquitectura técnica."
+    "Este reporte funciona como base ejecutiva para documentar KYC, riesgo, optimización, ML, chatbot, benchmark y arquitectura técnica."
 )
 
 seccion("Secciones del reporte")

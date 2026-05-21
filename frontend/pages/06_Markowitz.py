@@ -14,8 +14,17 @@ from ui.dashboard_ui import (
     seccion,
     tarjeta_kpi,
 )
+from ui.dashboard_filters import chip_toggles
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
+from ui.portfolio_state import (
+    HORIZON_OPTIONS,
+    active_assets,
+    active_custom_dates,
+    active_weights_pct,
+    horizon_index,
+    render_portfolio_scope_note,
+)
 
 # --- PORTAFOLIO DINÁMICO (Conectado al Robo-Advisor) ---
 if "robo_portfolio" not in st.session_state:
@@ -26,7 +35,7 @@ if "robo_portfolio" not in st.session_state:
         {"name": "BP", "ticker": "BP.L", "country": "UK"},
         {"name": "Carrefour", "ticker": "CA.PA", "country": "FR"},
     ]
-CURRENT_PORTFOLIO = st.session_state["robo_portfolio"]
+CURRENT_PORTFOLIO = active_assets() or st.session_state["robo_portfolio"]
 
 RF_FALLBACK_ANNUAL = 0.03
 RF_FALLBACK_TICKER = "^IRX"
@@ -125,14 +134,20 @@ def _weights_editor(
                 "Puedes modificar estos pesos solo cuando el perfil es 'Sin perfil' y no se usa retorno objetivo."
             )
 
+        stored_weights = active_weights_pct()
         weights_pct: list[float] = []
 
-        for asset in CURRENT_PORTFOLIO:
+        for index, asset in enumerate(CURRENT_PORTFOLIO):
+            default_weight = (
+                stored_weights[index]
+                if index < len(stored_weights)
+                else 100.0 / len(CURRENT_PORTFOLIO) if len(CURRENT_PORTFOLIO) > 0 else 0.0
+            )
             value = st.number_input(
                 asset["ticker"],
                 min_value=0.0,
                 max_value=100.0,
-                value=100.0 / len(CURRENT_PORTFOLIO) if len(CURRENT_PORTFOLIO) > 0 else 0.0,
+                value=float(default_weight),
                 step=1.0,
                 key=f"{key_prefix}_{asset['ticker']}",
                 format="%.2f",
@@ -630,12 +645,17 @@ modo, filtros_sidebar = setup_dashboard_page(
 )
 
 today = pd.Timestamp.today().normalize()
+stored_custom_start, stored_custom_end = active_custom_dates()
+default_custom_start = stored_custom_start or (today - pd.DateOffset(years=1)).date()
+default_custom_end = stored_custom_end or today.date()
 
 with filtros_sidebar:
+    render_portfolio_scope_note()
+
     horizonte = st.selectbox(
         "Horizonte de análisis",
-        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"],
-        index=3,
+        HORIZON_OPTIONS,
+        index=horizon_index(),
         key="markowitz_horizonte_backend",
     )
 
@@ -646,14 +666,14 @@ with filtros_sidebar:
         with c1:
             custom_start = st.date_input(
                 "Fecha inicial",
-                value=(today - pd.DateOffset(years=1)).date(),
+                value=default_custom_start,
                 max_value=today.date(),
                 key="markowitz_custom_start",
             )
         with c2:
             custom_end = st.date_input(
                 "Fecha final",
-                value=today.date(),
+                value=default_custom_end,
                 max_value=today.date(),
                 key="markowitz_custom_end",
             )
@@ -1107,15 +1127,19 @@ with tab2:
             caption="La nube simulada, la frontera, los óptimos y la selección actual se muestran diferenciados.",
         )
 
-        p1, p2, p3, p4 = st.columns(4)
-        with p1:
-            show_cloud = st.checkbox("Nube", value=True, key="markowitz_show_cloud")
-        with p2:
-            show_frontier = st.checkbox("Frontera", value=True, key="markowitz_show_frontier")
-        with p3:
-            show_optimal = st.checkbox("Óptimos", value=True, key="markowitz_show_optimal")
-        with p4:
-            frontier_clean = st.checkbox("Vista limpia", value=False, key="markowitz_frontier_clean")
+        frontier_layers = chip_toggles(
+            [
+                ("cloud", "Nube", True),
+                ("frontier", "Frontera", True),
+                ("optimal", "Óptimos", True),
+                ("clean", "Vista limpia", False),
+            ],
+            key_prefix="markowitz_frontier_layers",
+        )
+        show_cloud = frontier_layers["cloud"]
+        show_frontier = frontier_layers["frontier"]
+        show_optimal = frontier_layers["optimal"]
+        frontier_clean = frontier_layers["clean"]
 
         fig_frontier = _build_frontier_figure(
             frontier_df=frontier_df,

@@ -17,9 +17,17 @@ from ui.dashboard_ui import (
     tarjeta_kpi,
     toolbar_label,
 )
+from ui.dashboard_filters import chip_toggles
 from ui.page_setup import setup_dashboard_page
 from ui.altair_style import bar_chart, horizontal_rule, line_chart
 from ui.plot_style import add_reference_line, style_plotly_figure
+from ui.portfolio_state import (
+    HORIZON_OPTIONS,
+    active_custom_dates,
+    asset_options_for_active_portfolio,
+    horizon_index,
+    render_portfolio_scope_note,
+)
 
 
 def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:
@@ -762,16 +770,19 @@ if load_error:
     st.error(load_error)
     st.stop()
 
-asset_labels = []
-asset_map: dict[str, dict] = {}
-for asset in assets:
-    label = f"{asset['name']} · {asset['ticker']} · {asset['country']}"
-    asset_labels.append(label)
-    asset_map[label] = asset
+asset_labels, asset_map = asset_options_for_active_portfolio(assets)
+if not asset_labels:
+    st.error("No hay activos disponibles para el portafolio activo.")
+    st.stop()
 
 today = pd.Timestamp.today().normalize()
+stored_custom_start, stored_custom_end = active_custom_dates()
+default_custom_start = stored_custom_start or (today - pd.DateOffset(years=1)).date()
+default_custom_end = stored_custom_end or today.date()
 
 with filtros_sidebar:
+    render_portfolio_scope_note()
+
     selected_label = st.selectbox(
         "Activo",
         options=asset_labels,
@@ -781,8 +792,8 @@ with filtros_sidebar:
 
     horizonte = st.selectbox(
         "Horizonte de análisis",
-        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"],
-        index=3,
+        HORIZON_OPTIONS,
+        index=horizon_index(),
         key="tec_horizonte_backend",
         help="Define la ventana histórica a consultar desde backend.",
     )
@@ -794,14 +805,14 @@ with filtros_sidebar:
         with c1:
             custom_start = st.date_input(
                 "Fecha inicial",
-                value=(today - pd.DateOffset(years=1)).date(),
+                value=default_custom_start,
                 max_value=today.date(),
                 key="tec_custom_start",
             )
         with c2:
             custom_end = st.date_input(
                 "Fecha final",
-                value=today.date(),
+                value=default_custom_end,
                 max_value=today.date(),
                 key="tec_custom_end",
             )
@@ -1028,16 +1039,10 @@ plot_card_header(
 
 toolbar_label("Capas del gráfico")
 
-p1, p2, p3 = st.columns(3)
-
-with p1:
-    show_price = st.checkbox("Precio", value=True, key="tec_price_show_price")
-
-with p2:
-    show_sma = st.checkbox(f"SMA {sma_window}", value=True, key="tec_price_show_sma")
-
-with p3:
-    show_ema = st.checkbox(f"EMA {ema_window}", value=True, key="tec_price_show_ema")
+price_layers = chip_toggles([("price", "Precio", True), ("sma", f"SMA {sma_window}", True), ("ema", f"EMA {ema_window}", True)], key_prefix="tec_price_layers")
+show_price = price_layers["price"]
+show_sma = price_layers["sma"]
+show_ema = price_layers["ema"]
 
 fig_price = _plotly_price_ma(
     df=df,
@@ -1062,11 +1067,9 @@ with g1:
     )
 
     toolbar_label("Capas del gráfico")
-    r1, r2 = st.columns(2)
-    with r1:
-        rsi_line = st.checkbox("Línea RSI", value=True, key="tec_rsi_line")
-    with r2:
-        rsi_levels = st.checkbox("Niveles 30/70", value=True, key="tec_rsi_levels")
+    rsi_layers = chip_toggles([("line", "Línea RSI", True), ("levels", "Niveles 30/70", True)], key_prefix="tec_rsi_layers")
+    rsi_line = rsi_layers["line"]
+    rsi_levels = rsi_layers["levels"]
 
     fig_rsi = _plotly_rsi(
         df,
@@ -1087,15 +1090,11 @@ with g2:
     )
 
     toolbar_label("Capas del gráfico")
-    b1, b2, b3, b4 = st.columns(4)
-    with b1:
-        show_boll_price = st.checkbox("Precio", value=True, key="tec_boll_price")
-    with b2:
-        show_boll_mid = st.checkbox("Media", value=True, key="tec_boll_mid")
-    with b3:
-        show_boll_up = st.checkbox("Banda sup.", value=True, key="tec_boll_up")
-    with b4:
-        show_boll_low = st.checkbox("Banda inf.", value=True, key="tec_boll_low")
+    boll_layers = chip_toggles([("price", "Precio", True), ("mid", "Media", True), ("up", "Banda sup.", True), ("low", "Banda inf.", True)], key_prefix="tec_boll_layers")
+    show_boll_price = boll_layers["price"]
+    show_boll_mid = boll_layers["mid"]
+    show_boll_up = boll_layers["up"]
+    show_boll_low = boll_layers["low"]
 
     fig_boll = _plotly_bollinger(
         df=df,
@@ -1124,16 +1123,10 @@ with g3:
 
     toolbar_label("Capas del gráfico")
 
-    m1, m2, m3 = st.columns(3)
-
-    with m1:
-        show_macd = st.checkbox("MACD", value=True, key="tec_macd_show_macd")
-
-    with m2:
-        show_signal = st.checkbox("Señal", value=True, key="tec_macd_show_signal")
-
-    with m3:
-        show_hist = st.checkbox("Histograma", value=True, key="tec_macd_show_hist")
+    macd_layers = chip_toggles([("macd", "MACD", True), ("signal", "Señal", True), ("hist", "Histograma", True)], key_prefix="tec_macd_layers")
+    show_macd = macd_layers["macd"]
+    show_signal = macd_layers["signal"]
+    show_hist = macd_layers["hist"]
 
     fig_macd = _plotly_macd(
         df=df,
@@ -1161,14 +1154,10 @@ with g4:
     )
 
     toolbar_label("Capas del gráfico")
-    s1, s2, s3 = st.columns(3)
-
-    with s1:
-        show_stoch_k = st.checkbox("%K", value=True, key="tec_stoch_show_k")
-    with s2:
-        show_stoch_d = st.checkbox("%D", value=True, key="tec_stoch_show_d")
-    with s3:
-        show_stoch_levels = st.checkbox("Niveles 20/80", value=True, key="tec_stoch_levels")
+    stoch_layers = chip_toggles([("k", "%K", True), ("d", "%D", True), ("levels", "Niveles 20/80", True)], key_prefix="tec_stoch_layers")
+    show_stoch_k = stoch_layers["k"]
+    show_stoch_d = stoch_layers["d"]
+    show_stoch_levels = stoch_layers["levels"]
 
     fig_stoch = _plotly_stochastic(
         df=df,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -8,6 +9,13 @@ from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import header_dashboard, nota, plot_card_footer, plot_card_header, seccion, tarjeta_kpi
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
+from ui.portfolio_state import (
+    active_benchmark,
+    active_horizon_label,
+    active_tickers,
+    active_weights_pct,
+    render_portfolio_scope_note,
+)
 
 
 def _format_money(value: float) -> str:
@@ -27,6 +35,16 @@ def _severity_color(severity: str) -> str:
     }.get(str(severity).lower(), "#64748B")
 
 
+def _scenario_defaults(name: str) -> dict[str, float]:
+    scenarios = {
+        "Caída mercado": {"rate_shock": 0.01, "market_shock": -0.20, "benchmark_shock": -0.20, "volatility_multiplier": 1.8},
+        "Shock tasas": {"rate_shock": 0.02, "market_shock": -0.08, "benchmark_shock": -0.10, "volatility_multiplier": 1.3},
+        "Volatilidad extrema": {"rate_shock": 0.00, "market_shock": -0.12, "benchmark_shock": -0.15, "volatility_multiplier": 2.2},
+        "Combinado severo": {"rate_shock": 0.03, "market_shock": -0.25, "benchmark_shock": -0.25, "volatility_multiplier": 2.5},
+    }
+    return scenarios.get(name, scenarios["Caída mercado"])
+
+
 modo, filtros_panel = setup_dashboard_page(
     title="Dashboard Riesgo",
     subtitle="Universidad Santo Tomás",
@@ -37,8 +55,20 @@ modo, filtros_panel = setup_dashboard_page(
 )
 
 client = get_api_client()
+tickers = active_tickers()
+weights_pct = active_weights_pct()
+benchmark_ticker = active_benchmark()
+horizon_label = active_horizon_label()
 
 with filtros_panel:
+    render_portfolio_scope_note()
+    scenario_name = st.radio(
+        "Escenario",
+        ["Caída mercado", "Shock tasas", "Volatilidad extrema", "Combinado severo"],
+        horizontal=True,
+        key="stress_scenario_name",
+    )
+    defaults = _scenario_defaults(scenario_name)
     c1, c2 = st.columns(2)
     with c1:
         portfolio_value = st.number_input("Valor del portafolio", min_value=1_000.0, value=100_000.0, step=5_000.0)
@@ -47,9 +77,10 @@ with filtros_panel:
         var_95 = st.number_input("VaR 95%", min_value=-1.0, max_value=1.0, value=-0.08, step=0.01, format="%.4f")
     with c2:
         beta = st.number_input("Beta del portafolio", min_value=-2.0, max_value=5.0, value=1.15, step=0.05, format="%.4f")
-        rate_shock = st.number_input("Shock de tasa", min_value=-1.0, max_value=1.0, value=0.03, step=0.01, format="%.4f")
-        market_shock = st.number_input("Shock de mercado", min_value=-1.0, max_value=1.0, value=-0.15, step=0.01, format="%.4f")
-        volatility_multiplier = st.number_input("Multiplicador de volatilidad", min_value=0.1, max_value=10.0, value=1.5, step=0.1, format="%.2f")
+        rate_shock = st.number_input("Shock de tasa", min_value=-1.0, max_value=1.0, value=float(defaults["rate_shock"]), step=0.01, format="%.4f")
+        market_shock = st.number_input("Shock de mercado", min_value=-1.0, max_value=1.0, value=float(defaults["market_shock"]), step=0.01, format="%.4f")
+        benchmark_shock = st.number_input(f"Shock benchmark {benchmark_ticker}", min_value=-1.0, max_value=1.0, value=float(defaults["benchmark_shock"]), step=0.01, format="%.4f")
+        volatility_multiplier = st.number_input("Multiplicador de volatilidad", min_value=0.1, max_value=10.0, value=float(defaults["volatility_multiplier"]), step=0.1, format="%.2f")
 
     run_scenario = st.button("Ejecutar escenario", type="primary", use_container_width=True)
 
@@ -61,6 +92,7 @@ payload = {
     "beta": float(beta),
     "rate_shock": float(rate_shock),
     "market_shock": float(market_shock),
+    "benchmark_shock": float(benchmark_shock),
     "volatility_multiplier": float(volatility_multiplier),
 }
 
@@ -71,6 +103,22 @@ header_dashboard(
 )
 
 tab_result, tab_impact, tab_read = st.tabs(["Resultado", "Impacto", "Lectura"])
+
+render_meta_row(
+    {
+        "Activos": ", ".join(tickers) if tickers else "N/D",
+        "Horizonte": horizon_label,
+        "Benchmark": benchmark_ticker,
+        "Escenario": scenario_name,
+    }
+)
+
+if tickers and weights_pct:
+    st.dataframe(
+        pd.DataFrame({"Ticker": tickers, "Peso": [f"{weight:.2f}%" for weight in weights_pct]}),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 result: dict | None = None
 if run_scenario:
@@ -108,10 +156,12 @@ with tab_result:
             {
                 "Shock tasa": _format_pct(rate_shock),
                 "Shock mercado": _format_pct(market_shock),
+                f"Shock {benchmark_ticker}": _format_pct(benchmark_shock),
                 "Multiplicador vol": f"{volatility_multiplier:.2f}x",
                 "Beta": f"{beta:.2f}",
             }
         )
+        render_info_card("Interpretación automática", result.get("interpretation", result.get("summary", "")))
     else:
         render_info_card("Escenario pendiente", "Ejecuta el escenario para obtener los indicadores de stress.")
 
@@ -149,6 +199,22 @@ with tab_impact:
             use_container_width=True,
         )
         plot_card_footer("La barra de pérdida estima el daño combinado de shocks de retorno y VaR estresado.")
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {"Métrica": "Pérdida portafolio", "Valor": _format_pct(result.get("estimated_loss_pct", 0.0))},
+                    {
+                        "Métrica": f"Pérdida benchmark {benchmark_ticker}",
+                        "Valor": _format_pct(result.get("benchmark_loss_pct", 0.0))
+                        if result.get("benchmark_loss_pct") is not None
+                        else "N/D",
+                    },
+                    {"Métrica": "Lectura relativa", "Valor": result.get("relative_to_benchmark") or "N/D"},
+                ]
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
     else:
         render_info_card("Impacto pendiente", "Ejecuta el escenario para ver la comparación gráfica.")
 
@@ -164,4 +230,4 @@ with tab_read:
     )
 
     if result:
-        nota(result.get("summary", "Escenario calculado correctamente."))
+        nota(result.get("interpretation") or result.get("summary", "Escenario calculado correctamente."))

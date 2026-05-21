@@ -12,3 +12,6 @@ class MLPredictionRequest(BaseModel):
 class MLPredictionResponse(BaseModel):
     predicted_return: float
     model_version: str
+    model_type: str = "LinearRegression"
+    target: str = "Retorno esperado del portafolio"
+    interpretation: str

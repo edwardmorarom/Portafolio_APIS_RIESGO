@@ -16,6 +16,13 @@ from ui.dashboard_ui import (
 )
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
+from ui.portfolio_state import (
+    HORIZON_OPTIONS,
+    active_custom_dates,
+    asset_options_for_active_portfolio,
+    horizon_index,
+    render_portfolio_scope_note,
+)
 
 
 def _fetch_assets_and_help() -> tuple[list[dict], dict[str, dict], str | None]:
@@ -429,16 +436,19 @@ if load_error:
     st.error(load_error)
     st.stop()
 
-asset_labels = []
-asset_map: dict[str, dict] = {}
-for asset in assets:
-    label = f"{asset['name']} · {asset['ticker']} · {asset['country']}"
-    asset_labels.append(label)
-    asset_map[label] = asset
+asset_labels, asset_map = asset_options_for_active_portfolio(assets)
+if not asset_labels:
+    st.error("No hay activos disponibles para el portafolio activo.")
+    st.stop()
 
 today = pd.Timestamp.today().normalize()
+stored_custom_start, stored_custom_end = active_custom_dates()
+default_custom_start = stored_custom_start or (today - pd.DateOffset(years=1)).date()
+default_custom_end = stored_custom_end or today.date()
 
 with filtros_sidebar:
+    render_portfolio_scope_note()
+
     selected_label = st.selectbox(
         "Activo representativo",
         options=asset_labels,
@@ -448,8 +458,8 @@ with filtros_sidebar:
 
     horizonte = st.selectbox(
         "Horizonte de análisis",
-        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"],
-        index=3,
+        HORIZON_OPTIONS,
+        index=horizon_index(),
         key="garch_horizonte_backend",
     )
 
@@ -460,14 +470,14 @@ with filtros_sidebar:
         with c1:
             custom_start = st.date_input(
                 "Fecha inicial",
-                value=(today - pd.DateOffset(years=1)).date(),
+                value=default_custom_start,
                 max_value=today.date(),
                 key="garch_custom_start",
             )
         with c2:
             custom_end = st.date_input(
                 "Fecha final",
-                value=today.date(),
+                value=default_custom_end,
                 max_value=today.date(),
                 key="garch_custom_end",
             )

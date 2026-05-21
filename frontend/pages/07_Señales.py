@@ -16,6 +16,13 @@ from ui.dashboard_ui import (
     tarjeta_kpi,
 )
 from ui.page_setup import setup_dashboard_page
+from ui.portfolio_state import (
+    HORIZON_OPTIONS,
+    active_assets,
+    active_custom_dates,
+    horizon_index,
+    render_portfolio_scope_note,
+)
 
 
 BASE_PORTFOLIO = [
@@ -356,12 +363,18 @@ modo, filtros_sidebar = setup_dashboard_page(
 )
 
 today = pd.Timestamp.today().normalize()
+portfolio_assets = active_assets() or BASE_PORTFOLIO
+stored_custom_start, stored_custom_end = active_custom_dates()
+default_custom_start = stored_custom_start or (today - pd.DateOffset(years=1)).date()
+default_custom_end = stored_custom_end or today.date()
 
 with filtros_sidebar:
+    render_portfolio_scope_note()
+
     horizonte = st.selectbox(
         "Horizonte de análisis",
-        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"],
-        index=3,
+        HORIZON_OPTIONS,
+        index=horizon_index(),
         key="signals_horizonte",
     )
 
@@ -372,14 +385,14 @@ with filtros_sidebar:
         with c1:
             custom_start = st.date_input(
                 "Fecha inicial",
-                value=(today - pd.DateOffset(years=1)).date(),
+                value=default_custom_start,
                 max_value=today.date(),
                 key="signals_custom_start",
             )
         with c2:
             custom_end = st.date_input(
                 "Fecha final",
-                value=today.date(),
+                value=default_custom_end,
                 max_value=today.date(),
                 key="signals_custom_end",
             )
@@ -420,7 +433,7 @@ else:
 asset_results: list[dict] = []
 errors: list[str] = []
 
-for asset in BASE_PORTFOLIO:
+for asset in portfolio_assets:
     payload, err = _fetch_alerts_for_asset(
         ticker=asset["ticker"],
         start=start_date.strftime("%Y-%m-%d"),
@@ -444,7 +457,7 @@ render_meta_row(
         ("Horizonte", horizonte),
         ("RSI", f"{rsi_oversold}/{rsi_overbought}"),
         ("Estocástico", f"{stoch_oversold}/{stoch_overbought}"),
-        ("Activos", str(len(BASE_PORTFOLIO))),
+        ("Activos", str(len(portfolio_assets))),
     ]
 )
 

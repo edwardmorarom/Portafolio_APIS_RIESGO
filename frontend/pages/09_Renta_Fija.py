@@ -10,6 +10,7 @@ from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import header_dashboard, nota, plot_card_footer, plot_card_header, seccion, tarjeta_kpi
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
+from ui.portfolio_state import render_portfolio_scope_note
 
 
 def _parse_float_list(value: str) -> list[float]:
@@ -43,6 +44,7 @@ modo, filtros_panel = setup_dashboard_page(
 client = get_api_client()
 
 with filtros_panel:
+    render_portfolio_scope_note()
     st.markdown("#### Curva Nelson-Siegel")
     maturities_text = st.text_input("Vencimientos en años", "1,2,5,10,20,30")
     yields_text = st.text_input("Tasas observadas", "0.030,0.034,0.039,0.043,0.047,0.049")

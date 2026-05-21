@@ -66,6 +66,11 @@ CHATBOT_FINANCIAL_TOPIC_CATALOG = {
         "description": "Sugerencia automatizada de portafolios segun perfil y activos.",
         "keywords": ["roboadvisor", "asesor automatico", "asesor automático", "portafolio sugerido", "perfil conservador", "perfil agresivo"],
     },
+    "ml": {
+        "label": "Machine Learning",
+        "description": "Prediccion de retorno esperado con variables de riesgo y endpoint /ml/predict.",
+        "keywords": ["machine learning", "ml", "predict", "prediccion", "predicción", "modelo", "singleton"],
+    },
 }
 
 CHATBOT_ALLOWED_FINANCIAL_MODULES = set(CHATBOT_FINANCIAL_TOPIC_CATALOG.keys()) | {
@@ -73,6 +78,7 @@ CHATBOT_ALLOWED_FINANCIAL_MODULES = set(CHATBOT_FINANCIAL_TOPIC_CATALOG.keys()) 
     "portfolio",
     "valuation",
     "macro",
+    "ml",
     "investor",
 }
 

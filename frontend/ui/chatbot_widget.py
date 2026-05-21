@@ -226,11 +226,18 @@ def _ask_chatbot(question: str, *, mode: str | None, module: str | None) -> None
     )
 
     try:
+        portfolio_config = st.session_state.get("portfolio_config", {}) or {}
         response = get_api_client().ask_chatbot(
             {
                 "question": clean_question,
                 "mode": _normalise_mode(mode),
                 "module": _module_hint(module),
+                "portfolio_context": {
+                    "tickers": portfolio_config.get("tickers", []),
+                    "weights_pct": portfolio_config.get("weights_pct", []),
+                    "horizon": portfolio_config.get("horizon_type"),
+                    "benchmark": portfolio_config.get("benchmark", {}),
+                },
             }
         )
         answer = response.get("answer") or "No recibi una respuesta valida del backend."

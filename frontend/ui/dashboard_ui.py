@@ -1,7 +1,5 @@
 from __future__ import annotations
 from html import escape
-from contextlib import nullcontext
-
 import json
 from pathlib import Path
 import streamlit as st
@@ -479,7 +477,10 @@ def render_top_navigation():
                     )
 
 
-def render_invisible_filter_panel():
+def render_invisible_filter_panel(
+    filtros_label: str = "Filtros del módulo",
+    filtros_expanded: bool = False,
+):
     """
     Panel tcnico vaco para mantener compatibilidad con pginas que hacen:
 
@@ -487,10 +488,10 @@ def render_invisible_filter_panel():
         with filtros_sidebar:
             ...
 
-    Ya no muestra el bloque visual de 'Parmetros generales' ni el selector
-    'Modo de visualizacin'.
+    Muestra filtros en un panel compacto para no ocupar espacio cuando no se usan.
     """
-    return "General", nullcontext()
+    panel = st.expander(f"Mostrar filtros / Ocultar filtros · {filtros_label}", expanded=filtros_expanded)
+    return "General", panel
 
 
 def render_filter_panel(

@@ -19,6 +19,10 @@ class ChatbotQuestionRequest(BaseModel):
         max_length=80,
         description="Módulo opcional asociado a la pregunta: var, capm, garch, markowitz, perri, etc.",
     )
+    portfolio_context: dict | None = Field(
+        default=None,
+        description="Contexto opcional del portafolio activo enviado por el frontend",
+    )
 
     @field_validator("question")
     @classmethod

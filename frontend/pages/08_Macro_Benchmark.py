@@ -16,6 +16,15 @@ from ui.dashboard_ui import (
 )
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
+from ui.portfolio_state import (
+    HORIZON_OPTIONS,
+    active_assets,
+    active_benchmark,
+    active_custom_dates,
+    horizon_index,
+    render_portfolio_scope_note,
+    weights_for_tickers,
+)
 
 
 BASE_PORTFOLIO = [
@@ -88,31 +97,23 @@ def _format_num(x, ndigits: int = 4) -> str:
         return str(x)
 
 
-def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:
+def _weights_editor(sidebar_container, selected_assets: list[dict]) -> tuple[list[float], float]:
     with sidebar_container:
-        st.markdown("**Pesos del portafolio (%)**")
-        weights_pct: list[float] = []
-        for asset in BASE_PORTFOLIO:
-            value = st.number_input(
-                asset["ticker"],
-                min_value=0.0,
-                max_value=100.0,
-                value=20.0,
-                step=1.0,
-                key=f"{key_prefix}_{asset['ticker']}",
-                format="%.2f",
-            )
-            weights_pct.append(float(value))
-
-        total_pct = float(sum(weights_pct))
+        st.markdown("**Pesos del portafolio activo**")
+        tickers = [asset["ticker"] for asset in selected_assets]
+        weights_decimals, total_pct = weights_for_tickers(tickers)
+        weights_pct = [weight * 100.0 for weight in weights_decimals]
+        st.dataframe(
+            pd.DataFrame({"Ticker": tickers, "Peso": [f"{weight:.2f}%" for weight in weights_pct]}),
+            use_container_width=True,
+            hide_index=True,
+        )
         st.caption(f"Total asignado: {total_pct:.2f}%")
 
-        if total_pct > 100.0 + 1e-6:
-            st.error("Los pesos no pueden superar 100%.")
-        elif abs(total_pct - 100.0) > 1e-6:
-            st.warning("Para comparar contra benchmark, los pesos deben sumar exactamente 100%.")
+        if abs(total_pct - 100.0) > 1e-4:
+            st.warning("Los pesos se normalizaron para comparar contra el benchmark.")
 
-    return [w / 100.0 for w in weights_pct], total_pct
+    return weights_decimals, 100.0 if weights_decimals else 0.0
 
 
 def _call_macro_snapshot(client, base_currency: str) -> dict:
@@ -149,6 +150,7 @@ def _call_benchmark_compare(client, payload: dict) -> dict:
 
 def _fetch_macro_and_benchmark(
     base_currency: str,
+    tickers: list[str],
     benchmark_ticker: str,
     start: str,
     end: str,
@@ -158,7 +160,7 @@ def _fetch_macro_and_benchmark(
     client = get_api_client()
 
     compare_payload = {
-        "tickers": [a["ticker"] for a in BASE_PORTFOLIO],
+        "tickers": tickers,
         "weights": weights,
         "benchmark_ticker": benchmark_ticker,
         "base_currency": base_currency,
@@ -232,6 +234,32 @@ def _comparison_table(benchmark_payload: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _efficiency_conclusion(benchmark_payload: dict) -> str:
+    portfolio = _metric_block(benchmark_payload, "portfolio")
+    benchmark = _metric_block(benchmark_payload, "benchmark")
+
+    port_ret = _pick_value(portfolio, "annual_return", "cumulative_return")
+    bench_ret = _pick_value(benchmark, "annual_return", "cumulative_return")
+    port_vol = _pick_value(portfolio, "annual_volatility", "volatility")
+    bench_vol = _pick_value(benchmark, "annual_volatility", "volatility")
+
+    if None in (port_ret, bench_ret, port_vol, bench_vol):
+        return "No hay métricas suficientes para concluir eficiencia frente al benchmark."
+
+    port_ret = float(port_ret)
+    bench_ret = float(bench_ret)
+    port_vol = float(port_vol)
+    bench_vol = float(bench_vol)
+
+    if port_ret >= bench_ret and port_vol <= bench_vol:
+        return "El portafolio luce eficiente: mayor retorno con menor o igual riesgo que el benchmark."
+    if port_ret >= bench_ret and port_vol > bench_vol:
+        return "El portafolio ofrece más retorno, pero exige aceptar más riesgo que el benchmark."
+    if port_ret < bench_ret and port_vol > bench_vol:
+        return "El portafolio no luce eficiente frente al benchmark: menor retorno y mayor riesgo."
+    return "El portafolio tiene perfil defensivo: menor riesgo, pero también menor retorno que el benchmark."
+
+
 def _build_base100_chart(benchmark_payload: dict, modo: str, clean_view: bool) -> go.Figure:
     fig = go.Figure()
 
@@ -294,15 +322,20 @@ modo, filtros_sidebar = setup_dashboard_page(
 )
 
 today = pd.Timestamp.today().normalize()
-portfolio_config = st.session_state.get("portfolio_config", {}) or {}
-auto_benchmark = (portfolio_config.get("benchmark", {}) or {}).get("ticker") or "ACWI"
+portfolio_assets = active_assets() or BASE_PORTFOLIO
+stored_custom_start, stored_custom_end = active_custom_dates()
+default_custom_start = stored_custom_start or (today - pd.DateOffset(years=1)).date()
+default_custom_end = stored_custom_end or today.date()
+auto_benchmark = active_benchmark("ACWI")
 st.session_state["macro_benchmark_ticker"] = auto_benchmark
 
 with filtros_sidebar:
+    render_portfolio_scope_note()
+
     horizonte = st.selectbox(
         "Horizonte de análisis",
-        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"],
-        index=3,
+        HORIZON_OPTIONS,
+        index=horizon_index(),
         key="macro_benchmark_horizonte",
     )
 
@@ -313,14 +346,14 @@ with filtros_sidebar:
         with c1:
             custom_start = st.date_input(
                 "Fecha inicial",
-                value=(today - pd.DateOffset(years=1)).date(),
+                value=default_custom_start,
                 max_value=today.date(),
                 key="macro_benchmark_custom_start",
             )
         with c2:
             custom_end = st.date_input(
                 "Fecha final",
-                value=today.date(),
+                value=default_custom_end,
                 max_value=today.date(),
                 key="macro_benchmark_custom_end",
             )
@@ -343,7 +376,7 @@ with filtros_sidebar:
         ),
     )
 
-    weights_decimals, total_pct = _weights_editor(filtros_sidebar, "macro_benchmark_weight")
+    weights_decimals, total_pct = _weights_editor(filtros_sidebar, portfolio_assets)
 
 start_date, end_date = _resolve_dates(
     horizonte=horizonte,
@@ -379,6 +412,7 @@ if abs(total_pct - 100.0) > 1e-6:
 
 macro_payload, benchmark_payload, fetch_error = _fetch_macro_and_benchmark(
     base_currency=base_currency,
+    tickers=[asset["ticker"] for asset in portfolio_assets],
     benchmark_ticker=benchmark_ticker.strip() or "ACWI",
     start=start_date.strftime("%Y-%m-%d"),
     end=end_date.strftime("%Y-%m-%d"),
@@ -503,25 +537,16 @@ with c3:
     )
 
 plot_card_header(
-    "Portafolio vs benchmark global",
+    "Tabla de eficiencia frente al benchmark",
     (
-        "La comparación base 100 muestra cómo habría evolucionado el portafolio frente al benchmark "
-        "durante el horizonte seleccionado."
+        "Compara retorno, volatilidad, Sharpe y riesgo del portafolio contra su referencia automática."
     ),
     modo=modo,
-    caption="La línea azul representa el portafolio convertido a USD y la vinotinto el benchmark ACWI.",
-)
-
-clean_view = st.checkbox("Vista limpia", value=False, key="macro_benchmark_clean_chart")
-fig = _build_base100_chart(benchmark_payload, modo=modo, clean_view=clean_view)
-st.plotly_chart(fig, use_container_width=True)
-
-plot_card_footer(
-    "Si la línea del portafolio queda por encima del benchmark, tuvo mejor desempeño acumulado. "
-    "Si queda por debajo, el benchmark global fue superior durante el periodo."
+    caption="La lectura se centra en eficiencia financiera, no solo en desempeño acumulado.",
 )
 
 st.dataframe(_comparison_table(benchmark_payload), use_container_width=True, hide_index=True)
+plot_card_footer(_efficiency_conclusion(benchmark_payload))
 
 seccion("Interpretación")
 

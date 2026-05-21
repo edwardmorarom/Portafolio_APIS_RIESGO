@@ -16,6 +16,7 @@ def test_stress_testing_endpoint():
             "beta": 1.15,
             "rate_shock": 0.03,
             "market_shock": -0.15,
+            "benchmark_shock": -0.20,
             "volatility_multiplier": 1.5,
         },
     )
@@ -25,6 +26,9 @@ def test_stress_testing_endpoint():
     data = response.json()
 
     assert "estimated_loss" in data
+    assert "estimated_loss_pct" in data
+    assert "benchmark_loss_pct" in data
+    assert "interpretation" in data
     assert "severity" in data
     assert "summary" in data
     assert data["estimated_loss"] >= 0

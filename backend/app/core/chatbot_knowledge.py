@@ -336,4 +336,35 @@ CHATBOT_KNOWLEDGE_BASE = {
         ],
     },
 
+    "ml": {
+        "keywords": [
+            "machine learning",
+            "ml",
+            "predict",
+            "prediccion",
+            "predicción",
+            "modelo",
+            "retorno predicho",
+            "singleton",
+        ],
+        "title": "Machine Learning financiero",
+        "source_type": "modulo",
+        "reference": "Proyecto Integrador Riesgo USTA: MLPredictor Singleton y endpoint /ml/predict.",
+        "general": (
+            "El módulo de Machine Learning estima el retorno esperado del portafolio usando variables financieras "
+            "como volatilidad, Sharpe, VaR, beta y retorno de mercado. Funciona como complemento predictivo para "
+            "contrastar riesgo, no como recomendación automática ni prueba causal."
+        ),
+        "estadistico": (
+            "El backend carga un modelo persistido con joblib mediante un Singleton para evitar recargarlo en cada request. "
+            "El endpoint /ml/predict recibe features de riesgo y devuelve una predicción de retorno esperado con una lectura "
+            "financiera breve."
+        ),
+        "followups": [
+            "Qué features usa el modelo ML?",
+            "Por qué el modelo no es una prueba causal?",
+            "Cómo se interpreta un retorno predicho negativo?",
+        ],
+    },
+
 }

@@ -24,5 +24,6 @@ def run_stress_scenario(
         beta=request.beta,
         rate_shock=request.rate_shock,
         market_shock=request.market_shock,
+        benchmark_shock=request.benchmark_shock,
         volatility_multiplier=request.volatility_multiplier,
     )

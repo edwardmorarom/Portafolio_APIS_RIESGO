@@ -15,8 +15,19 @@ from ui.dashboard_ui import (
     seccion,
     tarjeta_kpi,
 )
+from ui.dashboard_filters import chip_toggles
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
+from ui.portfolio_state import (
+    HORIZON_OPTIONS,
+    active_assets,
+    active_benchmark,
+    active_custom_dates,
+    asset_options_for_active_portfolio,
+    horizon_index,
+    render_portfolio_scope_note,
+    weights_for_tickers,
+)
 
 
 BENCHMARK_DEFAULT = "ACWI"
@@ -69,41 +80,33 @@ def _pick_value(payload: dict | None, *keys):
     return None
 
 
-def _asset_options() -> tuple[list[str], dict[str, dict]]:
-    labels = []
-    asset_map: dict[str, dict] = {}
-    for asset in PORTFOLIO_ASSETS:
-        label = f"{asset['name']} · {asset['ticker']} · {asset['country']}"
-        labels.append(label)
-        asset_map[label] = asset
-    return labels, asset_map
+def _asset_options(assets: list[dict]) -> tuple[list[str], dict[str, dict]]:
+    return asset_options_for_active_portfolio(assets)
 
 
-def _weights_editor(sidebar_container, key_prefix: str) -> tuple[list[float], float]:
+def _weights_editor(sidebar_container, selected_assets: list[dict]) -> tuple[list[float], float]:
     with sidebar_container:
-        st.markdown("**Pesos del portafolio (%)**")
-        weights_pct: list[float] = []
-        for asset in PORTFOLIO_ASSETS:
-            value = st.number_input(
-                asset["ticker"],
-                min_value=0.0,
-                max_value=100.0,
-                value=20.0,
-                step=1.0,
-                key=f"{key_prefix}_{asset['ticker']}",
-                format="%.2f",
-            )
-            weights_pct.append(float(value))
+        st.markdown("**Pesos del portafolio activo**")
+        tickers = [asset["ticker"] for asset in selected_assets]
+        weights_decimals, total_pct = weights_for_tickers(tickers)
+        weights_pct = [weight * 100.0 for weight in weights_decimals]
 
-        total_pct = float(sum(weights_pct))
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "Ticker": tickers,
+                    "Peso": [f"{weight:.2f}%" for weight in weights_pct],
+                }
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
         st.caption(f"Total asignado: {total_pct:.2f}%")
 
-        if total_pct > 100.0 + 1e-6:
-            st.error("Los pesos no pueden superar 100%.")
-        elif abs(total_pct - 100.0) > 1e-6:
-            st.warning("Para calcular el CAPM del portafolio, los pesos deben sumar exactamente 100%.")
+        if abs(total_pct - 100.0) > 1e-4:
+            st.warning("Los pesos se normalizaron para el cálculo del portafolio.")
 
-    return [w / 100.0 for w in weights_pct], total_pct
+    return weights_decimals, 100.0 if weights_decimals else 0.0
 
 
 def _fetch_capm(
@@ -342,12 +345,21 @@ modo, filtros_sidebar = setup_dashboard_page(
 )
 
 today = pd.Timestamp.today().normalize()
-asset_labels, asset_map = _asset_options()
-portfolio_config = st.session_state.get("portfolio_config", {}) or {}
-auto_benchmark = (portfolio_config.get("benchmark", {}) or {}).get("ticker") or BENCHMARK_DEFAULT
+portfolio_assets = active_assets() or PORTFOLIO_ASSETS
+asset_labels, asset_map = _asset_options(portfolio_assets)
+if not asset_labels:
+    st.error("No hay activos disponibles para el portafolio activo.")
+    st.stop()
+
+stored_custom_start, stored_custom_end = active_custom_dates()
+default_custom_start = stored_custom_start or (today - pd.DateOffset(years=1)).date()
+default_custom_end = stored_custom_end or today.date()
+auto_benchmark = active_benchmark(BENCHMARK_DEFAULT)
 st.session_state["capm_benchmark"] = auto_benchmark
 
 with filtros_sidebar:
+    render_portfolio_scope_note()
+
     selected_label = st.selectbox(
         "Activo",
         options=asset_labels,
@@ -356,8 +368,8 @@ with filtros_sidebar:
 
     horizonte = st.selectbox(
         "Horizonte de análisis",
-        ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"],
-        index=3,
+        HORIZON_OPTIONS,
+        index=horizon_index(),
         key="capm_horizonte_backend",
     )
 
@@ -368,14 +380,14 @@ with filtros_sidebar:
         with c1:
             custom_start = st.date_input(
                 "Fecha inicial",
-                value=(today - pd.DateOffset(years=1)).date(),
+                value=default_custom_start,
                 max_value=today.date(),
                 key="capm_custom_start",
             )
         with c2:
             custom_end = st.date_input(
                 "Fecha final",
-                value=today.date(),
+                value=default_custom_end,
                 max_value=today.date(),
                 key="capm_custom_end",
             )
@@ -389,7 +401,7 @@ with filtros_sidebar:
     )
     base_currency = st.selectbox("Moneda base", ["USD", "EUR", "COP"], index=0, key="capm_base_currency")
 
-    weights_decimals, total_pct = _weights_editor(filtros_sidebar, "capm_weight")
+    weights_decimals, total_pct = _weights_editor(filtros_sidebar, portfolio_assets)
 
 selected_asset = asset_map[selected_label]
 ticker = selected_asset["ticker"]
@@ -418,7 +430,7 @@ portfolio_payload = {}
 portfolio_capm_error = None
 if abs(total_pct - 100.0) <= 1e-6:
     portfolio_payload, portfolio_capm_error = _fetch_portfolio_capm(
-        tickers=[a["ticker"] for a in PORTFOLIO_ASSETS],
+        tickers=[a["ticker"] for a in portfolio_assets],
         weights=weights_decimals,
         benchmark_ticker=benchmark_ticker.strip() or BENCHMARK_DEFAULT,
         base_currency=base_currency,
@@ -565,13 +577,13 @@ plot_card_header(
     caption="Los puntos representan excesos de retorno del activo frente al benchmark; la recta resume la sensibilidad sistemática.",
 )
 
-r1, r2, r3 = st.columns(3)
-with r1:
-    show_points = st.checkbox("Puntos", value=True, key="capm_show_points")
-with r2:
-    show_line = st.checkbox("Recta CAPM", value=True, key="capm_show_line")
-with r3:
-    clean_view = st.checkbox("Vista limpia", value=False, key="capm_clean_view")
+capm_layers = chip_toggles(
+    [("points", "Puntos", True), ("line", "Recta CAPM", True), ("clean", "Vista limpia", False)],
+    key_prefix="capm_layers",
+)
+show_points = capm_layers["points"]
+show_line = capm_layers["line"]
+clean_view = capm_layers["clean"]
 
 fig_reg = _build_regression_figure(
     points_df=points_df,

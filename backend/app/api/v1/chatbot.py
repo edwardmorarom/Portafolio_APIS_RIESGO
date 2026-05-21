@@ -22,4 +22,5 @@ async def ask_chatbot(
         question=payload.question,
         mode=payload.mode,
         module=payload.module,
+        portfolio_context=payload.portfolio_context,
     )

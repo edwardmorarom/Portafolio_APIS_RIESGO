@@ -57,11 +57,52 @@ class ChatbotService:
             f"Respuesta base local: {local_answer}"
         )
 
+    def _portfolio_context_text(self, portfolio_context: dict | None) -> str:
+        if not isinstance(portfolio_context, dict) or not portfolio_context:
+            return ""
+
+        tickers = portfolio_context.get("tickers") or []
+        weights = portfolio_context.get("weights_pct") or []
+        horizon = portfolio_context.get("horizon") or portfolio_context.get("horizon_type")
+        benchmark = portfolio_context.get("benchmark") or {}
+        benchmark_ticker = benchmark.get("ticker") if isinstance(benchmark, dict) else benchmark
+
+        parts = []
+        if tickers:
+            if weights and len(weights) == len(tickers):
+                pairs = [f"{ticker} {float(weights[index]):.2f}%" for index, ticker in enumerate(tickers)]
+                parts.append("Portafolio activo: " + ", ".join(pairs))
+            else:
+                parts.append("Portafolio activo: " + ", ".join([str(ticker) for ticker in tickers]))
+        if horizon:
+            parts.append(f"Horizonte: {horizon}")
+        if benchmark_ticker:
+            parts.append(f"Benchmark: {benchmark_ticker}")
+
+        return ". ".join(parts)
+
+    def _adapt_local_answer(self, question: str, base_answer: str, portfolio_context: dict | None) -> str:
+        normalized = self._normalize(question)
+        answer = base_answer
+
+        if any(word in normalized for word in ["sustentar", "explicar", "profesor", "exposicion", "exposición"]):
+            answer += " Para sustentación, explica primero el objetivo del módulo, luego el indicador calculado y finalmente la decisión financiera que permite tomar."
+
+        if any(word in normalized for word in ["kpi", "resultado", "favorable", "desfavorable", "interpreto", "interpretar"]):
+            answer += " Si el KPI muestra mayor retorno con menor riesgo relativo, la lectura es favorable; si aumenta la pérdida esperada o la volatilidad, la lectura exige cautela."
+
+        portfolio_text = self._portfolio_context_text(portfolio_context)
+        if portfolio_text and any(word in normalized for word in ["portafolio", "activo", "acciones", "pesos", "benchmark", "horizonte"]):
+            answer += f" Con el contexto actual: {portfolio_text}. No invento resultados numéricos que no hayan sido calculados en pantalla."
+
+        return answer
+
     def answer_question(
         self,
         question: str,
         mode: str = "general",
         module: str | None = None,
+        portfolio_context: dict | None = None,
     ) -> dict:
         normalized_question = question.strip()
         normalized_mode = mode.strip().lower()
@@ -126,13 +167,17 @@ class ChatbotService:
         payload = self.knowledge_base[selected_topic]
 
         local_answer = payload["estadistico"] if normalized_mode == "estadistico" else payload["general"]
-        answer = local_answer
+        answer = self._adapt_local_answer(
+            question=normalized_question,
+            base_answer=local_answer,
+            portfolio_context=portfolio_context,
+        )
 
         if self.llm_client is not None:
             context = self._build_llm_context(
                 topic=selected_topic,
                 payload=payload,
-                local_answer=local_answer,
+                local_answer=answer,
             )
             llm_answer = self.llm_client.generate_answer(
                 question=normalized_question,

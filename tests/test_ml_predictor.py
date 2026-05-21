@@ -14,6 +14,8 @@ def test_ml_predictor_model_is_loaded():
     assert predictor.is_loaded() is True
     assert predictor.metadata()["model_loaded"] is True
     assert predictor.metadata()["model_size_bytes"] > 0
+    assert predictor.metadata()["singleton"] is True
+    assert predictor.metadata()["model_type"] == "LinearRegression"
 
 
 def test_ml_predictor_returns_float_prediction():
@@ -61,4 +63,7 @@ def test_ml_predict_endpoint_returns_prediction():
     payload = response.json()
 
     assert payload["model_version"] == "1.0.0"
+    assert payload["model_type"] == "LinearRegression"
+    assert payload["target"] == "Retorno esperado del portafolio"
     assert isinstance(payload["predicted_return"], float)
+    assert payload["interpretation"]

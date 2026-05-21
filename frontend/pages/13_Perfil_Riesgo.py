@@ -6,6 +6,7 @@ from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import header_dashboard, nota, seccion, tarjeta_kpi
 from ui.page_setup import setup_dashboard_page
+from ui.portfolio_state import render_portfolio_scope_note
 
 
 modo, filtros_panel = setup_dashboard_page(
@@ -20,6 +21,7 @@ modo, filtros_panel = setup_dashboard_page(
 client = get_api_client()
 
 with filtros_panel:
+    render_portfolio_scope_note()
     age = st.number_input("Edad", min_value=18, max_value=100, value=30, step=1)
     experience = st.number_input("Años de experiencia invirtiendo", min_value=0, max_value=60, value=2, step=1)
     tolerance = st.slider("Tolerancia al riesgo", min_value=1, max_value=5, value=3)

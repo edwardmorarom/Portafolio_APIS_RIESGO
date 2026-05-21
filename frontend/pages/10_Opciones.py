@@ -10,6 +10,7 @@ from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import header_dashboard, nota, plot_card_footer, plot_card_header, seccion, tarjeta_kpi
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
+from ui.portfolio_state import render_portfolio_scope_note
 
 
 def _format_num(value: float) -> str:
@@ -32,6 +33,7 @@ modo, filtros_panel = setup_dashboard_page(
 client = get_api_client()
 
 with filtros_panel:
+    render_portfolio_scope_note()
     option_type = st.selectbox("Tipo de opción", ["call", "put"])
     spot_price = st.number_input("Spot S", min_value=0.01, value=100.0, step=1.0)
     strike_price = st.number_input("Strike K", min_value=0.01, value=105.0, step=1.0)

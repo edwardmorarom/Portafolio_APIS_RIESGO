@@ -84,7 +84,10 @@ def setup_dashboard_page(
 
     render_top_navigation()
 
-    modo, filtros_panel = render_invisible_filter_panel()
+    modo, filtros_panel = render_invisible_filter_panel(
+        filtros_label=filtros_label,
+        filtros_expanded=filtros_expanded,
+    )
 
     aplicar_estilos_globales(modo=modo)
     render_floating_chatbot(module=title, mode=modo)

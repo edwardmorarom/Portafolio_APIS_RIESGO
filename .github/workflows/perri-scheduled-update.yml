@@ -31,6 +31,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
+      - name: Actualizar cache histórico desde fuentes de mercado
+        run: |
+          python backend/update_cache.py
+
       - name: Validar archivo base de históricos
         run: |
           test -f roboadvisor_cache.csv
@@ -90,7 +94,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add backend/data/perri_latest_optimization.json
+          git add roboadvisor_cache.csv backend/data/perri_latest_optimization.json backend/data/perri_universe.json
 
           if git diff --cached --quiet; then
             echo "OK: no hay cambios en el JSON de Perri"
