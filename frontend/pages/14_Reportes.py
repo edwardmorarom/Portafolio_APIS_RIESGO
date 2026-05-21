@@ -6,8 +6,82 @@ import streamlit as st
 from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import header_dashboard, nota, seccion, tarjeta_kpi
+from ui.formatting import format_percent
 from ui.page_setup import setup_dashboard_page
-from ui.portfolio_state import active_benchmark, active_horizon_label, active_tickers
+from ui.portfolio_state import (
+    active_assets,
+    active_benchmark,
+    active_benchmark_details,
+    active_config,
+    active_horizon_label,
+    active_tickers,
+    active_weights_pct,
+)
+
+
+def _current_report_payload(mode: str, custom_notes: str = "") -> dict:
+    config = active_config()
+    assets = active_assets()
+    tickers = active_tickers()
+    weights = active_weights_pct()
+    benchmark = active_benchmark_details()
+
+    composition = []
+    for index, ticker in enumerate(tickers):
+        asset = assets[index] if index < len(assets) else {}
+        weight = weights[index] if index < len(weights) else None
+        composition.append(
+            {
+                "ticker": ticker,
+                "name": asset.get("name", ticker),
+                "country": asset.get("country", "N/D"),
+                "asset_type": asset.get("asset_type", "N/D"),
+                "weight": format_percent(weight, already_pct=True) if weight is not None else "N/D",
+                "benchmark": benchmark["ticker"],
+            }
+        )
+
+    key_results = {
+        "composicion": "; ".join(f"{row['ticker']} {row['weight']}" for row in composition) or "N/D",
+        "benchmark": f"{benchmark['ticker']} - {benchmark.get('reason', '')}",
+        "rendimientos": "Usar resultado calculado en módulo 2 si está disponible en la sesión.",
+        "volatilidad": "Usar resultado calculado en módulos 2/3 si está disponible en la sesión.",
+        "var_cvar_kupiec": "Usar tabla comparativa del módulo 5; no se inventan cifras si no han sido calculadas.",
+        "capm": "Usar beta, alpha y retorno esperado del módulo 4.",
+        "markowitz": "Usar frontera eficiente y portafolio óptimo del módulo 6.",
+        "stress": "Usar pérdida estimada y comparación contra benchmark del módulo 11.",
+        "renta_fija_opciones": "Usar curva, duración, convexidad, Black-Scholes y Greeks cuando aplique.",
+        "machine_learning": "Usar predicción del endpoint /ml/predict y métricas del modelo.",
+    }
+
+    sections = [
+        {"title": "1. Resumen ejecutivo", "description": f"Modo de reporte: {mode}. Horizonte: {active_horizon_label()}. Benchmark: {benchmark['ticker']}."},
+        {"title": "2. Composición del portafolio", "description": str(composition) if composition else "Sin portafolio activo seleccionado."},
+        {"title": "3. Benchmark y justificación", "description": benchmark.get("explanation", benchmark.get("reason", ""))},
+        {"title": "4. Rendimientos y volatilidad", "description": key_results["rendimientos"] + " " + key_results["volatilidad"]},
+        {"title": "5. VaR, CVaR y Kupiec", "description": key_results["var_cvar_kupiec"]},
+        {"title": "6. CAPM y Markowitz", "description": key_results["capm"] + " " + key_results["markowitz"]},
+        {"title": "7. Stress testing", "description": key_results["stress"]},
+        {"title": "8. Renta fija y opciones", "description": key_results["renta_fija_opciones"]},
+        {"title": "9. Machine Learning", "description": key_results["machine_learning"]},
+        {"title": "10. Conclusiones y recomendaciones", "description": custom_notes or "Conclusión generada desde la configuración actual sin inventar resultados no calculados."},
+        {"title": "11. Tests, Docker, deploy y CI", "description": "El criterio 13 se evidencia con Dockerfile multi-stage, docker-compose y GitHub Actions ejecutando pytest."},
+    ]
+
+    return {
+        "portfolio_context": {
+            "tickers": ", ".join(tickers) or "N/D",
+            "weights": ", ".join(row["weight"] for row in composition) or "N/D",
+            "horizon": active_horizon_label(),
+            "benchmark": benchmark["ticker"],
+            "benchmark_reason": benchmark.get("reason", "N/D"),
+            "base_currency": config.get("base_currency", "USD"),
+            "risk_profile": config.get("risk_profile", "N/D"),
+        },
+        "benchmark_context": benchmark,
+        "key_results": key_results,
+        "sections": sections,
+    }
 
 
 modo, filtros_panel = setup_dashboard_page(
@@ -22,7 +96,19 @@ modo, filtros_panel = setup_dashboard_page(
 client = get_api_client()
 
 with filtros_panel:
-    st.caption("Reporte ejecutivo institucional PDF-ready.")
+    report_mode = st.radio(
+        "Fuente del reporte",
+        ["Usar elecciones actuales del dashboard", "Ingresar datos nuevos para el reporte"],
+        horizontal=True,
+        key="report_source_mode",
+    )
+    custom_notes = ""
+    if report_mode == "Ingresar datos nuevos para el reporte":
+        custom_notes = st.text_area(
+            "Conclusiones / recomendaciones para el PDF",
+            placeholder="Ej: El portafolio muestra perfil defensivo frente al benchmark...",
+            key="report_custom_notes",
+        )
     st.caption(
         f"Portafolio activo: {', '.join(active_tickers()) or 'N/D'} · "
         f"Horizonte: {active_horizon_label()} · Benchmark: {active_benchmark()}"
@@ -63,8 +149,22 @@ render_meta_row(
 )
 
 nota(
-    "Este reporte funciona como base ejecutiva para documentar KYC, riesgo, optimización, ML, chatbot, benchmark y arquitectura técnica."
+    "Este reporte consolida la configuración actual del portafolio y deja explícito que Docker/deploy/CI corresponden al criterio 13 de la rúbrica."
 )
+
+pdf_payload = _current_report_payload(report_mode, custom_notes)
+try:
+    pdf_bytes = client.build_executive_summary_pdf(pdf_payload)
+    st.download_button(
+        "Descargar PDF ejecutivo",
+        data=pdf_bytes,
+        file_name="reporte_riesgo_usta.pdf",
+        mime="application/pdf",
+        type="primary",
+        use_container_width=True,
+    )
+except Exception as exc:
+    st.warning(f"No fue posible preparar el PDF personalizado: {exc}")
 
 seccion("Secciones del reporte")
 

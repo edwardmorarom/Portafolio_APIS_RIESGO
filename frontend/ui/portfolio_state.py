@@ -7,6 +7,7 @@ import pandas as pd
 import streamlit as st
 
 from ui.asset_metadata import display_country
+from ui.benchmarking import resolve_benchmark
 
 
 HORIZON_OPTIONS = ["1 mes", "Trimestre", "Semestre", "1 año", "3 años", "5 años", "Personalizado"]
@@ -45,9 +46,27 @@ def active_weights_decimal() -> list[float]:
     return [value / 100.0 for value in active_weights_pct()]
 
 
-def active_benchmark(default: str = "ACWI") -> str:
+def active_benchmark_details(default: str = "ACWI") -> dict[str, str]:
+    assets = active_assets()
+    if assets:
+        return resolve_benchmark(assets)
+
     benchmark = active_config().get("benchmark", {}) or {}
-    return str(benchmark.get("ticker") or default).strip().upper()
+    if benchmark:
+        return {
+            "ticker": str(benchmark.get("ticker") or default).strip().upper(),
+            "name": str(benchmark.get("name") or "Referencia"),
+            "criterion": str(benchmark.get("criterion") or "stored"),
+            "reason": str(benchmark.get("reason") or benchmark.get("explanation") or "Benchmark guardado en la configuración activa."),
+            "explanation": str(benchmark.get("explanation") or benchmark.get("reason") or "Benchmark guardado en la configuración activa."),
+        }
+
+    return resolve_benchmark([])
+
+
+def active_benchmark(default: str = "ACWI") -> str:
+    details = active_benchmark_details(default=default)
+    return str(details.get("ticker") or default).strip().upper()
 
 
 def active_confidence_level(default: float = 0.95) -> float:
@@ -142,4 +161,5 @@ def weights_for_tickers(tickers: list[str]) -> tuple[list[float], float]:
 def render_portfolio_scope_note() -> None:
     tickers = active_tickers()
     if tickers:
-        st.caption("Usando portafolio activo: " + ", ".join(tickers))
+        benchmark = active_benchmark()
+        st.caption("Usando portafolio activo: " + ", ".join(tickers) + f" · Benchmark: {benchmark}")

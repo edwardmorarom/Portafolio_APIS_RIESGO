@@ -16,6 +16,7 @@ from ui.dashboard_ui import (
     tarjeta_kpi,
 )
 from ui.dashboard_filters import chip_toggles
+from ui.formatting import format_number, format_percent
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
 from ui.portfolio_state import (
@@ -95,13 +96,13 @@ def _weights_editor(sidebar_container, selected_assets: list[dict]) -> tuple[lis
             pd.DataFrame(
                 {
                     "Ticker": tickers,
-                    "Peso": [f"{weight:.2f}%" for weight in weights_pct],
+                    "Peso": [format_percent(weight, already_pct=True) for weight in weights_pct],
                 }
             ),
             use_container_width=True,
             hide_index=True,
         )
-        st.caption(f"Total asignado: {total_pct:.2f}%")
+        st.caption(f"Total asignado: {format_percent(total_pct, already_pct=True)}")
 
         if abs(total_pct - 100.0) > 1e-4:
             st.warning("Los pesos se normalizaron para el cálculo del portafolio.")
@@ -305,16 +306,11 @@ def _expected_return_text(v) -> str:
             return "N/D"
     except Exception:
         pass
-    return f"{float(v):.2%}"
+    return format_percent(v)
 
 
 def _format_num(x, ndigits: int = 4) -> str:
-    if x is None:
-        return "N/D"
-    try:
-        return f"{float(x):.{ndigits}f}"
-    except Exception:
-        return str(x)
+    return format_number(x, decimals=ndigits)
 
 
 def _capm_reading(payload: dict) -> str:
@@ -324,10 +320,10 @@ def _capm_reading(payload: dict) -> str:
     exp_ret = _pick_value(payload, "capm_expected_return", "expected_return_annual", "expected_return")
     rf = _pick_value(payload, "rf_rate_pct", "rf_annual")
 
-    beta_text = f"{float(beta):.4f}" if beta is not None else "N/D"
-    alpha_text = f"{float(alpha):.6f}" if alpha is not None else "N/D"
-    r2_text = f"{float(r2):.4f}" if r2 is not None else "N/D"
-    rf_text = f"{float(rf) / 100:.2%}" if rf is not None else "N/D"
+    beta_text = format_number(beta, decimals=4) if beta is not None else "N/D"
+    alpha_text = format_number(alpha, decimals=6) if alpha is not None else "N/D"
+    r2_text = format_number(r2, decimals=4) if r2 is not None else "N/D"
+    rf_text = format_percent(float(rf) / 100) if rf is not None else "N/D"
 
     return (
         f"La beta de {beta_text} resume la sensibilidad del activo frente al benchmark, "

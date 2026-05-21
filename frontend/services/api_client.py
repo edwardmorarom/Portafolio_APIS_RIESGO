@@ -146,6 +146,23 @@ class ApiClient:
         )
         return self._handle_response(response)
 
+    def post_bytes(
+        self,
+        path: str,
+        json_payload: dict[str, Any] | None = None,
+        include_api_key: bool = False,
+    ) -> bytes:
+        response = requests.post(
+            self._url(path),
+            json=json_payload or {},
+            headers=self._headers(include_api_key=include_api_key),
+            timeout=self.config.timeout,
+        )
+        if response.ok:
+            return response.content
+        self._handle_response(response)
+        return b""
+
     # ---------- Root / health ----------
     def get_root(self) -> dict[str, Any]:
         url = f"{self.config.base_url.rstrip('/')}/"
@@ -392,6 +409,13 @@ class ApiClient:
     def get_executive_summary_report(self) -> dict[str, Any]:
         return self.get(
             "/reports/executive-summary",
+            include_api_key=True,
+        )
+
+    def build_executive_summary_pdf(self, payload: dict[str, Any]) -> bytes:
+        return self.post_bytes(
+            "/reports/executive-summary/pdf",
+            json_payload=payload,
             include_api_key=True,
         )
     # ---------- Machine Learning ----------

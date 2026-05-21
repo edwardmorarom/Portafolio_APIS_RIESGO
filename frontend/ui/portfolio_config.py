@@ -9,8 +9,10 @@ import streamlit as st
 
 from services.api_client import ApiClientError, get_api_client
 from ui.asset_metadata import display_country
+from ui.benchmarking import resolve_benchmark
 from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import nota, tarjeta_kpi
+from ui.formatting import format_number, format_percent
 
 
 PROFILE_TO_PERRI_OBJECTIVE = {
@@ -53,17 +55,11 @@ PERRI_HORIZON_LABELS = {
 
 
 def _format_pct(value: Any) -> str:
-    try:
-        return f"{float(value):.2%}"
-    except Exception:
-        return "N/D"
+    return format_percent(value)
 
 
 def _format_num(value: Any) -> str:
-    try:
-        return f"{float(value):.3f}"
-    except Exception:
-        return "N/D"
+    return format_number(value)
 
 
 def _weight_key(ticker: str, index: int) -> str:
@@ -95,7 +91,7 @@ def _asset_label(asset: dict[str, Any]) -> str:
     ticker = asset.get("ticker", "")
     country = display_country(asset)
     asset_type = _asset_type_label(asset)
-    benchmark = asset.get("benchmark_ticker") or _benchmark_from_assets([asset])["ticker"]
+    benchmark = asset.get("benchmark_ticker") or resolve_benchmark([asset])["ticker"]
     return f"{asset_type['short']} · {name} · {ticker} · País: {country} · BM: {benchmark}"
 
 
@@ -109,7 +105,7 @@ def _selected_assets_table(assets: list[dict[str, Any]]) -> pd.DataFrame:
                 "Activo": asset.get("name", "N/D"),
                 "Ticker": asset.get("ticker", "N/D"),
                 "País": display_country(asset),
-                "BM": asset.get("benchmark_ticker") or _benchmark_from_assets([asset])["ticker"],
+                "BM": asset.get("benchmark_ticker") or resolve_benchmark([asset])["ticker"],
             }
         )
     return pd.DataFrame(rows)
@@ -171,54 +167,7 @@ def _country_key(asset: dict[str, Any]) -> str:
 
 
 def _benchmark_from_assets(assets: list[dict[str, Any]]) -> dict[str, str]:
-    if not assets:
-        return {
-            "ticker": "ACWI",
-            "name": "MSCI ACWI",
-            "reason": "Benchmark global por defecto hasta seleccionar activos.",
-        }
-
-    asset_types = {_asset_type_key(asset) for asset in assets}
-    countries = {_country_key(asset) for asset in assets}
-
-    if asset_types == {"renta_fija"}:
-        return {
-            "ticker": "AGG",
-            "name": "Bloomberg US Aggregate Bond",
-            "reason": "Portafolio compuesto solo por activos de renta fija.",
-        }
-
-    if countries <= {"US"}:
-        return {
-            "ticker": "SPY",
-            "name": "S&P 500",
-            "reason": "Portafolio compuesto por activos de Estados Unidos.",
-        }
-
-    country_benchmarks = {
-        "JP": ("EWJ", "MSCI Japan"),
-        "CA": ("EWC", "MSCI Canada"),
-        "MX": ("EWW", "MSCI Mexico"),
-        "UK": ("EWU", "MSCI United Kingdom"),
-        "FR": ("EWQ", "MSCI France"),
-        "CO": ("GXG", "MSCI Colombia"),
-    }
-
-    if len(countries) == 1:
-        country = next(iter(countries))
-        if country in country_benchmarks:
-            ticker, name = country_benchmarks[country]
-            return {
-                "ticker": ticker,
-                "name": name,
-                "reason": f"Portafolio concentrado en {country}.",
-            }
-
-    return {
-        "ticker": "ACWI",
-        "name": "MSCI ACWI",
-        "reason": "Portafolio internacional o mixto; se usa referencia global.",
-    }
+    return resolve_benchmark(assets)
 
 
 def _fallback_assets() -> list[dict[str, Any]]:

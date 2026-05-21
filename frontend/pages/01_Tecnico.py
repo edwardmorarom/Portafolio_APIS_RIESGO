@@ -115,8 +115,8 @@ def _build_technical_view(
     df = prices_df.copy()
 
     close = pd.to_numeric(df["close"], errors="coerce")
-    high = pd.to_numeric(df["high"], errors="coerce")
-    low = pd.to_numeric(df["low"], errors="coerce")
+    high = pd.to_numeric(df.get("high", close), errors="coerce").fillna(close)
+    low = pd.to_numeric(df.get("low", close), errors="coerce").fillna(close)
 
     df[f"sma_{sma_window}"] = close.rolling(sma_window).mean()
     df[f"ema_{ema_window}"] = close.ewm(span=ema_window, adjust=False).mean()
@@ -135,11 +135,13 @@ def _build_technical_view(
     df[f"bb_up_{boll_window}"] = bb_mid + 2.0 * bb_std
     df[f"bb_low_{boll_window}"] = bb_mid - 2.0 * bb_std
 
-    low_n = low.rolling(stoch_window).min()
-    high_n = high.rolling(stoch_window).max()
+    min_periods = max(3, min(stoch_window, max(len(df), 1)))
+    low_n = low.rolling(stoch_window, min_periods=min_periods).min()
+    high_n = high.rolling(stoch_window, min_periods=min_periods).max()
     denom = (high_n - low_n).replace(0, np.nan)
     df[f"stoch_k_{stoch_window}"] = 100 * (close - low_n) / denom
-    df[f"stoch_d_{stoch_window}"] = df[f"stoch_k_{stoch_window}"].rolling(3).mean()
+    df[f"stoch_k_{stoch_window}"] = df[f"stoch_k_{stoch_window}"].clip(lower=0, upper=100)
+    df[f"stoch_d_{stoch_window}"] = df[f"stoch_k_{stoch_window}"].rolling(3, min_periods=1).mean()
 
     ema_fast = close.ewm(span=12, adjust=False).mean()
     ema_slow = close.ewm(span=26, adjust=False).mean()

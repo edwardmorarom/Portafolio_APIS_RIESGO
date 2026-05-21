@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import base64
+from html import escape
 from pathlib import Path
 
 
 def safe_text(text: str | None) -> str:
     if text is None:
         return ""
-    return str(text)
+    return escape(str(text), quote=True)
 
 
 def image_to_base64(image_path: str) -> str:

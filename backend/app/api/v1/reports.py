@@ -1,8 +1,9 @@
 ﻿from __future__ import annotations
 
 from datetime import date
+from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 from fastapi.responses import StreamingResponse
 
 from app.services.pdf_service import build_executive_pdf
@@ -11,7 +12,7 @@ from app.services.pdf_service import build_executive_pdf
 router = APIRouter()
 
 
-def build_report_payload() -> dict:
+def build_report_payload(overrides: dict[str, Any] | None = None) -> dict:
     """
     Payload ejecutivo base del reporte.
 
@@ -25,7 +26,8 @@ def build_report_payload() -> dict:
     En la siguiente subtarea este payload se conectará con la configuración global
     del portafolio y con resultados reales guardados en session_state/frontend.
     """
-    portfolio_context = {
+    overrides = overrides or {}
+    portfolio_context = overrides.get("portfolio_context") or {
         "tickers": "Pendiente de selección global del usuario",
         "horizon": "Pendiente de horizonte global",
         "weights": "Pendiente de asignación inicial",
@@ -33,6 +35,7 @@ def build_report_payload() -> dict:
         "risk_profile": "Pendiente de perfil KYC",
         "perri_reference": "Pendiente de portafolio Perri sugerido",
     }
+    benchmark_context = overrides.get("benchmark_context") or {}
 
     methodology_decisions = [
         {
@@ -95,6 +98,7 @@ def build_report_payload() -> dict:
         "ml_performance": "Pendiente de conectar predicción o métrica ML",
         "stress_loss": "Pendiente de conectar pérdida bajo escenario de estrés",
     }
+    key_results.update(overrides.get("key_results") or {})
 
     conclusions = [
         (
@@ -111,44 +115,23 @@ def build_report_payload() -> dict:
         ),
     ]
 
-    sections = [
+    sections = overrides.get("sections") or [
+        {"title": "1. Resumen ejecutivo", "description": "Síntesis del portafolio seleccionado, horizonte, pesos, benchmark y principales lecturas de riesgo."},
+        {"title": "2. Composición del portafolio y países", "description": "Lista de activos, país de origen, tipo de activo, benchmark metodológico y pesos definidos por el usuario."},
         {
-            "title": "1. Riesgo financiero y principales hallazgos",
+            "title": "3. Benchmark y justificación",
             "description": (
-                "El riesgo financiero representa la posibilidad de pérdidas o desviaciones "
-                "frente al retorno esperado por cambios de mercado, volatilidad, tasas, "
-                "correlaciones, liquidez o eventos extremos. El reporte consolidará los "
-                "hallazgos principales del análisis cuantitativo del portafolio seleccionado."
+                f"Benchmark aplicado: {benchmark_context.get('ticker', portfolio_context.get('benchmark', 'N/D'))}. "
+                f"{benchmark_context.get('explanation', benchmark_context.get('reason', 'Se define automáticamente según la composición del portafolio.'))}"
             ),
         },
-        {
-            "title": "2. Decisiones metodológicas",
-            "description": (
-                "El análisis documenta la selección de activos, horizonte, pesos, moneda base USD, "
-                "modelo GARCH usado, método de VaR/CVaR aplicado y finalidad del modelo ML."
-            ),
-        },
-        {
-            "title": "3. Arquitectura técnica en 5 capas",
-            "description": (
-                "La solución se organiza en frontend Streamlit, backend FastAPI, base de datos, "
-                "Machine Learning y capa de reportes/despliegue."
-            ),
-        },
-        {
-            "title": "4. Resultados numéricos clave",
-            "description": (
-                "El PDF queda preparado para presentar VaR del portafolio, composición óptima "
-                "Markowitz, alpha de Jensen, performance ML y pérdida bajo escenarios de estrés."
-            ),
-        },
-        {
-            "title": "5. Conclusiones y recomendaciones",
-            "description": (
-                "Las recomendaciones se derivarán del perfil KYC, los resultados de riesgo, "
-                "la comparación contra Perri y la robustez del portafolio bajo estrés."
-            ),
-        },
+        {"title": "4. Rendimientos, volatilidad, VaR/CVaR y Kupiec", "description": "Consolida retorno, volatilidad, VaR histórico, paramétrico y Monte Carlo, CVaR complementario y validación Kupiec cuando exista."},
+        {"title": "5. CAPM, Markowitz y eficiencia", "description": "Incluye beta, alpha de Jensen, retorno esperado CAPM, frontera eficiente, Sharpe y lectura de eficiencia frente al benchmark."},
+        {"title": "6. Stress testing", "description": "Resume escenario base, escenarios adversos, pérdida estimada del portafolio y comparación defensiva contra el benchmark."},
+        {"title": "7. Renta fija y opciones", "description": "Documenta curva de tasas, duración, convexidad, valoración Black-Scholes y Greeks cuando el análisis aplique."},
+        {"title": "8. Machine Learning", "description": "Explica variable objetivo, features, modelo persistido con joblib, patrón Singleton, endpoint /predict, métricas, supuestos y limitaciones."},
+        {"title": "9. Tests, Docker, deploy y CI", "description": "Evidencia pytest + TestClient, Docker multi-stage, docker-compose, GitHub Actions y preparación para deploy PaaS."},
+        {"title": "10. Conclusiones y recomendaciones", "description": "Las recomendaciones se derivan del perfil KYC, los resultados de riesgo, la comparación contra benchmark y la robustez bajo estrés."},
     ]
 
     return {
@@ -193,5 +176,19 @@ def download_executive_summary_pdf():
         media_type="application/pdf",
         headers={
             "Content-Disposition": "attachment; filename=reporte_riesgo_usta.pdf"
+        },
+    )
+
+
+@router.post("/executive-summary/pdf", summary="Generar reporte ejecutivo PDF con contexto del dashboard")
+def download_custom_executive_summary_pdf(payload: dict[str, Any] = Body(default_factory=dict)):
+    report_payload = build_report_payload(payload)
+    pdf_bytes = build_executive_pdf(report_payload)
+
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": "attachment; filename=reporte_riesgo_usta_personalizado.pdf"
         },
     )

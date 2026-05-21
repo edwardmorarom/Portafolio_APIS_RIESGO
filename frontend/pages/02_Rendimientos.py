@@ -670,7 +670,8 @@ with g2:
     )
 
     st.markdown("**OPCIONES DEL GRÁFICO**")
-    horizontal_box = st.checkbox("Orientación horizontal", value=False, key="ret_box_horizontal")
+    box_options = chip_toggles([("horizontal", "Orientación horizontal", False)], key_prefix="ret_box_options")
+    horizontal_box = box_options["horizontal"]
 
     fig_box = _build_boxplot_figure(
         returns_df=returns_df,

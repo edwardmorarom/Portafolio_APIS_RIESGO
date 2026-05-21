@@ -23,17 +23,29 @@ def predict_return(payload: MLPredictionRequest):
             var_95=payload.var_95,
             beta=payload.beta,
             market_return=payload.market_return,
+            horizon_months=payload.horizon_months,
+            model_name=payload.model_name,
+        )
+        model_predictions = predictor.predict_all(
+            volatility=payload.volatility,
+            sharpe_ratio=payload.sharpe_ratio,
+            var_95=payload.var_95,
+            beta=payload.beta,
+            market_return=payload.market_return,
+            horizon_months=payload.horizon_months,
         )
 
         if prediction >= 0.10:
-            interpretation = "Predicción favorable: el retorno esperado compensa mejor el riesgo ingresado."
+            interpretation = "Predicción favorable: el retorno acumulado estimado compensa mejor el riesgo ingresado."
         elif prediction >= 0.00:
-            interpretation = "Predicción moderada: el retorno esperado es positivo, pero requiere contrastar con VaR y volatilidad."
+            interpretation = "Predicción moderada: el retorno acumulado estimado es positivo, pero requiere contrastar con VaR y volatilidad."
         else:
-            interpretation = "Predicción adversa: el retorno esperado es bajo o negativo y debe leerse como alerta de riesgo."
+            interpretation = "Predicción adversa: el retorno acumulado estimado es bajo o negativo y debe leerse como alerta de riesgo."
 
         return MLPredictionResponse(
             predicted_return=prediction,
+            model_predictions=model_predictions,
+            horizon_months=payload.horizon_months,
             model_version=MODEL_VERSION,
             model_type=MODEL_TYPE,
             target=MODEL_TARGET,

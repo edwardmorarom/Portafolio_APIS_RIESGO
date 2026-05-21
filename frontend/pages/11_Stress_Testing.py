@@ -6,33 +6,16 @@ import streamlit as st
 
 from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_info_card, render_meta_row
+from ui.dashboard_filters import render_filter_help
 from ui.dashboard_ui import header_dashboard, nota, plot_card_footer, plot_card_header, seccion, tarjeta_kpi
+from ui.formatting import format_money, format_number, format_percent
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
-from ui.portfolio_state import (
-    active_benchmark,
-    active_horizon_label,
-    active_tickers,
-    active_weights_pct,
-    render_portfolio_scope_note,
-)
-
-
-def _format_money(value: float) -> str:
-    return f"${float(value):,.2f}"
-
-
-def _format_pct(value: float) -> str:
-    return f"{float(value):.2%}"
+from ui.portfolio_state import active_benchmark, active_horizon_label, active_tickers, active_weights_pct, render_portfolio_scope_note
 
 
 def _severity_color(severity: str) -> str:
-    return {
-        "bajo": "#16A34A",
-        "moderado": "#D97706",
-        "alto": "#DC2626",
-        "critico": "#7F1D1D",
-    }.get(str(severity).lower(), "#64748B")
+    return {"bajo": "#16A34A", "moderado": "#D97706", "alto": "#DC2626", "critico": "#7F1D1D"}.get(str(severity).lower(), "#64748B")
 
 
 def _scenario_defaults(name: str) -> dict[str, float]:
@@ -62,12 +45,11 @@ horizon_label = active_horizon_label()
 
 with filtros_panel:
     render_portfolio_scope_note()
-    scenario_name = st.radio(
-        "Escenario",
-        ["Caída mercado", "Shock tasas", "Volatilidad extrema", "Combinado severo"],
-        horizontal=True,
-        key="stress_scenario_name",
+    render_filter_help(
+        "Cómo llenar stress testing",
+        "Elige un escenario adverso y ajusta shocks. Valores negativos en mercado/benchmark representan caída; multiplicador de volatilidad mayor a 1 amplifica incertidumbre.",
     )
+    scenario_name = st.radio("Escenario", ["Caída mercado", "Shock tasas", "Volatilidad extrema", "Combinado severo"], horizontal=True, key="stress_scenario_name")
     defaults = _scenario_defaults(scenario_name)
     c1, c2 = st.columns(2)
     with c1:
@@ -81,7 +63,6 @@ with filtros_panel:
         market_shock = st.number_input("Shock de mercado", min_value=-1.0, max_value=1.0, value=float(defaults["market_shock"]), step=0.01, format="%.4f")
         benchmark_shock = st.number_input(f"Shock benchmark {benchmark_ticker}", min_value=-1.0, max_value=1.0, value=float(defaults["benchmark_shock"]), step=0.01, format="%.4f")
         volatility_multiplier = st.number_input("Multiplicador de volatilidad", min_value=0.1, max_value=10.0, value=float(defaults["volatility_multiplier"]), step=0.1, format="%.2f")
-
     run_scenario = st.button("Ejecutar escenario", type="primary", use_container_width=True)
 
 payload = {
@@ -96,29 +77,12 @@ payload = {
     "volatility_multiplier": float(volatility_multiplier),
 }
 
-header_dashboard(
-    "Stress testing",
-    "Simulación de escenarios adversos de tasa, mercado y volatilidad sobre el portafolio.",
-    modo=modo,
-)
+header_dashboard("Stress testing", "Simulación de escenarios adversos de tasa, mercado y volatilidad sobre el portafolio.", modo=modo)
 
-tab_result, tab_impact, tab_read = st.tabs(["Resultado", "Impacto", "Lectura"])
-
-render_meta_row(
-    {
-        "Activos": ", ".join(tickers) if tickers else "N/D",
-        "Horizonte": horizon_label,
-        "Benchmark": benchmark_ticker,
-        "Escenario": scenario_name,
-    }
-)
+render_meta_row({"Activos": ", ".join(tickers) if tickers else "N/D", "Horizonte": horizon_label, "Benchmark": benchmark_ticker, "Escenario": scenario_name})
 
 if tickers and weights_pct:
-    st.dataframe(
-        pd.DataFrame({"Ticker": tickers, "Peso": [f"{weight:.2f}%" for weight in weights_pct]}),
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(pd.DataFrame({"Ticker": tickers, "Peso": [format_percent(weight, already_pct=True) for weight in weights_pct]}), use_container_width=True, hide_index=True)
 
 result: dict | None = None
 if run_scenario:
@@ -131,103 +95,73 @@ if run_scenario:
 else:
     nota("Ajusta el escenario y ejecútalo para estimar pérdida, valor estresado y severidad.")
 
-with tab_result:
-    seccion("Resultado del escenario")
+seccion("Resultado del escenario")
+if result:
+    severity = str(result["severity"]).lower()
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        tarjeta_kpi("Pérdida estimada", format_money(result["estimated_loss"]), subtexto="Pérdida monetaria")
+    with c2:
+        tarjeta_kpi("Valor estresado", format_money(result["stressed_portfolio_value"]), subtexto="Valor post-shock")
+    with c3:
+        tarjeta_kpi("Severidad", severity.upper(), subtexto="Clasificación del escenario")
 
-    if result:
-        severity = str(result["severity"]).lower()
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            tarjeta_kpi("Pérdida estimada", _format_money(result["estimated_loss"]), subtexto="Pérdida monetaria")
-        with c2:
-            tarjeta_kpi("Valor estresado", _format_money(result["stressed_portfolio_value"]), subtexto="Valor post-shock")
-        with c3:
-            tarjeta_kpi("Severidad", severity.upper(), subtexto="Clasificación del escenario")
+    c4, c5, c6 = st.columns(3)
+    with c4:
+        tarjeta_kpi("Retorno stress", format_percent(result["stressed_return"]), subtexto="Retorno ajustado")
+    with c5:
+        tarjeta_kpi("Volatilidad stress", format_percent(result["stressed_volatility"]), subtexto="Volatilidad ampliada")
+    with c6:
+        tarjeta_kpi("VaR stress", format_percent(result["stressed_var_95"]), subtexto="VaR bajo shock")
 
-        c4, c5, c6 = st.columns(3)
-        with c4:
-            tarjeta_kpi("Retorno stress", _format_pct(result["stressed_return"]), subtexto="Retorno ajustado")
-        with c5:
-            tarjeta_kpi("Volatilidad stress", _format_pct(result["stressed_volatility"]), subtexto="Volatilidad ampliada")
-        with c6:
-            tarjeta_kpi("VaR stress", _format_pct(result["stressed_var_95"]), subtexto="VaR bajo shock")
-
-        render_meta_row(
-            {
-                "Shock tasa": _format_pct(rate_shock),
-                "Shock mercado": _format_pct(market_shock),
-                f"Shock {benchmark_ticker}": _format_pct(benchmark_shock),
-                "Multiplicador vol": f"{volatility_multiplier:.2f}x",
-                "Beta": f"{beta:.2f}",
-            }
-        )
-        render_info_card("Interpretación automática", result.get("interpretation", result.get("summary", "")))
-    else:
-        render_info_card("Escenario pendiente", "Ejecuta el escenario para obtener los indicadores de stress.")
-
-with tab_impact:
-    seccion("Comparación visual")
-
-    if result:
-        severity = str(result["severity"]).lower()
-        fig = go.Figure()
-        fig.add_trace(
-            go.Bar(
-                x=["Valor base", "Valor estresado", "Pérdida"],
-                y=[portfolio_value, result["stressed_portfolio_value"], result["estimated_loss"]],
-                marker_color=["#2563EB", _severity_color(severity), "#DC2626"],
-                text=[
-                    _format_money(portfolio_value),
-                    _format_money(result["stressed_portfolio_value"]),
-                    _format_money(result["estimated_loss"]),
-                ],
-                textposition="auto",
-                name="Stress",
-            )
-        )
-
-        plot_card_header("Impacto financiero", "Compara el valor inicial contra la pérdida estimada.", modo=modo)
-        st.plotly_chart(
-            style_plotly_figure(
-                fig,
-                modo=modo,
-                title="Valor bajo stress",
-                xaxis_title="Métrica",
-                yaxis_title="Valor monetario",
-                show_xgrid=False,
-            ),
-            use_container_width=True,
-        )
-        plot_card_footer("La barra de pérdida estima el daño combinado de shocks de retorno y VaR estresado.")
-        st.dataframe(
-            pd.DataFrame(
-                [
-                    {"Métrica": "Pérdida portafolio", "Valor": _format_pct(result.get("estimated_loss_pct", 0.0))},
-                    {
-                        "Métrica": f"Pérdida benchmark {benchmark_ticker}",
-                        "Valor": _format_pct(result.get("benchmark_loss_pct", 0.0))
-                        if result.get("benchmark_loss_pct") is not None
-                        else "N/D",
-                    },
-                    {"Métrica": "Lectura relativa", "Valor": result.get("relative_to_benchmark") or "N/D"},
-                ]
-            ),
-            use_container_width=True,
-            hide_index=True,
-        )
-    else:
-        render_info_card("Impacto pendiente", "Ejecuta el escenario para ver la comparación gráfica.")
-
-with tab_read:
-    seccion("Lectura ejecutiva")
-    render_info_card(
-        "Uso financiero",
-        (
-            "El stress testing no predice el futuro: fuerza una combinación adversa de mercado, tasas y volatilidad "
-            "para evaluar resiliencia. Sirve para comparar portafolios bajo supuestos extremos y anticipar necesidades "
-            "de cobertura, rebalanceo o liquidez."
-        ),
+    render_meta_row(
+        {
+            "Shock tasa": format_percent(rate_shock),
+            "Shock mercado": format_percent(market_shock),
+            f"Shock {benchmark_ticker}": format_percent(benchmark_shock),
+            "Multiplicador vol": f"{format_number(volatility_multiplier)}x",
+            "Beta": format_number(beta),
+        }
     )
+    render_info_card("Interpretación automática", result.get("interpretation", result.get("summary", "")))
+else:
+    render_info_card("Escenario pendiente", "Ejecuta el escenario para obtener los indicadores de stress.")
 
-    if result:
-        nota(result.get("interpretation") or result.get("summary", "Escenario calculado correctamente."))
+seccion("Impacto financiero")
+if result:
+    severity = str(result["severity"]).lower()
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            x=["Valor base", "Valor estresado", "Pérdida"],
+            y=[portfolio_value, result["stressed_portfolio_value"], result["estimated_loss"]],
+            marker_color=["#2563EB", _severity_color(severity), "#DC2626"],
+            text=[format_money(portfolio_value), format_money(result["stressed_portfolio_value"]), format_money(result["estimated_loss"])],
+            textposition="auto",
+            name="Stress",
+        )
+    )
+    plot_card_header("Impacto financiero", "Compara el valor inicial contra la pérdida estimada.", modo=modo)
+    st.plotly_chart(style_plotly_figure(fig, modo=modo, title="Valor bajo stress", xaxis_title="Métrica", yaxis_title="Valor monetario", show_xgrid=False), use_container_width=True)
+    plot_card_footer("La barra de pérdida estima el daño combinado de shocks de retorno y VaR estresado.")
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {"Métrica": "Pérdida portafolio", "Valor": format_percent(result.get("estimated_loss_pct", 0.0))},
+                {"Métrica": f"Pérdida benchmark {benchmark_ticker}", "Valor": format_percent(result.get("benchmark_loss_pct", 0.0)) if result.get("benchmark_loss_pct") is not None else "N/D"},
+                {"Métrica": "Lectura relativa", "Valor": result.get("relative_to_benchmark") or "N/D"},
+            ]
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+else:
+    render_info_card("Impacto pendiente", "Ejecuta el escenario para ver la comparación gráfica.")
+
+seccion("Lectura ejecutiva")
+render_info_card(
+    "Uso financiero",
+    "El stress testing no predice el futuro: fuerza una combinación adversa de mercado, tasas y volatilidad para evaluar resiliencia, cobertura, rebalanceo o liquidez.",
+)
+if result:
+    nota(result.get("interpretation") or result.get("summary", "Escenario calculado correctamente."))

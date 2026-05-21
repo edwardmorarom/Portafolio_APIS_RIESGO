@@ -3,6 +3,25 @@ from __future__ import annotations
 import streamlit as st
 
 
+def render_filter_help(title: str, body: str) -> None:
+    st.markdown(
+        f"""
+        <div style="
+            border:1px solid rgba(96,165,250,0.28);
+            background:rgba(30,64,175,0.16);
+            border-radius:12px;
+            padding:0.70rem 0.82rem;
+            margin:0.15rem 0 0.75rem 0;
+            color:#D8E6FF;
+            font-size:0.84rem;
+            line-height:1.35;">
+            <strong>{title}</strong><br>{body}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def chip_toggles(
     options: list[tuple[str, str, bool]],
     *,

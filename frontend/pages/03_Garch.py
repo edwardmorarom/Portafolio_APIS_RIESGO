@@ -14,6 +14,7 @@ from ui.dashboard_ui import (
     seccion,
     tarjeta_kpi,
 )
+from ui.dashboard_filters import chip_toggles
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
 from ui.portfolio_state import (
@@ -512,11 +513,8 @@ with filtros_sidebar:
     )
     distribution = "t" if distribution_label == "t-Student" else "normal"
 
-    mostrar_diagnostico = st.checkbox(
-        "Mostrar diagnóstico del modelo",
-        value=True,
-        key="garch_show_diag",
-    )
+    diag_options = chip_toggles([("diagnostico", "Mostrar diagnóstico", True)], key_prefix="garch_diag_options")
+    mostrar_diagnostico = diag_options["diagnostico"]
 
 selected_asset = asset_map[selected_label]
 ticker = selected_asset["ticker"]

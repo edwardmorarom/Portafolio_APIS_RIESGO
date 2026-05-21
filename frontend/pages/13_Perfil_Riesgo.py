@@ -1,12 +1,13 @@
 ﻿from __future__ import annotations
 
 import streamlit as st
+import json
 
 from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import header_dashboard, nota, seccion, tarjeta_kpi
 from ui.page_setup import setup_dashboard_page
-from ui.portfolio_state import render_portfolio_scope_note
+from ui.portfolio_state import active_config, render_portfolio_scope_note
 
 
 modo, filtros_panel = setup_dashboard_page(
@@ -19,12 +20,15 @@ modo, filtros_panel = setup_dashboard_page(
 )
 
 client = get_api_client()
+config = active_config()
+stored_profile = config.get("risk_profile") or st.session_state.get("kyc_profile")
+stored_kyc = config.get("kyc", {}) or st.session_state.get("user_kyc_data", {}) or {}
 
 with filtros_panel:
     render_portfolio_scope_note()
-    age = st.number_input("Edad", min_value=18, max_value=100, value=30, step=1)
-    experience = st.number_input("Años de experiencia invirtiendo", min_value=0, max_value=60, value=2, step=1)
-    tolerance = st.slider("Tolerancia al riesgo", min_value=1, max_value=5, value=3)
+    age = st.number_input("Edad", min_value=18, max_value=100, value=int(stored_kyc.get("age", 30)), step=1)
+    experience = st.number_input("Años de experiencia invirtiendo", min_value=0, max_value=60, value=int(stored_kyc.get("experience", 2)), step=1)
+    tolerance = st.slider("Tolerancia al riesgo", min_value=1, max_value=5, value=int(stored_kyc.get("tolerance", 3)))
 
 header_dashboard(
     "Perfil de riesgo KYC",
@@ -56,7 +60,7 @@ if st.button("Calcular perfil sugerido", type="primary", use_container_width=Tru
     except Exception as exc:
         st.error(f"Error inesperado: {exc}")
 
-profile = st.session_state.get("kyc_profile")
+profile = st.session_state.get("kyc_profile") or stored_profile
 score = st.session_state.get("kyc_score")
 explanation = st.session_state.get("kyc_explanation")
 
@@ -80,5 +84,22 @@ if profile:
     )
 
     render_info_card("Interpretación", explanation or "Perfil calculado correctamente.")
+    profile_payload = {
+        "perfil": profile,
+        "score": score,
+        "edad": int(age),
+        "experiencia": int(experience),
+        "tolerancia": int(tolerance),
+        "portafolio": config.get("tickers", []),
+        "horizonte": config.get("horizon_type"),
+        "benchmark": config.get("benchmark", {}),
+    }
+    st.download_button(
+        "Descargar perfil de riesgo",
+        data=json.dumps(profile_payload, ensure_ascii=False, indent=2),
+        file_name="perfil_riesgo.json",
+        mime="application/json",
+        use_container_width=True,
+    )
 else:
-    render_info_card("Pendiente", "Ejecuta el cálculo para obtener el perfil sugerido.")
+    render_info_card("Pendiente", "Ejecuta el cálculo para obtener el perfil sugerido o conserva el perfil elegido en Inicio.")

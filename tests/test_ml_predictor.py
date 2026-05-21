@@ -15,7 +15,8 @@ def test_ml_predictor_model_is_loaded():
     assert predictor.metadata()["model_loaded"] is True
     assert predictor.metadata()["model_size_bytes"] > 0
     assert predictor.metadata()["singleton"] is True
-    assert predictor.metadata()["model_type"] == "LinearRegression"
+    assert predictor.metadata()["model_type"] == "Ridge/Lasso/GradientBoostingRegressor"
+    assert "gradient_boosting" in predictor.metadata()["available_models"]
 
 
 def test_ml_predictor_returns_float_prediction():
@@ -27,6 +28,8 @@ def test_ml_predictor_returns_float_prediction():
         var_95=-0.08,
         beta=1.10,
         market_return=0.12,
+        horizon_months=12,
+        model_name="gradient_boosting",
     )
 
     assert isinstance(result, float)
@@ -41,7 +44,7 @@ def test_ml_status_endpoint_returns_metadata():
     payload = response.json()
 
     assert payload["model_loaded"] is True
-    assert payload["model_version"] == "1.0.0"
+    assert payload["model_version"] == "2.0.0"
     assert payload["model_size_bytes"] > 0
 
 
@@ -56,14 +59,18 @@ def test_ml_predict_endpoint_returns_prediction():
             "var_95": -0.08,
             "beta": 1.10,
             "market_return": 0.12,
+            "horizon_months": 12,
+            "model_name": "gradient_boosting",
         },
     )
 
     assert response.status_code == 200
     payload = response.json()
 
-    assert payload["model_version"] == "1.0.0"
-    assert payload["model_type"] == "LinearRegression"
-    assert payload["target"] == "Retorno esperado del portafolio"
+    assert payload["model_version"] == "2.0.0"
+    assert payload["model_type"] == "Ridge/Lasso/GradientBoostingRegressor"
+    assert payload["target"] == "Predicción de retorno acumulado a horizonte fijo"
+    assert payload["horizon_months"] == 12
+    assert "gradient_boosting" in payload["model_predictions"]
     assert isinstance(payload["predicted_return"], float)
     assert payload["interpretation"]

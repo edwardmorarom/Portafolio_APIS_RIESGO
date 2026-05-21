@@ -49,7 +49,7 @@ CHATBOT_FINANCIAL_TOPIC_CATALOG = {
     "benchmark": {
         "label": "Benchmark",
         "description": "Comparacion de portafolio contra referencia de mercado.",
-        "keywords": ["benchmark", "tracking error", "information ratio", "alpha de jensen", "drawdown"],
+        "keywords": ["benchmark", "spy", "s&p 500", "sp500", "acwi", "msci acwi", "tracking error", "information ratio", "alpha de jensen", "drawdown"],
     },
     "macro_financiero": {
         "label": "Macro financiero",
@@ -70,6 +70,16 @@ CHATBOT_FINANCIAL_TOPIC_CATALOG = {
         "label": "Machine Learning",
         "description": "Prediccion de retorno esperado con variables de riesgo y endpoint /ml/predict.",
         "keywords": ["machine learning", "ml", "predict", "prediccion", "predicción", "modelo", "singleton"],
+    },
+    "dashboard": {
+        "label": "Dashboard del proyecto",
+        "description": "Resumen funcional del tablero Streamlit y sus módulos financieros.",
+        "keywords": ["dashboard", "tablero", "aplicacion", "aplicación", "proyecto", "que hace", "qué hace"],
+    },
+    "stress": {
+        "label": "Stress testing",
+        "description": "Escenarios adversos con shocks de mercado, tasas y volatilidad.",
+        "keywords": ["stress", "stress testing", "escenario adverso", "escenarios", "shock", "caida de mercado", "caída de mercado"],
     },
 }
 
@@ -107,6 +117,10 @@ CHATBOT_ALLOWED_FINANCIAL_KEYWORDS = {
     "teoria del riesgo",
     "teoría del riesgo",
     "volatilidad",
+    "dashboard",
+    "tablero",
+    "proyecto",
+    "horizonte",
     "backtesting",
     "excedencias",
     "violaciones",

@@ -718,12 +718,8 @@ with filtros_sidebar:
         key="markowitz_investor_profile",
     )
 
-    use_target_return = st.checkbox(
-        "Usar retorno objetivo",
-        value=False,
-        key="markowitz_use_target_return",
-        help="Si activas esta opción, los pesos manuales se bloquean porque el modelo busca el portafolio más cercano al retorno deseado.",
-    )
+    target_options = chip_toggles([("target", "Usar retorno objetivo", False)], key_prefix="markowitz_target_options")
+    use_target_return = target_options["target"]
 
     target_return_pct = None
     if use_target_return:
@@ -1106,9 +1102,11 @@ with tab2:
 
         o1, o2 = st.columns(2)
         with o1:
-            corr_clean = st.checkbox("Vista limpia", value=False, key="markowitz_corr_clean")
+            corr_options = chip_toggles([("clean", "Vista limpia", False)], key_prefix="markowitz_corr_clean_options")
+            corr_clean = corr_options["clean"]
         with o2:
-            show_corr_table = st.checkbox("Ver tabla de correlación", value=False, key="markowitz_corr_table")
+            table_options = chip_toggles([("table", "Ver tabla de correlación", False)], key_prefix="markowitz_corr_table_options")
+            show_corr_table = table_options["table"]
 
         fig_corr = _build_corr_heatmap(corr_df, modo=modo, clean_view=corr_clean)
         st.plotly_chart(fig_corr, use_container_width=True)

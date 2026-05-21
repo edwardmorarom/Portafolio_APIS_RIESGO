@@ -35,7 +35,7 @@ class LLMClient:
             "Responde en espanol claro, tecnico y breve.\n"
             "Usa el contexto interno como fuente principal.\n"
             "No inventes datos fuera del contexto.\n"
-            "Si el usuario pregunta por riesgo personal, aclara que la respuesta depende del KYC y perfil calculado.\n\n"
+            "Solo menciona KYC si la pregunta trata explícitamente sobre perfil del inversionista o riesgo personal.\n\n"
             f"Modo de respuesta: {mode}\n\n"
             f"Contexto interno:\n{context}\n\n"
             f"Pregunta del usuario:\n{question}\n\n"

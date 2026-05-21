@@ -14,6 +14,7 @@ from ui.dashboard_ui import (
     seccion,
     tarjeta_kpi,
 )
+from ui.formatting import format_number, format_percent
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
 from ui.portfolio_state import (
@@ -80,21 +81,11 @@ def _pick_value(payload: dict | None, *keys):
 
 
 def _format_pct(x) -> str:
-    if x is None:
-        return "N/D"
-    try:
-        return f"{float(x):.2%}"
-    except Exception:
-        return str(x)
+    return format_percent(x)
 
 
 def _format_num(x, ndigits: int = 4) -> str:
-    if x is None:
-        return "N/D"
-    try:
-        return f"{float(x):.{ndigits}f}"
-    except Exception:
-        return str(x)
+    return format_number(x, decimals=ndigits)
 
 
 def _weights_editor(sidebar_container, selected_assets: list[dict]) -> tuple[list[float], float]:
@@ -104,11 +95,11 @@ def _weights_editor(sidebar_container, selected_assets: list[dict]) -> tuple[lis
         weights_decimals, total_pct = weights_for_tickers(tickers)
         weights_pct = [weight * 100.0 for weight in weights_decimals]
         st.dataframe(
-            pd.DataFrame({"Ticker": tickers, "Peso": [f"{weight:.2f}%" for weight in weights_pct]}),
+            pd.DataFrame({"Ticker": tickers, "Peso": [format_percent(weight, already_pct=True) for weight in weights_pct]}),
             use_container_width=True,
             hide_index=True,
         )
-        st.caption(f"Total asignado: {total_pct:.2f}%")
+        st.caption(f"Total asignado: {format_percent(total_pct, already_pct=True)}")
 
         if abs(total_pct - 100.0) > 1e-4:
             st.warning("Los pesos se normalizaron para comparar contra el benchmark.")

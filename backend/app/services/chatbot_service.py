@@ -35,18 +35,21 @@ class ChatbotService:
     def _detect_topics(self, question: str, module: str | None = None) -> list[str]:
         normalized = self._normalize(question)
 
-        detected = []
-
-        if module and module in self.knowledge_base:
-            detected.append(module)
+        scored: list[tuple[int, str]] = []
 
         for topic, payload in self.knowledge_base.items():
             keywords = payload["keywords"]
-            if any(keyword in normalized for keyword in keywords):
-                if topic not in detected:
-                    detected.append(topic)
+            score = sum(1 for keyword in keywords if keyword in normalized)
+            if module == topic and score > 0:
+                score += 2
+            if score > 0:
+                scored.append((score, topic))
 
-        return detected
+        if not scored and module and module in self.knowledge_base:
+            scored.append((1, module))
+
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [topic for _, topic in scored]
 
     def _build_llm_context(self, topic: str, payload: dict, local_answer: str) -> str:
         return (
@@ -56,6 +59,21 @@ class ChatbotService:
             f"Referencia: {payload['reference']}\n"
             f"Respuesta base local: {local_answer}"
         )
+
+    def _llm_answer_matches_topic(self, answer: str, topic: str, payload: dict) -> bool:
+        normalized = self._normalize(answer)
+        if topic == "kyc":
+            return True
+
+        kyc_terms = ["kyc", "perfil del inversionista", "perfil de riesgo", "tolerancia al riesgo"]
+        topic_terms = [topic, str(payload.get("title", "")).lower()]
+        topic_terms.extend(str(keyword).lower() for keyword in payload.get("keywords", [])[:6])
+
+        mentions_kyc = any(term in normalized for term in kyc_terms)
+        mentions_topic = any(term and term in normalized for term in topic_terms)
+        if mentions_kyc and not mentions_topic:
+            return False
+        return True
 
     def _portfolio_context_text(self, portfolio_context: dict | None) -> str:
         if not isinstance(portfolio_context, dict) or not portfolio_context:
@@ -123,43 +141,48 @@ class ChatbotService:
                 "suggested_followups": FINANCIAL_SCOPE_FOLLOWUPS,
             }
 
-        if not is_financial_question(
-            question=normalized_question,
-            module=normalized_module,
-        ):
-            return {
-                "question": normalized_question,
-                "mode": normalized_mode,
-                "module": normalized_module,
-                "supported": False,
-                "answer": FINANCIAL_SCOPE_MESSAGE,
-                "topics": [],
-                "sources": [],
-                "suggested_followups": FINANCIAL_SCOPE_FOLLOWUPS,
-            }
-
         topics = self._detect_topics(
             question=normalized_question,
             module=normalized_module,
         )
 
         if not topics:
+            broad_answer = self._adapt_local_answer(
+                question=normalized_question,
+                base_answer=(
+                    "Puedo responder con el contexto del proyecto aunque la pregunta no coincida con una plantilla exacta. "
+                    "El dashboard analiza un portafolio desde rendimiento, riesgo, benchmark, modelos estadísticos, "
+                    "stress testing y Machine Learning. Si preguntas por un resultado numérico específico, necesito que "
+                    "ese resultado esté calculado o visible en el módulo correspondiente."
+                ),
+                portfolio_context=portfolio_context,
+            )
+            if self.llm_client is not None:
+                llm_answer = self.llm_client.generate_answer(
+                    question=normalized_question,
+                    context=(
+                        "Contexto general: dashboard Streamlit de riesgo financiero con módulos de portafolio, "
+                        "rendimientos, técnico, GARCH, CAPM, VaR/CVaR/Kupiec, Markowitz, macro/benchmark, renta fija, "
+                        "opciones, stress testing, ML y reportes. "
+                        + self._portfolio_context_text(portfolio_context)
+                    ),
+                    mode=normalized_mode,
+                )
+                if llm_answer:
+                    broad_answer = llm_answer
+
             return {
                 "question": normalized_question,
                 "mode": normalized_mode,
                 "module": normalized_module,
-                "supported": False,
-                "answer": (
-                    "No encontré soporte suficiente en la base de conocimiento local del proyecto para responder "
-                    "esa pregunta con seguridad. Reformula la pregunta usando un módulo como VaR, CVaR, CAPM, "
-                    "Markowitz, GARCH, Perri, Nelson-Siegel o Black-Scholes."
-                ),
+                "supported": True,
+                "answer": broad_answer,
                 "topics": [],
                 "sources": [],
                 "suggested_followups": [
-                    "¿Qué es el VaR?",
-                    "¿Cómo se interpreta CAPM?",
-                    "¿Qué hace Perri en el proyecto?",
+                    "¿Qué hace este dashboard?",
+                    "¿Cómo afecta el horizonte al riesgo?",
+                    "¿Cómo explico el módulo de ML?",
                 ],
             }
 
@@ -185,7 +208,7 @@ class ChatbotService:
                 mode=normalized_mode,
             )
 
-            if llm_answer:
+            if llm_answer and self._llm_answer_matches_topic(llm_answer, selected_topic, payload):
                 answer = llm_answer
 
         sources = [

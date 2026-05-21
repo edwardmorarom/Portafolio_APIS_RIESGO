@@ -5,6 +5,7 @@ from pathlib import Path
 import streamlit as st
 
 from ui.theme import build_global_css, image_to_base64, safe_text
+from ui.formatting import DEFAULT_DECIMALS, MAX_DECIMALS
 
 
 NAV_ITEMS = [
@@ -295,9 +296,22 @@ def render_sidebar_session():
                 if weight is None:
                     st.write(f"- {ticker}")
                 else:
-                    st.write(f"- {ticker}: {float(weight):.2f}%")
+                    decimals = int(st.session_state.get("display_decimals", DEFAULT_DECIMALS))
+                    st.write(f"- {ticker}: {float(weight):.{decimals}f}%")
     else:
         st.caption("An no hay portafolio global guardado.")
+
+    st.sidebar.divider()
+
+    st.sidebar.number_input(
+        "Decimales visuales",
+        min_value=0,
+        max_value=MAX_DECIMALS,
+        value=int(st.session_state.get("display_decimals", DEFAULT_DECIMALS)),
+        step=1,
+        key="display_decimals",
+        help="Solo cambia el formato mostrado en KPIs, tablas y reportes; no altera los cálculos internos.",
+    )
 
     st.sidebar.divider()
 

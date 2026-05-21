@@ -1,6 +1,47 @@
 ﻿from __future__ import annotations
 
 CHATBOT_KNOWLEDGE_BASE = {
+    "dashboard": {
+        "keywords": ["dashboard", "tablero", "aplicacion", "aplicación", "proyecto", "que hace", "qué hace"],
+        "title": "Dashboard de riesgo financiero",
+        "source_type": "proyecto",
+        "reference": "Proyecto Integrador Riesgo USTA: tablero Streamlit conectado al backend FastAPI.",
+        "general": (
+            "Este dashboard permite construir un portafolio, analizar sus rendimientos, riesgo, CAPM, VaR/CVaR, GARCH, "
+            "Markowitz, renta fija, opciones, stress testing y Machine Learning. La idea es que el usuario elija activos, "
+            "pesos, horizonte y benchmark, y que esa configuración se use de forma coherente en los módulos."
+        ),
+        "estadistico": (
+            "El tablero consume endpoints FastAPI para separar frontend y cálculo financiero. Integra contratos Pydantic, "
+            "servicios de riesgo, persistencia SQLAlchemy, pruebas con pytest/TestClient, modelo ML y generación de reportes."
+        ),
+        "followups": [
+            "¿Cómo se usa el portafolio inicial en los módulos?",
+            "¿Qué módulo sirve para explicar riesgo extremo?",
+            "¿Cómo defiendo este dashboard ante el profesor?",
+        ],
+    },
+    "horizonte": {
+        "keywords": ["horizonte", "plazo", "tiempo", "largo plazo", "corto plazo"],
+        "title": "Horizonte de análisis",
+        "source_type": "metodologia",
+        "reference": "Proyecto Integrador Riesgo USTA: configuración global de horizonte.",
+        "general": (
+            "El horizonte afecta el riesgo porque cambia la ventana de datos y la forma de leer pérdidas y retornos. "
+            "En plazos cortos pesa más la volatilidad diaria y el ruido; en plazos largos se observan ciclos completos, "
+            "pero también aumenta la exposición a eventos macro, tasas y cambios de régimen."
+        ),
+        "estadistico": (
+            "Al ampliar el horizonte cambian la muestra histórica, la volatilidad anualizada, el VaR escalado, las betas "
+            "CAPM y la frontera eficiente. Por eso el dashboard parte del horizonte elegido al inicio y permite ajustarlo "
+            "por módulo cuando tiene sentido metodológico."
+        ),
+        "followups": [
+            "¿Por qué cambia el VaR al cambiar el horizonte?",
+            "¿Qué horizonte conviene para un perfil conservador?",
+            "¿Cómo afecta el horizonte a Markowitz?",
+        ],
+    },
     "var": {
         "keywords": ["var", "value at risk", "valor en riesgo", "riesgo extremo", "percentil", "cuantil"],
         "title": "VaR / Value at Risk",
@@ -364,6 +405,68 @@ CHATBOT_KNOWLEDGE_BASE = {
             "Qué features usa el modelo ML?",
             "Por qué el modelo no es una prueba causal?",
             "Cómo se interpreta un retorno predicho negativo?",
+        ],
+    },
+
+    "benchmark": {
+        "keywords": [
+            "benchmark",
+            "spy",
+            "s&p 500",
+            "sp500",
+            "acwi",
+            "msci acwi",
+            "tracking error",
+            "information ratio",
+            "alpha de jensen",
+        ],
+        "title": "Benchmark del portafolio",
+        "source_type": "metodologia",
+        "reference": "Proyecto Integrador Riesgo USTA: benchmark dinámico SPY/ACWI.",
+        "general": (
+            "El benchmark es la referencia contra la que se compara el portafolio. En el proyecto, si todos los activos "
+            "son de Estados Unidos se usa SPY como proxy descargable del S&P 500; si hay exposición internacional, ADRs, "
+            "ETFs globales o varios países, se usa ACWI como referencia global."
+        ),
+        "estadistico": (
+            "El benchmark alimenta métricas relativas como beta CAPM, alpha de Jensen, tracking error, information ratio "
+            "y comparación de eficiencia. SPY representa mercado accionario estadounidense amplio; ACWI representa renta "
+            "variable global desarrollada y emergente."
+        ),
+        "followups": [
+            "¿Cuándo se usa SPY y cuándo ACWI?",
+            "¿Qué significa alpha de Jensen frente al benchmark?",
+            "¿Cómo se interpreta el tracking error?",
+        ],
+    },
+
+    "stress": {
+        "keywords": [
+            "stress",
+            "stress testing",
+            "escenario adverso",
+            "escenarios",
+            "shock",
+            "caida de mercado",
+            "caída de mercado",
+            "perdida bajo estres",
+            "pérdida bajo estrés",
+        ],
+        "title": "Stress testing y escenarios",
+        "source_type": "modulo",
+        "reference": "Proyecto Integrador Riesgo USTA: módulo de stress testing.",
+        "general": (
+            "El stress testing fuerza escenarios adversos sobre el portafolio para estimar pérdida potencial y resiliencia. "
+            "Compara el valor base contra el valor estresado y permite ver si el portafolio cae más o menos que el benchmark."
+        ),
+        "estadistico": (
+            "El módulo combina shocks de mercado, tasas y multiplicadores de volatilidad. La lectura no es una predicción "
+            "puntual, sino una prueba de sensibilidad ante condiciones extremas y una comparación defensiva frente al benchmark."
+        ),
+        "followups": [
+            "¿Cómo interpreto una pérdida alta bajo stress?",
+            "¿Qué significa caer menos que el benchmark?",
+            "¿Qué shocks usa el módulo de stress testing?",
         ],
     },
 

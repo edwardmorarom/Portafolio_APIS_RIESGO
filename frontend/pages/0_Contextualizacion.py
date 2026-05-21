@@ -16,6 +16,7 @@ from ui.dashboard_ui import (
 )
 from ui.cards import render_chip_row, render_info_card, render_meta_row
 from ui.theme import image_to_base64, safe_text
+from ui.portfolio_state import active_benchmark_details
 from services.api_client import get_api_client, ApiClientError
 
 
@@ -551,11 +552,12 @@ def _render_rf_and_benchmark_tab():
     )
 
     seccion("Benchmark del portafolio")
+    benchmark_details = active_benchmark_details()
 
 
 
     render_info_card(
-        "Benchmark usado: ACWI",
+        f"Benchmark usado: {benchmark_details['ticker']}",
         (
             "ACWI funciona como referencia global porque el portafolio combina activos de varios países."
         ),
@@ -563,7 +565,9 @@ def _render_rf_and_benchmark_tab():
 
     benchmark_rows = [
         {
-            "Benchmark": "ACWI",
+            "Benchmark": benchmark_details["ticker"],
+            "Nombre": benchmark_details.get("name", "Referencia"),
+            "Criterio": benchmark_details.get("criterion", "N/D"),
             "Tipo": "Referencia global de renta variable",
             "Uso en el proyecto": "Comparación de desempeño, CAPM, beta, alpha de Jensen y métricas relativas.",
             "Justificación": "Es coherente con un portafolio internacional y multimoneda convertido a USD.",
