@@ -248,7 +248,7 @@ def _build_regression_figure(
         show_xgrid=not clean_view,
         show_ygrid=not clean_view,
     )
-    fig.update_layout(margin=dict(l=24, r=24, t=55, b=24))
+    fig.update_layout(margin=dict(l=70, r=34, t=110, b=64))
     return fig
 
 

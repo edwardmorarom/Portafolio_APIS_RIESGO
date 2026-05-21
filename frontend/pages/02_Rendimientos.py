@@ -337,6 +337,98 @@ def _help_badge(text: str):
         unsafe_allow_html=True,
     )
 
+
+def _num(value) -> float | None:
+    try:
+        if value is None or pd.isna(value):
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def _interpret_histogram(mean_, std_, skewness, kurtosis) -> str:
+    mean_v = _num(mean_)
+    std_v = _num(std_)
+    skew_v = _num(skewness)
+    kurt_v = _num(kurtosis)
+
+    parts: list[str] = []
+
+    if mean_v is not None:
+        if mean_v > 0:
+            parts.append("El rendimiento promedio es positivo, asi que la muestra favorece levemente al activo.")
+        elif mean_v < 0:
+            parts.append("El rendimiento promedio es negativo, asi que la muestra castiga levemente al activo.")
+        else:
+            parts.append("El rendimiento promedio esta muy cerca de cero.")
+
+    if std_v is not None:
+        if std_v >= 0.03:
+            parts.append("La dispersion diaria luce alta: hay cambios grandes con frecuencia.")
+        elif std_v <= 0.01:
+            parts.append("La dispersion diaria luce contenida: los cambios tienden a ser pequenos.")
+        else:
+            parts.append("La dispersion diaria es intermedia: hay variacion, pero no domina toda la muestra.")
+
+    if skew_v is not None:
+        if skew_v < -0.35:
+            parts.append("La cola izquierda pesa mas, senal de caidas extremas mas marcadas que las subidas.")
+        elif skew_v > 0.35:
+            parts.append("La cola derecha pesa mas, senal de subidas extremas mas marcadas que las caidas.")
+        else:
+            parts.append("La distribucion no muestra un sesgo fuerte hacia subidas o caidas.")
+
+    if kurt_v is not None and kurt_v > 1:
+        parts.append("La curtosis sugiere colas pesadas: los eventos extremos importan para medir riesgo.")
+
+    return " ".join(parts) or "El histograma ayuda a ver si los rendimientos se concentran cerca de cero o si aparecen movimientos extremos."
+
+
+def _interpret_boxplot(min_return, max_return, std_) -> str:
+    min_v = _num(min_return)
+    max_v = _num(max_return)
+    std_v = _num(std_)
+
+    parts: list[str] = []
+
+    if min_v is not None and max_v is not None:
+        if abs(min_v) > abs(max_v) * 1.15:
+            parts.append("El peor retorno pesa mas que el mejor retorno: conviene mirar con cuidado el riesgo de perdida.")
+        elif abs(max_v) > abs(min_v) * 1.15:
+            parts.append("El mejor retorno pesa mas que el peor retorno: hubo episodios positivos destacados.")
+        else:
+            parts.append("Los extremos positivo y negativo lucen relativamente balanceados.")
+
+    if std_v is not None:
+        if std_v >= 0.03:
+            parts.append("Una caja amplia o muchos puntos extremos refuerzan una lectura de volatilidad alta.")
+        else:
+            parts.append("Si la caja se mantiene compacta, la mayor parte de los rendimientos cae en un rango manejable.")
+
+    return " ".join(parts) or "El boxplot resume la zona normal de los rendimientos y separa los datos extremos."
+
+
+def _interpret_qq_plot(jarque_bera: dict, skewness, kurtosis) -> str:
+    conclusion = str((jarque_bera or {}).get("conclusion", "")).lower()
+    skew_v = _num(skewness)
+    kurt_v = _num(kurtosis)
+
+    if "no se rechaza" in conclusion:
+        return "Los puntos deberian quedar razonablemente cerca de la diagonal: para esta muestra no hay evidencia fuerte contra normalidad."
+
+    details: list[str] = [
+        "Si los puntos se alejan de la diagonal, especialmente en las puntas, la normal no describe bien los rendimientos."
+    ]
+
+    if skew_v is not None and abs(skew_v) > 0.35:
+        details.append("La asimetria confirma que una cola pesa mas que la otra.")
+
+    if kurt_v is not None and kurt_v > 1:
+        details.append("La curtosis positiva indica colas pesadas, justo donde se concentran los eventos de riesgo.")
+
+    return " ".join(details)
+
 assets, help_map, load_error = _fetch_assets_and_help()
 
 modo, filtros_sidebar = setup_dashboard_page(
@@ -644,10 +736,7 @@ with g1:
         show_normal=show_normal,
     )
     st.plotly_chart(fig_hist, use_container_width=True)
-    plot_card_footer(
-        "Observa si la distribución se concentra cerca de cero o si presenta colas amplias, "
-        "lo que puede indicar episodios de variación más fuerte."
-    )
+    plot_card_footer(_interpret_histogram(mean_, std_, skewness, kurtosis))
 
 with g2:
     plot_card_header(
@@ -670,10 +759,7 @@ with g2:
         horizontal=horizontal_box,
     )
     st.plotly_chart(fig_box, use_container_width=True)
-    plot_card_footer(
-        "El boxplot resume mediana, dispersión y valores atípicos. "
-        "Una caja amplia o muchos outliers suele asociarse con mayor inestabilidad en los rendimientos."
-    )
+    plot_card_footer(_interpret_boxplot(min_return, max_return, std_))
 
 # OJO: este bloque queda afuera de g1 y g2, alineado al margen izquierdo
 plot_card_header(
@@ -690,7 +776,4 @@ plot_card_header(
 fig_qq = _build_qq_figure(qq_df, modo=modo)
 st.plotly_chart(fig_qq, use_container_width=True)
 
-plot_card_footer(
-    "Cuando los puntos se separan de la línea diagonal, especialmente en las colas, "
-    "los rendimientos no siguen bien una distribución normal."
-)
+plot_card_footer(_interpret_qq_plot(jb, skewness, kurtosis))
