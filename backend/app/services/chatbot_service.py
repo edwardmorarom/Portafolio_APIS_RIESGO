@@ -3,6 +3,7 @@
 import re
 
 from app.clients.llm_client import LLMClient
+from app.core.chatbot_course_notes import find_course_notes
 from app.core.chatbot_knowledge import CHATBOT_KNOWLEDGE_BASE
 from app.core.chatbot_scope import (
     FINANCIAL_SCOPE_FOLLOWUPS,
@@ -39,9 +40,7 @@ class ChatbotService:
 
         for topic, payload in self.knowledge_base.items():
             keywords = payload["keywords"]
-            score = sum(1 for keyword in keywords if keyword in normalized)
-            if module == topic and score > 0:
-                score += 2
+            score = sum(3 if keyword == topic and keyword in normalized else 1 for keyword in keywords if keyword in normalized)
             if score > 0:
                 scored.append((score, topic))
 
@@ -51,12 +50,14 @@ class ChatbotService:
         scored.sort(key=lambda item: item[0], reverse=True)
         return [topic for _, topic in scored]
 
-    def _build_llm_context(self, topic: str, payload: dict, local_answer: str) -> str:
+    def _build_llm_context(self, topic: str, payload: dict, local_answer: str, question: str) -> str:
+        course_notes = " ".join(find_course_notes(question))
         return (
             f"Tema detectado: {topic}\n"
             f"Fuente interna: {payload['title']}\n"
             f"Tipo de fuente: {payload['source_type']}\n"
             f"Referencia: {payload['reference']}\n"
+            f"Notas de clase disponibles: {course_notes or 'Sin nota adicional'}\n"
             f"Respuesta base local: {local_answer}"
         )
 
@@ -113,6 +114,10 @@ class ChatbotService:
         if portfolio_text and any(word in normalized for word in ["portafolio", "activo", "acciones", "pesos", "benchmark", "horizonte"]):
             answer += f" Con el contexto actual: {portfolio_text}. No invento resultados numéricos que no hayan sido calculados en pantalla."
 
+        course_notes = find_course_notes(question, limit=1)
+        if course_notes and not any(note in answer for note in course_notes):
+            answer += f" Nota de clase: {course_notes[0]}"
+
         return answer
 
     def answer_question(
@@ -163,7 +168,9 @@ class ChatbotService:
                     context=(
                         "Contexto general: dashboard Streamlit de riesgo financiero con módulos de portafolio, "
                         "rendimientos, técnico, GARCH, CAPM, VaR/CVaR/Kupiec, Markowitz, macro/benchmark, renta fija, "
-                        "opciones, stress testing, ML y reportes. "
+                        "opciones, stress testing, ML y reportes. Notas de clase: "
+                        + " ".join(find_course_notes(normalized_question))
+                        + " "
                         + self._portfolio_context_text(portfolio_context)
                     ),
                     mode=normalized_mode,
@@ -201,6 +208,7 @@ class ChatbotService:
                 topic=selected_topic,
                 payload=payload,
                 local_answer=answer,
+                question=normalized_question,
             )
             llm_answer = self.llm_client.generate_answer(
                 question=normalized_question,

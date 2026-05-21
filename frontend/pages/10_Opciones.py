@@ -35,12 +35,12 @@ with filtros_panel:
     option_type = st.selectbox("Tipo de opción", ["call", "put"])
     c1, c2 = st.columns(2)
     with c1:
-        spot_price = st.number_input("Spot S", min_value=0.01, value=100.0, step=1.0)
-        strike_price = st.number_input("Strike K", min_value=0.01, value=105.0, step=1.0)
+        spot_price = st.number_input("Spot S", min_value=0.01, value=100.0, step=1.0, help="Precio actual del activo subyacente.")
+        strike_price = st.number_input("Strike K", min_value=0.01, value=105.0, step=1.0, help="Precio de ejercicio pactado para comprar o vender.")
         time_to_maturity = st.number_input("Tiempo T en años", min_value=0.01, value=1.0, step=0.25)
     with c2:
-        risk_free_rate = st.number_input("Tasa libre de riesgo r", value=0.05, step=0.01, format="%.4f")
-        volatility = st.number_input("Volatilidad sigma", min_value=0.0001, value=0.20, step=0.01, format="%.4f")
+        risk_free_rate = st.number_input("Tasa libre de riesgo r", value=0.05, step=0.01, format="%.4f", help="Tasa anual usada para descontar en Black-Scholes.")
+        volatility = st.number_input("Volatilidad sigma", min_value=0.0001, value=0.20, step=0.01, format="%.4f", help="Volatilidad anual esperada del subyacente.")
         run_analysis = st.button("Calcular opción", type="primary", use_container_width=True)
 
 payload = {
@@ -90,17 +90,17 @@ if result:
     with c1:
         tarjeta_kpi("Precio teórico", format_money(result["price"]), subtexto="Black-Scholes")
     with c2:
-        tarjeta_kpi("Delta", format_number(greeks["delta"], decimals=4), subtexto="Sensibilidad al spot")
+        tarjeta_kpi("Delta", format_number(greeks["delta"], decimals=4), subtexto="Sensibilidad al spot", help_text="Cambio aproximado del precio de la opcion ante un cambio pequeno del spot.")
     with c3:
-        tarjeta_kpi("Gamma", format_number(greeks["gamma"], decimals=4), subtexto="Curvatura del delta")
+        tarjeta_kpi("Gamma", format_number(greeks["gamma"], decimals=4), subtexto="Curvatura del delta", help_text="Cambio del delta cuando cambia el spot.")
 
     c4, c5, c6 = st.columns(3)
     with c4:
-        tarjeta_kpi("Vega", format_number(greeks["vega"], decimals=4), subtexto="Sensibilidad a volatilidad")
+        tarjeta_kpi("Vega", format_number(greeks["vega"], decimals=4), subtexto="Sensibilidad a volatilidad", help_text="Sensibilidad del precio ante cambios en volatilidad.")
     with c5:
-        tarjeta_kpi("Theta", format_number(greeks["theta"], decimals=4), subtexto="Paso del tiempo")
+        tarjeta_kpi("Theta", format_number(greeks["theta"], decimals=4), subtexto="Paso del tiempo", help_text="Efecto del paso del tiempo sobre el valor de la opcion.")
     with c6:
-        tarjeta_kpi("Rho", format_number(greeks["rho"], decimals=4), subtexto="Sensibilidad a tasas")
+        tarjeta_kpi("Rho", format_number(greeks["rho"], decimals=4), subtexto="Sensibilidad a tasas", help_text="Sensibilidad del precio ante cambios en la tasa libre de riesgo.")
 
     render_meta_row(
         {

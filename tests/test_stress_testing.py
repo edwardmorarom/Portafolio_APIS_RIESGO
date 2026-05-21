@@ -32,4 +32,6 @@ def test_stress_testing_endpoint():
     assert "severity" in data
     assert "summary" in data
     assert data["estimated_loss"] >= 0
+    assert data["benchmark_loss_pct"] is not None
+    assert data["relative_to_benchmark"]
 

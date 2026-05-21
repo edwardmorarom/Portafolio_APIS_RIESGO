@@ -131,6 +131,21 @@ def test_chatbot_general_dashboard_and_horizon_questions_are_contextual():
     assert answer_dashboard != answer_horizon
 
 
+def test_chatbot_question_topic_wins_over_module_hint():
+    service = ChatbotService()
+
+    payload = service.answer_question(
+        question="Como afecta el horizonte al riesgo?",
+        mode="general",
+        module="kyc",
+    )
+
+    assert payload["supported"] is True
+    assert payload["topics"][0] == "horizonte"
+    assert "horizonte" in payload["answer"].lower()
+    assert "kyc financiero permite identificar" not in payload["answer"].lower()
+
+
 def test_chatbot_discards_misaligned_kyc_llm_answer_for_var():
     service = ChatbotService(llm_client=_KycOnlyLLM())
 

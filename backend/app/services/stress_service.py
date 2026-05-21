@@ -32,15 +32,16 @@ class StressTestingService:
         stressed_portfolio_value = max(0.0, portfolio_value - estimated_loss)
 
         severity = self.classify_severity(estimated_loss_pct)
-        benchmark_loss_pct = abs(benchmark_shock) if benchmark_shock is not None and benchmark_shock < 0 else None
+        benchmark_reference = market_shock if benchmark_shock is None else benchmark_shock
+        benchmark_loss_pct = max(0.0, -float(benchmark_reference))
 
-        relative_to_benchmark = None
-        if benchmark_loss_pct is not None:
-            relative_to_benchmark = (
-                "mejor defensa que el benchmark"
-                if estimated_loss_pct < benchmark_loss_pct
-                else "menor eficiencia defensiva que el benchmark"
-            )
+        relative_to_benchmark = (
+            "mejor defensa que el benchmark"
+            if estimated_loss_pct < benchmark_loss_pct
+            else "menor eficiencia defensiva que el benchmark"
+        )
+        if benchmark_loss_pct == 0 and estimated_loss_pct == 0:
+            relative_to_benchmark = "impacto similar al benchmark"
 
         if estimated_loss_pct < 0.05:
             interpretation = "La pérdida bajo estrés es baja; el portafolio muestra resistencia relativa."
@@ -67,7 +68,7 @@ class StressTestingService:
             "estimated_loss_pct": float(estimated_loss_pct),
             "estimated_loss": float(estimated_loss),
             "stressed_portfolio_value": float(stressed_portfolio_value),
-            "benchmark_loss_pct": float(benchmark_loss_pct) if benchmark_loss_pct is not None else None,
+            "benchmark_loss_pct": float(benchmark_loss_pct),
             "relative_to_benchmark": relative_to_benchmark,
             "severity": severity,
             "interpretation": interpretation,

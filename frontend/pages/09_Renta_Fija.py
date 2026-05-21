@@ -51,6 +51,7 @@ with filtros_panel:
         hide_index=True,
         use_container_width=True,
         num_rows="dynamic",
+        help="Agrega puntos de la curva. Cada fila combina vencimiento en anos y tasa observada en decimal.",
         column_config={
             "Vencimiento (años)": st.column_config.NumberColumn("Vencimiento (años)", min_value=0.25, step=0.25, format="%.2f"),
             "Tasa observada": st.column_config.NumberColumn("Tasa observada", min_value=0.0, max_value=1.0, step=0.001, format="%.4f"),
@@ -60,11 +61,11 @@ with filtros_panel:
 
     b1, b2 = st.columns(2)
     with b1:
-        face_value = st.number_input("Valor nominal", min_value=1.0, value=1000.0, step=100.0)
+        face_value = st.number_input("Valor nominal", min_value=1.0, value=1000.0, step=100.0, help="Monto principal que paga el bono al vencimiento.")
         coupon_rate = st.number_input("Cupón anual", min_value=0.0, value=0.045, step=0.005, format="%.4f")
     with b2:
-        maturity_years = st.number_input("Vencimiento del bono", min_value=1, value=7, step=1)
-        market_yield = st.number_input("Yield de mercado", min_value=0.0, value=0.048, step=0.005, format="%.4f")
+        maturity_years = st.number_input("Vencimiento del bono", min_value=1, value=7, step=1, help="Numero de anos hasta el pago final del bono.")
+        market_yield = st.number_input("Yield de mercado", min_value=0.0, value=0.048, step=0.005, format="%.4f", help="Tasa de descuento de mercado usada para valorar el bono.")
 
     run_analysis = st.button("Calcular renta fija", type="primary", use_container_width=True)
 
@@ -113,13 +114,13 @@ if curve_result:
     params = curve_result["params"]
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        tarjeta_kpi("Nivel", format_percent(params["beta0"]), subtexto="Beta 0")
+        tarjeta_kpi("Nivel", format_percent(params["beta0"]), subtexto="Beta 0", help_text="Nivel general de tasas estimado por la curva Nelson-Siegel.")
     with c2:
-        tarjeta_kpi("Pendiente", format_percent(params["beta1"]), subtexto="Beta 1")
+        tarjeta_kpi("Pendiente", format_percent(params["beta1"]), subtexto="Beta 1", help_text="Diferencia entre tramos cortos y largos de la curva.")
     with c3:
-        tarjeta_kpi("Curvatura", format_percent(params["beta2"]), subtexto="Beta 2")
+        tarjeta_kpi("Curvatura", format_percent(params["beta2"]), subtexto="Beta 2", help_text="Forma del tramo medio de la estructura temporal.")
     with c4:
-        tarjeta_kpi("RMSE", format_number(curve_result["rmse"], decimals=4), subtexto="Error de ajuste")
+        tarjeta_kpi("RMSE", format_number(curve_result["rmse"], decimals=4), subtexto="Error de ajuste", help_text="Error promedio de ajuste entre tasas observadas y curva estimada.")
 
     grid = np.linspace(min(maturities), max(maturities), 120)
     fitted = _nelson_siegel_curve(grid, tau=params["tau"], beta0=params["beta0"], beta1=params["beta1"], beta2=params["beta2"])
@@ -146,7 +147,7 @@ if bond_result:
     with c3:
         tarjeta_kpi("Duración mod.", format_number(bond_result["modified_duration"]), subtexto="Sensibilidad")
     with c4:
-        tarjeta_kpi("Convexidad", format_number(bond_result["convexity"]), subtexto="Curvatura precio-tasa")
+        tarjeta_kpi("Convexidad", format_number(bond_result["convexity"]), subtexto="Curvatura precio-tasa", help_text="Ajuste de segundo orden de la relacion precio-tasa.")
 
     render_meta_row(
         {
