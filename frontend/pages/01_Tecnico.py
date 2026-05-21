@@ -223,7 +223,7 @@ def _interpret_stochastic(stoch_k_now: float | None, stoch_d_now: float | None) 
     return "El oscilador estocástico está en zona neutral."
 
 
-def _plot_price_ma(df: pd.DataFrame,modo: str,sma_window: int,ema_window: int,show_price: bool,show_sma: bool,show_ema: bool,
+def _plotly_price_ma(df: pd.DataFrame,modo: str,sma_window: int,ema_window: int,show_price: bool,show_sma: bool,show_ema: bool,
 ) -> go.Figure:
     fig = go.Figure()
 
@@ -271,7 +271,13 @@ def _plot_price_ma(df: pd.DataFrame,modo: str,sma_window: int,ema_window: int,sh
     )
 
 
-def _plot_rsi(df: pd.DataFrame, modo: str, rsi_window: int, show_levels: bool) -> go.Figure:
+def _plotly_rsi(
+    df: pd.DataFrame,
+    modo: str,
+    rsi_window: int,
+    show_line: bool,
+    show_levels: bool,
+) -> go.Figure:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -279,7 +285,8 @@ def _plot_rsi(df: pd.DataFrame, modo: str, rsi_window: int, show_levels: bool) -
             y=df[f"rsi_{rsi_window}"],
             mode="lines",
             name="Línea RSI",
-            line=dict(width=2.3, color="#1E3A8A"),
+            line=dict(width=2.3, color="#2563EB"),
+            visible=True if show_line else "legendonly",
         )
     )
 
@@ -300,7 +307,7 @@ def _plot_rsi(df: pd.DataFrame, modo: str, rsi_window: int, show_levels: bool) -
     )
 
 
-def _plot_bollinger(
+def _plotly_bollinger(
     df: pd.DataFrame,
     modo: str,
     boll_window: int,
@@ -370,7 +377,7 @@ def _plot_bollinger(
     )
 
 
-def _plot_macd(
+def _plotly_macd(
     df: pd.DataFrame,
     modo: str,
     show_macd: bool,
@@ -433,10 +440,12 @@ def _plot_macd(
     )
 
 
-def _plot_stochastic(
+def _plotly_stochastic(
     df: pd.DataFrame,
     modo: str,
     stoch_window: int,
+    show_k: bool,
+    show_d: bool,
     show_levels: bool,
 ) -> go.Figure:
     fig = go.Figure()
@@ -448,6 +457,7 @@ def _plot_stochastic(
             mode="lines",
             name="%K",
             line=dict(width=2.4, color="#1D4ED8"),
+            visible=True if show_k else "legendonly",
         )
     )
 
@@ -458,6 +468,7 @@ def _plot_stochastic(
             mode="lines",
             name="%D",
             line=dict(width=2.7, dash="dash", color="#F97316"),
+            visible=True if show_d else "legendonly",
         )
     )
 
@@ -1028,7 +1039,7 @@ with p2:
 with p3:
     show_ema = st.checkbox(f"EMA {ema_window}", value=True, key="tec_price_show_ema")
 
-fig_price = _plot_price_ma(
+fig_price = _plotly_price_ma(
     df=df,
     modo=modo,
     sma_window=sma_window,
@@ -1037,7 +1048,7 @@ fig_price = _plot_price_ma(
     show_sma=show_sma,
     show_ema=show_ema,
 )
-st.altair_chart(fig_price, use_container_width=True)
+st.plotly_chart(fig_price, use_container_width=True)
 plot_card_footer(_interpret_trend(close_now, sma_now, ema_now))
 
 g1, g2 = st.columns(2, gap="large")
@@ -1057,14 +1068,14 @@ with g1:
     with r2:
         rsi_levels = st.checkbox("Niveles 30/70", value=True, key="tec_rsi_levels")
 
-    fig_rsi = _plot_rsi(
+    fig_rsi = _plotly_rsi(
         df,
         modo=modo,
         rsi_window=rsi_window,
         show_line=rsi_line,
         show_levels=rsi_levels,
     )
-    st.altair_chart(fig_rsi, use_container_width=True)
+    st.plotly_chart(fig_rsi, use_container_width=True)
     plot_card_footer(_interpret_rsi(rsi_now))
 
 with g2:
@@ -1086,7 +1097,7 @@ with g2:
     with b4:
         show_boll_low = st.checkbox("Banda inf.", value=True, key="tec_boll_low")
 
-    fig_boll = _plot_bollinger(
+    fig_boll = _plotly_bollinger(
         df=df,
         modo=modo,
         boll_window=boll_window,
@@ -1095,7 +1106,7 @@ with g2:
         show_up=show_boll_up,
         show_low=show_boll_low,
     )
-    st.altair_chart(fig_boll, use_container_width=True)
+    st.plotly_chart(fig_boll, use_container_width=True)
     plot_card_footer(_interpret_bollinger(close_now, bb_low_now, bb_up_now))
 
 g3, g4 = st.columns(2, gap="large")
@@ -1124,7 +1135,7 @@ with g3:
     with m3:
         show_hist = st.checkbox("Histograma", value=True, key="tec_macd_show_hist")
 
-    fig_macd = _plot_macd(
+    fig_macd = _plotly_macd(
         df=df,
         modo=modo,
         show_macd=show_macd,
@@ -1132,7 +1143,7 @@ with g3:
         show_hist=show_hist,
     )
 
-    st.altair_chart(fig_macd, use_container_width=True)
+    st.plotly_chart(fig_macd, use_container_width=True)
 
     plot_card_footer(
         _interpret_macd(macd_now, macd_signal_now, macd_hist_now)
@@ -1159,7 +1170,7 @@ with g4:
     with s3:
         show_stoch_levels = st.checkbox("Niveles 20/80", value=True, key="tec_stoch_levels")
 
-    fig_stoch = _plot_stochastic(
+    fig_stoch = _plotly_stochastic(
         df=df,
         modo=modo,
         stoch_window=stoch_window,
@@ -1168,7 +1179,7 @@ with g4:
         show_levels=show_stoch_levels,
     )
 
-    st.altair_chart(fig_stoch, use_container_width=True)
+    st.plotly_chart(fig_stoch, use_container_width=True)
 
     plot_card_footer(
         _interpret_stochastic(stoch_k_now, stoch_d_now)

@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from ui.page_setup import setup_dashboard_page
+from ui.asset_metadata import display_country
 from ui.dashboard_ui import (
     header_dashboard,
     nota,
@@ -19,27 +20,6 @@ from services.api_client import get_api_client, ApiClientError
 
 
 
-CONTEXT_MODULE_GROUPS = {
-    "Mercado y contexto": [
-        {"code": "Mdulo 0", "title": "Contextualizacin", "description": "Universo de activos, moneda, Rf y benchmark.", "path": "pages/0_Contextualizacion.py"},
-        {"code": "Mdulo 1", "title": "T?cnico", "description": "Precio, medias mviles, RSI, Bollinger, MACD y estocstico.", "path": "pages/01_Tecnico.py"},
-        {"code": "Mdulo 2", "title": "Rendimientos", "description": "Distribucin, normalidad, QQ plot y estadstica descriptiva.", "path": "pages/02_Rendimientos.py"},
-        {"code": "Mdulo 8", "title": "Macro y benchmark", "description": "Tasa libre de riesgo, FX, alpha, tracking error e IR.", "path": "pages/08_Macro_Benchmark.py"},
-    ],
-    "Riesgo cuantitativo": [
-        {"code": "Mdulo 3", "title": "GARCH", "description": "ARCH, GARCH, EGARCH, diagnstico y pronstico de volatilidad.", "path": "pages/03_Garch.py"},
-        {"code": "Mdulo 4", "title": "CAPM", "description": "Beta, alpha, retorno esperado y lectura por activo o portafolio.", "path": "pages/04_Capm.py"},
-        {"code": "Mdulo 5", "title": "VaR/CVaR", "description": "VaR histrico, paramtrico, Monte Carlo, CVaR y Kupiec.", "path": "pages/05_Var_Cvar.py"},
-        {"code": "Mdulo 11", "title": "Stress testing", "description": "Escenarios adversos de tasa, mercado y volatilidad.", "path": "pages/11_Stress_Testing.py"},
-    ],
-    "Optimizacin y modelos": [
-        {"code": "Mdulo 6", "title": "Markowitz", "description": "Frontera eficiente, mnimos, Sharpe y comparacin Perri.", "path": "pages/06_Markowitz.py"},
-        {"code": "Mdulo 7", "title": "Se?ales", "description": "Lectura integrada de seales tcnicas por activo.", "path": "pages/07_Señales.py"},
-        {"code": "Mdulo 9", "title": "Renta fija", "description": "Nelson-Siegel, curva de tasas, duracin y convexidad.", "path": "pages/09_Renta_Fija.py"},
-        {"code": "Mdulo 10", "title": "Opciones", "description": "Black-Scholes, Greeks, payoff y sensibilidad.", "path": "pages/10_Opciones.py"},
-        {"code": "Mdulo 12", "title": "Machine Learning", "description": "Prediccin de retorno con variables de riesgo y mercado.", "path": "pages/12_Machine_Learning.py"},
-    ],
-}
 CONTEXT_MODULE_GROUPS = {
     "Mercado y contexto": [
         {"code": "Módulo 0", "title": "Contextualización", "description": "Universo de activos, moneda, Rf y benchmark.", "path": "pages/0_Contextualizacion.py"},
@@ -293,11 +273,11 @@ def _render_analysis_center(modo: str) -> None:
     with tab_home:
         c1, c2, c3 = st.columns(3)
         with c1:
-            tarjeta_kpi("Cobertura", "13", subtexto="M?dulos Streamlit")
+            tarjeta_kpi("Cobertura", "13", subtexto="Módulos Streamlit")
         with c2:
             tarjeta_kpi("Backend", "FastAPI", subtexto="Servicios financieros")
         with c3:
-            tarjeta_kpi("Modelo", "ML", subtexto="Predicci?n de retorno")
+            tarjeta_kpi("Modelo", "ML", subtexto="Predicción de retorno")
 
         seccion("Flujo recomendado")
         cols = st.columns(3, gap="large")
@@ -306,7 +286,7 @@ def _render_analysis_center(modo: str) -> None:
         with cols[1]:
             render_info_card("2. Riesgo", "Evala volatilidad, CAPM, VaR/CVaR, GARCH y stress testing.")
         with cols[2]:
-            render_info_card("3. Decisin", "Contrasta Markowitz, seales, Perri, RoboAdvisor y ML.")
+            render_info_card("3. Decisin", "Contrasta Markowitz, señales, Perri, RoboAdvisor y ML.")
 
     with tab_modules:
         _render_context_modules_tab()
@@ -381,7 +361,7 @@ def _render_role_card(profile: dict[str, str]):
 
 
 def _render_financial_card(profile: dict[str, str], asset: dict):
-    country = asset.get("country", "N/D")
+    country = display_country(asset)
     base_tag = "Sí" if asset.get("default") else "No"
     asset_type = asset.get("asset_type") or "N/D"
     benchmark_ticker = asset.get("benchmark_ticker") or "N/D"
@@ -430,7 +410,7 @@ def _render_asset_block(asset: dict, modo: str):
     profile = _build_asset_profile(
         name=asset.get("name", ""),
         ticker=asset.get("ticker", ""),
-        country=asset.get("country", ""),
+        country=display_country(asset),
         is_default=bool(asset.get("default")),
     )
 
@@ -442,7 +422,7 @@ def _render_asset_block(asset: dict, modo: str):
 
     render_chip_row(
         [
-            f"País: {asset.get('country', 'N/D')}",
+            f"País: {display_country(asset)}",
             f"Ticker: {asset.get('ticker', 'N/D')}",
             "Base del proyecto" if asset.get("default") else "Activo ampliado",
             f"Modo {modo}",
@@ -469,10 +449,10 @@ def _render_rf_and_benchmark_tab():
 
 
     render_info_card(
-        "Nota metodol?gica sobre moneda",
+        "Nota metodológica sobre moneda",
         (
-            "Los activos pueden cotizar en monedas distintas, pero el an?lisis se estandariza en USD. "
-            "As?, rendimientos, CAPM, VaR/CVaR, GARCH y Markowitz quedan comparables."
+            "Los activos pueden cotizar en monedas distintas, pero el análisis se estandariza en USD. "
+            "Así, rendimientos, CAPM, VaR/CVaR, GARCH y Markowitz quedan comparables."
         ),
     )
 
@@ -528,7 +508,7 @@ def _render_rf_and_benchmark_tab():
     render_info_card(
         "Criterio usado para la Rf",
         (
-            "Se usa una tasa libre de riesgo com?n en USD para mantener consistencia "
+            "Se usa una tasa libre de riesgo común en USD para mantener consistencia "
             "en Sharpe, CAPM y Markowitz."
         ),
     )
@@ -577,7 +557,7 @@ def _render_rf_and_benchmark_tab():
     render_info_card(
         "Benchmark usado: ACWI",
         (
-            "ACWI funciona como referencia global porque el portafolio combina activos de varios pa?ses."
+            "ACWI funciona como referencia global porque el portafolio combina activos de varios países."
         ),
     )
 
@@ -594,9 +574,9 @@ def _render_rf_and_benchmark_tab():
 
 
     render_info_card(
-        "Relaci?n entre Rf, moneda y benchmark",
+        "Relación entre Rf, moneda y benchmark",
         (
-            "USD, Rf en USD y ACWI alinean las m?tricas de riesgo y desempe?o bajo el mismo marco metodol?gico."
+            "USD, Rf en USD y ACWI alinean las métricas de riesgo y desempeño bajo el mismo marco metodológico."
         ),
     )
 
@@ -611,31 +591,11 @@ modo, filtros_sidebar = setup_dashboard_page(
 
 assets, help_map, load_error = _fetch_assets_and_help()
 
-with filtros_sidebar:
-    view_mode = st.radio(
-        "Vista",
-        ["Resumen", "Un activo", "Todos"],
-        index=0,
-        key="ctx_view_mode",
-    )
-
-    asset_labels = []
-    asset_map: dict[str, dict] = {}
-    for asset in assets:
-        label = f"{asset['name']} · {asset['ticker']} · {asset['country']}"
-        asset_labels.append(label)
-        asset_map[label] = asset
-
-    selected_label = None
-    if view_mode == "Un activo" and asset_labels:
-        selected_label = st.selectbox(
-            "Selecciona un activo",
-            options=asset_labels,
-            key="ctx_asset_select",
-        )
-
-    show_general_read = True
-    show_default_only = False
+view_mode = "Resumen"
+selected_label = None
+asset_map: dict[str, dict] = {}
+show_general_read = False
+show_default_only = False
 
 header_dashboard(
     "Módulo 0 - Contextualización del portafolio",
@@ -656,8 +616,6 @@ else:
         "En modo estadístico, esta vista enfatiza que el portafolio no está concentrado en una sola región ni en una sola fuente de riesgo: mezcla activos con sensibilidades sectoriales, cambiarias y macroeconómicas diferentes."
     )
 
-_render_analysis_center(modo)
-
 tab_activos, tab_rf_benchmark = st.tabs(
     ["Activos del portafolio", "Moneda, Rf y benchmark"]
 )
@@ -667,7 +625,7 @@ with tab_activos:
 
     default_assets = [a for a in assets if a.get("default") is True]
     extra_assets = [a for a in assets if a.get("default") is not True]
-    countries = sorted({a.get("country", "N/D") for a in assets})
+    countries = sorted({display_country(a) for a in assets})
 
     perri_assets = [a for a in assets if a.get("include_in_perri") is True]
 
@@ -716,7 +674,7 @@ with tab_activos:
         )
 
 
-    seccion("Marco metodol?gico del universo")
+    seccion("Marco metodológico del universo")
 
     metodologia_1, metodologia_2, metodologia_3, metodologia_4 = st.columns(4)
 
@@ -724,16 +682,16 @@ with tab_activos:
         tarjeta_kpi(
             "Benchmark global",
             "ACWI",
-            subtexto="Referencia metodol?gica.",
-            help_text="Benchmark global usado para comparar desempe?o, CAPM, beta y alpha.",
+            subtexto="Referencia metodológica.",
+            help_text="Benchmark global usado para comparar desempeño, CAPM, beta y alpha.",
         )
 
     with metodologia_2:
         tarjeta_kpi(
             "Moneda",
             "USD",
-            subtexto="Base metodol?gica.",
-            help_text="Todos los activos se trabajan en d?lares para mantener comparabilidad.",
+            subtexto="Base metodológica.",
+            help_text="Todos los activos se trabajan en dólares para mantener comparabilidad.",
         )
 
     with metodologia_3:
@@ -752,10 +710,10 @@ with tab_activos:
             help_text="Universo cargado desde el endpoint de activos del backend.",
         )
 
-    seccion("Cobertura t?cnica para Perri")
+    seccion("Cobertura técnica para Perri")
 
-    clases_txt = " ? ".join([f"{k}: {v}" for k, v in sorted(by_asset_type.items())])
-    benchmarks_txt = " ? ".join([f"{k}: {v}" for k, v in sorted(by_benchmark.items())])
+    clases_txt = " · ".join([f"{k}: {v}" for k, v in sorted(by_asset_type.items())])
+    benchmarks_txt = " · ".join([f"{k}: {v}" for k, v in sorted(by_benchmark.items())])
 
     perri_col, clases_col, benchmark_col = st.columns(3)
 
@@ -764,7 +722,7 @@ with tab_activos:
             "Activos Perri",
             str(len(perri_assets)),
             subtexto="Habilitados para RoboAdvisor.",
-            help_text="Cantidad de activos disponibles para la l?gica de Perri y portafolios recomendados.",
+            help_text="Cantidad de activos disponibles para la lógica de Perri y portafolios recomendados.",
         )
 
     with clases_col:
@@ -779,37 +737,12 @@ with tab_activos:
         tarjeta_kpi(
             "Benchmarks",
             str(len(by_benchmark)),
-            subtexto="Referencias metodol?gicas.",
+            subtexto="Referencias metodológicas.",
             help_text=benchmarks_txt,
         )
 
-    if show_general_read:
-        render_info_card(
-            "Lectura financiera del portafolio",
-            (
-                "Este universo combina consumo defensivo, retail internacional, exposición regional y un componente energético más cíclico. "
-                "Por eso no todos los activos reaccionan igual ante el mercado: algunos aportan estabilidad relativa, mientras otros introducen "
-                "más sensibilidad macroeconómica, sectorial o cambiaria. Esa mezcla hace que la contextualización sea importante antes de pasar "
-                "a módulos de riesgo, CAPM, VaR y optimización."
-            ),
-        )
 
-    seccion("Descripción estratégica del portafolio")
-
-    render_info_card(
-        "Lógica financiera del conjunto",
-        (
-            "Este portafolio académico no está construido sobre una sola industria ni sobre una sola región, sino sobre una combinación "
-            "de emisores internacionales con perfiles de riesgo heterogéneos. Eso implica que su lectura no debe reducirse a un único "
-            "benchmark sectorial, porque cada activo responde a motores distintos: consumo defensivo, dinámica minorista internacional, "
-            "exposición emergente, riesgo energético y sensibilidad macro. "
-            "Desde una perspectiva financiera, esta diversidad permite estudiar diversificación real, diferencia de betas, sensibilidad "
-            "regional y contraste entre activos más estables y más cíclicos."
-        ),
-    )
-
-
-    seccion("Activos seleccionados para el an?lisis")
+    seccion("Activos seleccionados para el análisis")
 
     portfolio_config = st.session_state.get("portfolio_config", {}) or {}
     selected_tickers = [
@@ -836,7 +769,7 @@ with tab_activos:
 
         if missing_tickers:
             st.warning(
-                "Algunos tickers seleccionados no est?n disponibles en el universo del backend: "
+                "Algunos tickers seleccionados no están disponibles en el universo del backend: "
                 + ", ".join(missing_tickers)
             )
     else:
@@ -848,7 +781,7 @@ with tab_activos:
             filtered_assets = assets
 
     if not filtered_assets:
-        st.warning("No hay activos para mostrar con la configuraci?n actual.")
+        st.warning("No hay activos para mostrar con la configuración actual.")
         st.stop()
 
     compact_rows = []
@@ -857,7 +790,7 @@ with tab_activos:
         profile = _build_asset_profile(
             name=asset.get("name", ""),
             ticker=asset.get("ticker", ""),
-            country=asset.get("country", ""),
+            country=display_country(asset),
             is_default=bool(asset.get("default")),
         )
 
@@ -879,7 +812,7 @@ with tab_activos:
             {
                 "Ticker": asset.get("ticker", "N/D"),
                 "Activo": asset.get("name", "N/D"),
-                "Pa?s": asset.get("country", "N/D"),
+                "País": display_country(asset),
                 "Clase": asset.get("asset_type", "N/D"),
                 "Riesgo": risk_level,
                 "Benchmark": asset.get("benchmark_ticker", "N/D"),
@@ -893,20 +826,13 @@ with tab_activos:
         column_config={
             "Ticker": st.column_config.TextColumn("Ticker", width="small"),
             "Activo": st.column_config.TextColumn("Activo", width="medium"),
-            "Pa?s": st.column_config.TextColumn("Pa?s", width="small"),
+            "País": st.column_config.TextColumn("País", width="small"),
             "Clase": st.column_config.TextColumn("Clase", width="medium"),
             "Riesgo": st.column_config.TextColumn("Riesgo", width="small"),
             "Benchmark": st.column_config.TextColumn("Benchmark", width="small"),
         },
     )
 
-    render_info_card(
-        "Lectura del universo seleccionado",
-        (
-            "Esta tabla resume ?nicamente los activos seleccionados en la configuraci?n inicial del portafolio. "
-            "La lectura extendida por activo se retira de esta vista para mantener el M?dulo 0 como contexto ejecutivo."
-        ),
-    )
 
 with tab_rf_benchmark:
     _render_rf_and_benchmark_tab()

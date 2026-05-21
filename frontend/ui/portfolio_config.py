@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import random
 from datetime import date
 from typing import Any
 
@@ -7,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from services.api_client import ApiClientError, get_api_client
+from ui.asset_metadata import display_country
 from ui.cards import render_info_card, render_meta_row
 from ui.dashboard_ui import nota, tarjeta_kpi
 
@@ -64,11 +66,159 @@ def _format_num(value: Any) -> str:
         return "N/D"
 
 
+def _weight_key(ticker: str, index: int) -> str:
+    return f"global_weight_{ticker}_{index}"
+
+
+def _normalize_weights(weights: list[float], target: float = 100.0) -> list[float]:
+    if not weights:
+        return []
+
+    rounded = [round(max(float(value), 0.0), 4) for value in weights]
+    residual = round(target - sum(rounded), 4)
+    rounded[-1] = round(max(rounded[-1] + residual, 0.0), 4)
+    return rounded
+
+
+def _random_weights(count: int) -> list[float]:
+    if count <= 0:
+        return []
+
+    raw = [random.random() for _ in range(count)]
+    total = sum(raw) or 1.0
+    weights = [(value / total) * 100.0 for value in raw]
+    return _normalize_weights(weights)
+
+
 def _asset_label(asset: dict[str, Any]) -> str:
     name = asset.get("name", "Activo")
     ticker = asset.get("ticker", "")
-    country = asset.get("country", "")
-    return f"{name} · {ticker} · {country}"
+    country = display_country(asset)
+    asset_type = _asset_type_label(asset)
+    benchmark = asset.get("benchmark_ticker") or _benchmark_from_assets([asset])["ticker"]
+    return f"{asset_type['short']} · {name} · {ticker} · País: {country} · BM: {benchmark}"
+
+
+def _selected_assets_table(assets: list[dict[str, Any]]) -> pd.DataFrame:
+    rows = []
+    for asset in assets:
+        asset_type = _asset_type_label(asset)
+        rows.append(
+            {
+                "Clase": asset_type["short"],
+                "Activo": asset.get("name", "N/D"),
+                "Ticker": asset.get("ticker", "N/D"),
+                "País": display_country(asset),
+                "BM": asset.get("benchmark_ticker") or _benchmark_from_assets([asset])["ticker"],
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _asset_type_key(asset: dict[str, Any]) -> str:
+    raw_type = (
+        asset.get("asset_type")
+        or asset.get("tipo_activo")
+        or asset.get("type")
+        or asset.get("category")
+        or ""
+    )
+    normalized = str(raw_type).strip().lower()
+
+    if normalized in {"renta_fija", "fixed_income", "bond", "bonds"}:
+        return "renta_fija"
+    if normalized in {"renta_variable", "equity", "stock", "stocks", "accion", "acciones"}:
+        return "renta_variable"
+
+    ticker = str(asset.get("ticker", "")).upper()
+    name = str(asset.get("name", "")).lower()
+    fixed_income_tokens = {"AGG", "BND", "SHY", "IEF", "TLT", "LQD", "HYG", "MUB", "TIP"}
+    if ticker in fixed_income_tokens or any(token in name for token in ["bond", "treasury", "bono", "deuda"]):
+        return "renta_fija"
+
+    return "renta_variable"
+
+
+def _asset_type_label(asset: dict[str, Any]) -> dict[str, str]:
+    if _asset_type_key(asset) == "renta_fija":
+        return {"short": "RF", "label": "Renta fija"}
+    return {"short": "RV", "label": "Renta variable"}
+
+
+def _country_key(asset: dict[str, Any]) -> str:
+    country = display_country(asset).strip().upper()
+    if country.startswith("ESTADOS UNIDOS"):
+        return "US"
+    if country.startswith("GLOBAL"):
+        return "GLOBAL"
+    if country.startswith("MERCADOS EMERGENTES"):
+        return "EM"
+    if country.startswith("MERCADOS DESARROLLADOS"):
+        return "DM"
+    aliases = {
+        "UNITED STATES": "US",
+        "USA": "US",
+        "ESTADOS UNIDOS": "US",
+        "UNITED KINGDOM": "UK",
+        "GB": "UK",
+        "JAPAN": "JP",
+        "CANADA": "CA",
+        "MEXICO": "MX",
+        "FRANCE": "FR",
+        "COLOMBIA": "CO",
+    }
+    return aliases.get(country, country or "N/D")
+
+
+def _benchmark_from_assets(assets: list[dict[str, Any]]) -> dict[str, str]:
+    if not assets:
+        return {
+            "ticker": "ACWI",
+            "name": "MSCI ACWI",
+            "reason": "Benchmark global por defecto hasta seleccionar activos.",
+        }
+
+    asset_types = {_asset_type_key(asset) for asset in assets}
+    countries = {_country_key(asset) for asset in assets}
+
+    if asset_types == {"renta_fija"}:
+        return {
+            "ticker": "AGG",
+            "name": "Bloomberg US Aggregate Bond",
+            "reason": "Portafolio compuesto solo por activos de renta fija.",
+        }
+
+    if countries <= {"US"}:
+        return {
+            "ticker": "SPY",
+            "name": "S&P 500",
+            "reason": "Portafolio compuesto por activos de Estados Unidos.",
+        }
+
+    country_benchmarks = {
+        "JP": ("EWJ", "MSCI Japan"),
+        "CA": ("EWC", "MSCI Canada"),
+        "MX": ("EWW", "MSCI Mexico"),
+        "UK": ("EWU", "MSCI United Kingdom"),
+        "FR": ("EWQ", "MSCI France"),
+        "CO": ("GXG", "MSCI Colombia"),
+    }
+
+    if len(countries) == 1:
+        country = next(iter(countries))
+        if country in country_benchmarks:
+            ticker, name = country_benchmarks[country]
+            return {
+                "ticker": ticker,
+                "name": name,
+                "reason": f"Portafolio concentrado en {country}.",
+            }
+
+    return {
+        "ticker": "ACWI",
+        "name": "MSCI ACWI",
+        "reason": "Portafolio internacional o mixto; se usa referencia global.",
+    }
 
 
 def _fallback_assets() -> list[dict[str, Any]]:
@@ -103,7 +253,7 @@ def _asset_from_ticker(ticker: str, assets_by_ticker: dict[str, dict[str, Any]])
     return {
         "name": ticker,
         "ticker": ticker,
-        "country": "Perri",
+        "country": "N/D",
         "default": False,
     }
 
@@ -276,7 +426,7 @@ def _perri_reference_payload(option: dict[str, Any]) -> dict[str, Any]:
         "alpha_annual": portfolio.get("alpha_annual"),
         "weights": portfolio.get("weights", []),
         "message": (
-            f"Perri precalculado: {OBJECTIVE_LABELS.get(option['objective'])}, "
+            f"Portafolio precalculado: {OBJECTIVE_LABELS.get(option['objective'])}, "
             f"{option['size']} activos, horizonte {option['horizon']}."
         ),
     }
@@ -291,6 +441,7 @@ def _validate_and_store_config(
     risk_profile: str,
     kyc_payload: dict[str, Any],
     perri_reference: dict[str, Any],
+    benchmark: dict[str, str] | None = None,
     confidence_level: float = 0.95,
     custom_start: date | None = None,
     custom_end: date | None = None,
@@ -324,6 +475,7 @@ def _validate_and_store_config(
         "assets": assets,
         "kyc": kyc_payload,
         "perri_reference": perri_reference,
+        "benchmark": benchmark or _benchmark_from_assets(assets),
     }
 
     st.session_state["portfolio_config"] = global_config
@@ -351,6 +503,7 @@ def _apply_perri_option(
         risk_profile=option["risk_profile"],
         kyc_payload=kyc_payload,
         perri_reference=_perri_reference_payload(option),
+        benchmark=_benchmark_from_assets(assets),
         confidence_level=0.95,
     )
 
@@ -358,7 +511,7 @@ def _apply_perri_option(
         st.error(error)
         return
 
-    st.success("Portafolio Perri aplicado como configuración global.")
+    st.success("Portafolio aplicado como configuración global.")
     st.rerun()
 
 
@@ -367,14 +520,15 @@ def _current_config_summary() -> None:
     if not config:
         render_info_card(
             "Configuración pendiente",
-            "Puedes usar la recomendación automática, elegir un portafolio Perri precalculado o crear tu propio portafolio manual.",
+            "Puedes usar la recomendación automática, elegir un portafolio precalculado o crear tu propio portafolio manual.",
         )
         return
 
     tickers = config.get("tickers", [])
     perri = config.get("perri_reference", {})
+    benchmark = config.get("benchmark", {}) or {}
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         tarjeta_kpi("Activos", str(len(tickers)), subtexto="Máximo 15")
     with c2:
@@ -387,17 +541,75 @@ def _current_config_summary() -> None:
         tarjeta_kpi("Perfil", str(config.get("risk_profile", "N/D")).upper(), subtexto="KYC / selección")
     with c4:
         tarjeta_kpi("Moneda", config.get("base_currency", "USD"), subtexto="Base metodológica")
+    with c5:
+        tarjeta_kpi("Benchmark", benchmark.get("ticker", "N/D"), subtexto=benchmark.get("name", "Referencia"))
 
     render_meta_row(
         {
             "Tickers": ", ".join(tickers),
             "Pesos": ", ".join(f"{w:.2f}%" for w in config.get("weights_pct", [])),
             "Origen": perri.get("source", "manual"),
+            "Benchmark": benchmark.get("ticker", "N/D"),
         }
     )
 
 
-def _render_perri_portfolio_card(option: dict[str, Any], title: str) -> None:
+def _render_portfolio_config_styles() -> None:
+    st.markdown(
+        """
+        <style>
+            .portfolio-date-panel {
+                border: 1px solid rgba(148, 163, 184, 0.28);
+                border-radius: 14px;
+                background: rgba(15, 23, 42, 0.48);
+                padding: 0.85rem 1rem 0.35rem 1rem;
+                margin: 0.75rem 0 0.95rem 0;
+            }
+
+            .portfolio-date-panel-title {
+                color: #E2E8F0;
+                font-size: 0.92rem;
+                font-weight: 850;
+                margin-bottom: 0.15rem;
+            }
+
+            .portfolio-date-panel-caption {
+                color: #94A3B8;
+                font-size: 0.80rem;
+                margin-bottom: 0.65rem;
+            }
+
+            .portfolio-highlight-control {
+                border: 1px solid rgba(56, 189, 248, 0.30);
+                border-radius: 14px;
+                background: rgba(14, 116, 144, 0.13);
+                padding: 0.85rem 1rem 1rem 1rem;
+                margin: 0.45rem 0 0.85rem 0;
+            }
+
+            .portfolio-manual-title {
+                color: #F8FAFC;
+                font-size: 1.08rem;
+                font-weight: 900;
+                margin: 0 0 0.25rem 0;
+            }
+
+            .portfolio-manual-caption {
+                color: #AAB6C5;
+                font-size: 0.86rem;
+                margin: 0 0 0.9rem 0;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_perri_portfolio_card(
+    option: dict[str, Any],
+    title: str,
+    assets_by_ticker: dict[str, dict[str, Any]],
+) -> None:
     portfolio = option["portfolio"]
     weights = portfolio.get("weights", [])
 
@@ -418,12 +630,17 @@ def _render_perri_portfolio_card(option: dict[str, Any], title: str) -> None:
         df = pd.DataFrame(weights)
         if not df.empty and {"asset", "weight"}.issubset(df.columns):
             df["weight"] = pd.to_numeric(df["weight"], errors="coerce")
+            df["Activo"] = df["asset"].apply(
+                lambda ticker: _asset_label(_asset_from_ticker(str(ticker), assets_by_ticker))
+            )
             df["Peso"] = df["weight"].apply(lambda value: f"{float(value):.2%}")
-            df = df[["asset", "Peso"]].rename(columns={"asset": "Activo"})
+            df = df[["Activo", "Peso"]]
             st.dataframe(df, use_container_width=True, hide_index=True)
 
 
 def render_global_portfolio_config() -> None:
+    _render_portfolio_config_styles()
+
     assets, max_allowed, load_warning = _load_assets()
     assets_by_ticker = {
         str(asset.get("ticker", "")).strip().upper(): asset
@@ -443,7 +660,7 @@ def render_global_portfolio_config() -> None:
         perri_options = _build_perri_options(perri_payload)
     except Exception as exc:
         perri_options = []
-        st.warning(f"No fue posible cargar portafolios Perri precalculados: {exc}")
+        st.warning(f"No fue posible cargar portafolios precalculados: {exc}")
 
     recommended_option = _find_user_recommended_option(
         options=perri_options,
@@ -460,7 +677,7 @@ def render_global_portfolio_config() -> None:
     tab_auto, tab_perri, tab_manual = st.tabs(
         [
             "Recomendado para mí",
-            "Portafolios Perri precalculados",
+            "Portafolios precalculados",
             "Crear mi portafolio",
         ]
     )
@@ -481,6 +698,7 @@ def render_global_portfolio_config() -> None:
             _render_perri_portfolio_card(
                 recommended_option,
                 "Portafolio recomendado automáticamente",
+                assets_by_ticker,
             )
 
             if st.button(
@@ -493,32 +711,36 @@ def render_global_portfolio_config() -> None:
         else:
             render_info_card(
                 "Recomendación no disponible",
-                "No se encontró un portafolio Perri compatible para el perfil actual.",
+                "No se encontró un portafolio precalculado compatible para el perfil actual.",
             )
 
     with tab_perri:
         if not perri_options:
             render_info_card(
                 "Sin portafolios precalculados",
-                "No fue posible cargar backend/data/perri_latest_optimization.json desde el backend.",
+                "No fue posible cargar el JSON de portafolios precalculados desde el backend.",
             )
         else:
             labels = [option["label"] for option in perri_options]
-            selected_label = st.selectbox(
-                "Elige un portafolio precalculado",
-                options=labels,
-                index=0,
-                help="Estos portafolios vienen del JSON precalculado por la acción de GitHub.",
-            )
+            with st.container(border=True):
+                st.markdown("#### Elige un portafolio precalculado")
+                selected_label = st.selectbox(
+                    "Portafolio",
+                    options=labels,
+                    index=0,
+                    label_visibility="collapsed",
+                    help="Estos portafolios vienen del JSON precalculado por la acción de GitHub.",
+                )
 
             selected_option = perri_options[labels.index(selected_label)]
             _render_perri_portfolio_card(
                 selected_option,
                 "Detalle del portafolio seleccionado",
+                assets_by_ticker,
             )
 
             if st.button(
-                "Usar este portafolio Perri",
+                "Usar este portafolio precalculado",
                 type="primary",
                 use_container_width=True,
                 key="apply_selected_perri_portfolio",
@@ -539,40 +761,62 @@ def render_global_portfolio_config() -> None:
                 if ticker in ticker_to_label
             ]
         else:
-            default_labels = [
-                _asset_label(asset)
-                for asset in assets
-                if bool(asset.get("default", False))
-            ]
+            default_labels = []
 
-        if not default_labels:
-            default_labels = list(label_to_asset.keys())[:5]
-
-        with st.form("global_portfolio_config_form"):
-            st.markdown("#### Crear portafolio manual")
+        with st.container(border=True):
+            st.markdown(
+                """
+                <div class="portfolio-manual-title">Crear portafolio manual</div>
+                <div class="portfolio-manual-caption">
+                    Edita los activos, horizonte, confianza y pesos que se usarán para generar tu portafolio.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
             selected_labels = st.multiselect(
                 "Acciones / tickers del portafolio",
                 options=list(label_to_asset.keys()),
                 default=default_labels[:max_allowed],
-                help=f"Selecciona entre 1 y {max_allowed} activos.",
+                help=f"Selecciona entre 5 y {max_allowed} activos. RV = renta variable, RF = renta fija.",
             )
 
             selected_assets = [label_to_asset[label] for label in selected_labels]
             selected_tickers = [str(asset.get("ticker", "")).upper() for asset in selected_assets]
             selected_count = len(selected_tickers)
+            manual_benchmark = _benchmark_from_assets(selected_assets)
+
+            if selected_assets:
+                st.dataframe(
+                    _selected_assets_table(selected_assets),
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Clase": st.column_config.TextColumn("RV/RF", width="small"),
+                        "Activo": st.column_config.TextColumn("Nombre", width="large"),
+                        "Ticker": st.column_config.TextColumn("Ticker", width="small"),
+                        "País": st.column_config.TextColumn("País", width="small"),
+                        "BM": st.column_config.TextColumn("BM", width="small"),
+                    },
+                )
 
             c1, c2, c3 = st.columns(3)
 
             with c1:
                 horizon_keys = list(HORIZON_LABELS.keys())
-                default_horizon = preferred_horizon if preferred_horizon in HORIZON_LABELS else "3y"
+                saved_horizon = saved_config.get("horizon_type")
+                default_horizon_index = (
+                    horizon_keys.index(saved_horizon)
+                    if saved_horizon in HORIZON_LABELS and saved_tickers
+                    else None
+                )
                 horizon_type = st.selectbox(
                     "Horizonte de análisis",
                     options=horizon_keys,
                     format_func=lambda value: HORIZON_LABELS[value],
-                    index=horizon_keys.index(default_horizon),
-                    help="El usuario puede ajustar el horizonte antes de guardar.",
+                    index=default_horizon_index,
+                    placeholder="Selecciona un horizonte",
+                    help="Debes elegir el horizonte antes de guardar el portafolio.",
                 )
 
             with c2:
@@ -587,26 +831,43 @@ def render_global_portfolio_config() -> None:
                 confidence_level = st.selectbox(
                     "Nivel de confianza VaR",
                     options=[0.95, 0.975, 0.99],
-                    index=0,
+                    index=None,
+                    placeholder="Selecciona nivel",
                     format_func=lambda value: f"{value:.1%}",
                 )
+
+            st.info(
+                "Benchmark automático: "
+                f"{manual_benchmark['ticker']} ({manual_benchmark['name']}). "
+                f"{manual_benchmark['reason']}"
+            )
 
             custom_start = None
             custom_end = None
             if horizon_type == "custom":
-                d1, d2 = st.columns(2)
-                with d1:
-                    custom_start = st.date_input(
-                        "Fecha inicial",
-                        value=date(date.today().year - 1, date.today().month, date.today().day),
-                        max_value=date.today(),
-                    )
-                with d2:
-                    custom_end = st.date_input(
-                        "Fecha final",
-                        value=date.today(),
-                        max_value=date.today(),
-                    )
+                st.markdown(
+                    """
+                    <div class="portfolio-date-panel">
+                        <div class="portfolio-date-panel-title">Rango personalizado</div>
+                        <div class="portfolio-date-panel-caption">Define las fechas exactas para calcular el portafolio.</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                with st.container(border=True):
+                    d1, d2 = st.columns(2)
+                    with d1:
+                        custom_start = st.date_input(
+                            "Fecha inicial",
+                            value=date(date.today().year - 1, date.today().month, date.today().day),
+                            max_value=date.today(),
+                        )
+                    with d2:
+                        custom_end = st.date_input(
+                            "Fecha final",
+                            value=date.today(),
+                            max_value=date.today(),
+                        )
 
             st.markdown("#### Perfil KYC aplicado al portafolio manual")
             render_meta_row(
@@ -618,51 +879,81 @@ def render_global_portfolio_config() -> None:
                 }
             )
 
-            st.markdown("#### Pesos / asignación inicial")
+            random_col, hint_col = st.columns([0.35, 0.65])
+            with random_col:
+                randomize_weights = st.button(
+                    "Asignar pesos aleatorios",
+                    use_container_width=True,
+                    disabled=selected_count == 0,
+                    key="manual_random_weights",
+                )
+            with hint_col:
+                st.caption("Si la suma queda casi en 100%, el sistema ajusta el último decimal al guardar.")
 
-            if selected_count == 0:
-                st.warning("Selecciona al menos un activo.")
-                weights_pct = []
-            else:
-                equal_weight = round(100.0 / selected_count, 4)
-                weights_pct = []
-                weight_cols = st.columns(min(selected_count, 5))
-
+            if randomize_weights:
+                generated_weights = _random_weights(selected_count)
                 for idx, ticker in enumerate(selected_tickers):
-                    with weight_cols[idx % min(selected_count, 5)]:
-                        default_weight = equal_weight
-                        if saved_config.get("tickers") == selected_tickers:
-                            old_weights = saved_config.get("weights_pct", [])
-                            if idx < len(old_weights):
-                                default_weight = float(old_weights[idx])
+                    st.session_state[_weight_key(ticker, idx)] = generated_weights[idx]
+                st.rerun()
 
-                        value = st.number_input(
-                            ticker,
-                            min_value=0.0,
-                            max_value=100.0,
-                            value=float(default_weight),
-                            step=1.0,
-                            format="%.4f",
-                            key=f"global_weight_{ticker}_{idx}",
-                        )
-                        weights_pct.append(float(value))
+            with st.form("global_portfolio_config_form"):
+                st.markdown("#### Pesos / asignación inicial")
 
-            total_weight = sum(weights_pct)
-            st.caption(f"Total asignado: {total_weight:.4f}%")
+                if selected_count == 0:
+                    st.warning("Selecciona mínimo 5 activos para crear tu portafolio manual.")
+                    weights_pct = []
+                else:
+                    equal_weight = round(100.0 / selected_count, 4)
+                    weights_pct = []
+                    weight_cols = st.columns(min(selected_count, 5))
 
-            submitted = st.form_submit_button(
-                "Guardar mi portafolio manual",
-                type="primary",
-                use_container_width=True,
-            )
+                    for idx, ticker in enumerate(selected_tickers):
+                        with weight_cols[idx % min(selected_count, 5)]:
+                            default_weight = equal_weight
+                            if saved_config.get("tickers") == selected_tickers:
+                                old_weights = saved_config.get("weights_pct", [])
+                                if idx < len(old_weights):
+                                    default_weight = float(old_weights[idx])
+
+                            value = st.number_input(
+                                ticker,
+                                min_value=0.0,
+                                max_value=100.0,
+                                value=float(st.session_state.get(_weight_key(ticker, idx), default_weight)),
+                                step=0.25,
+                                format="%.4f",
+                                key=_weight_key(ticker, idx),
+                            )
+                            weights_pct.append(float(value))
+
+                total_weight = sum(weights_pct)
+                st.caption(f"Total asignado: {total_weight:.4f}%")
+
+                submitted = st.form_submit_button(
+                    "Guardar mi portafolio manual",
+                    type="primary",
+                    use_container_width=True,
+                )
 
         if submitted:
             errors = []
+            adjusted_weights_pct = list(weights_pct)
+            total_weight = sum(adjusted_weights_pct)
 
-            if selected_count < 1:
-                errors.append("Debes seleccionar al menos un activo.")
+            if selected_count > 0 and 0 < abs(total_weight - 100.0) <= 0.10:
+                adjusted_weights_pct = _normalize_weights(adjusted_weights_pct)
+                total_weight = sum(adjusted_weights_pct)
+
+            if selected_count < 5:
+                errors.append("Debes seleccionar mínimo 5 activos para guardar tu portafolio manual.")
             if selected_count > max_allowed:
                 errors.append(f"Solo se permiten máximo {max_allowed} activos.")
+            if horizon_type is None:
+                errors.append("Debes seleccionar un horizonte de análisis.")
+            if confidence_level is None:
+                errors.append("Debes seleccionar el nivel de confianza VaR.")
+            if horizon_type == "custom" and custom_start and custom_end and custom_start >= custom_end:
+                errors.append("La fecha inicial debe ser menor que la fecha final.")
             if abs(total_weight - 100.0) > 1e-6:
                 errors.append("Los pesos deben sumar exactamente 100%.")
 
@@ -675,17 +966,19 @@ def render_global_portfolio_config() -> None:
                 "available": False,
                 "source": "manual",
                 "risk_profile": profile,
+                "benchmark": manual_benchmark,
                 "message": "Portafolio creado manualmente por el usuario.",
             }
 
             ok, error = _validate_and_store_config(
                 tickers=selected_tickers,
-                weights_pct=weights_pct,
+                weights_pct=adjusted_weights_pct,
                 assets=selected_assets,
                 horizon_type=horizon_type,
                 risk_profile=profile,
                 kyc_payload=kyc_payload,
                 perri_reference=manual_reference,
+                benchmark=manual_benchmark,
                 confidence_level=float(confidence_level),
                 custom_start=custom_start,
                 custom_end=custom_end,
@@ -696,7 +989,7 @@ def render_global_portfolio_config() -> None:
                 return
 
             st.success("Portafolio manual guardado como configuración global.")
-            st.rerun()
+            st.switch_page("pages/0_Contextualizacion.py")
 
     config = st.session_state.get("portfolio_config")
     if config:
@@ -704,7 +997,7 @@ def render_global_portfolio_config() -> None:
         if source == "perri_precalculated":
             perri = config.get("perri_reference", {})
             nota(
-                "Configuración activa desde Perri: "
+                "Configuración activa desde portafolio precalculado: "
                 f"retorno {_format_pct(perri.get('expected_return_annual'))}, "
                 f"volatilidad {_format_pct(perri.get('volatility_annual'))}, "
                 f"Sharpe {_format_num(perri.get('sharpe'))}."

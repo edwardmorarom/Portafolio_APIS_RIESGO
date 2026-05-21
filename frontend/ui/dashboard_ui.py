@@ -332,7 +332,7 @@ def render_sidebar_panel(
         index=0 if modo_default == "General" else 1,
         key="sidebar_modo_visualizacion",
         label_visibility="collapsed",
-        help="General resume e interpreta. Estadístico profundiza mÃ¡s en lectura tÃ©cnica y detalle analÃ­tico.",
+        help="General resume e interpreta. Estadístico profundiza más en lectura técnica y detalle analítico.",
     )
 
     filtros_sidebar = st.sidebar.expander(filtros_label, expanded=filtros_expanded)
@@ -347,13 +347,13 @@ def render_top_navigation():
     nav_items = [
         ("Inicio", "app.py"),
         ("0 Contexto", "pages/0_Contextualizacion.py"),
-        ("1 T?cnico", "pages/01_Tecnico.py"),
+        ("1 Técnico", "pages/01_Tecnico.py"),
         ("2 Rendimientos", "pages/02_Rendimientos.py"),
         ("3 GARCH", "pages/03_Garch.py"),
         ("4 CAPM", "pages/04_Capm.py"),
         ("5 VaR/CVaR", "pages/05_Var_Cvar.py"),
         ("6 Markowitz", "pages/06_Markowitz.py"),
-        ("7 Se?ales", "pages/07_Señales.py"),
+        ("7 Señales", "pages/07_Señales.py"),
         ("8 Macro", "pages/08_Macro_Benchmark.py"),
         ("9 Renta fija", "pages/09_Renta_Fija.py"),
         ("10 Opciones", "pages/10_Opciones.py"),
@@ -422,12 +422,34 @@ def render_top_navigation():
                 overflow-wrap: normal !important;
                 word-break: keep-all !important;
             }
+
+            .top-nav-locked-pill {
+                width: 100%;
+                min-height: 2.55rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                border-radius: 999px;
+                padding: 0.45rem 0.70rem;
+                background: rgba(148, 163, 184, 0.10);
+                color: #94A3B8 !important;
+                -webkit-text-fill-color: #94A3B8 !important;
+                font-size: 0.82rem;
+                font-weight: 850;
+                line-height: 1.2;
+                border: 1px solid rgba(148, 163, 184, 0.22);
+                opacity: 0.72;
+                cursor: not-allowed;
+            }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    # 15 m?dulos en 3 filas de 5 para que el texto no quede apretado.
+    portfolio_ready = bool((st.session_state.get("portfolio_config", {}) or {}).get("tickers"))
+
+    # 15 módulos en 3 filas de 5 para que el texto no quede apretado.
     for row_start in range(0, len(nav_items), 5):
         cols = st.columns(5, gap="small")
         row_items = nav_items[row_start:row_start + 5]
@@ -442,6 +464,11 @@ def render_top_navigation():
                         <div class="top-nav-active-pill">{safe_text(label)}</div>
                         <div class="top-nav-active-caption">Actual</div>
                         """,
+                        unsafe_allow_html=True,
+                    )
+                elif not portfolio_ready and page_name != "app.py":
+                    st.markdown(
+                        f'<div class="top-nav-locked-pill" title="Configura un portafolio en Inicio">{safe_text(label)}</div>',
                         unsafe_allow_html=True,
                     )
                 else:
@@ -475,7 +502,7 @@ def render_filter_panel(
 
     with panel:
         modo = st.radio(
-            "Modo de visualizaciÃ³n",
+            "Modo de visualización",
             ["General", "Estadístico"],
             index=0 if modo_default == "General" else 1,
             key="top_modo_visualizacion",

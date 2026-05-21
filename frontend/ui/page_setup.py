@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import inspect
+from pathlib import Path
+
 import streamlit as st
 from ui.chatbot_widget import render_floating_chatbot
 from ui.dashboard_ui import (
@@ -9,6 +12,39 @@ from ui.dashboard_ui import (
     render_sidebar_session,
     render_top_navigation,
 )
+
+
+def _current_page_name() -> str:
+    page_names = {
+        "app.py",
+        "0_Contextualizacion.py",
+        "01_Tecnico.py",
+        "02_Rendimientos.py",
+        "03_Garch.py",
+        "04_Capm.py",
+        "05_Var_Cvar.py",
+        "06_Markowitz.py",
+        "07_Señales.py",
+        "08_Macro_Benchmark.py",
+        "09_Renta_Fija.py",
+        "10_Opciones.py",
+        "11_Stress_Testing.py",
+        "12_Machine_Learning.py",
+        "13_Perfil_Riesgo.py",
+        "14_Reportes.py",
+    }
+
+    for frame in inspect.stack():
+        candidate = Path(frame.filename).name
+        if candidate in page_names:
+            return candidate
+
+    return "app.py"
+
+
+def _has_active_portfolio() -> bool:
+    config = st.session_state.get("portfolio_config", {}) or {}
+    return bool(config.get("tickers"))
 
 
 def setup_dashboard_page(
@@ -26,6 +62,11 @@ def setup_dashboard_page(
     if "logged_in" not in st.session_state or not st.session_state.logged_in:
         st.switch_page("app.py")
     # --------------------------------
+
+    current_page = _current_page_name()
+    if current_page != "app.py" and not _has_active_portfolio():
+        st.warning("Primero debes seleccionar o crear un portafolio desde Inicio.")
+        st.switch_page("app.py")
 
     try:
         st.set_page_config(

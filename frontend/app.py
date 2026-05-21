@@ -539,46 +539,8 @@ def _render_home() -> None:
     )
 
 
-    seccion("Configuracin inicial global del portafolio")
+    seccion("Configuración inicial global del portafolio")
     render_global_portfolio_config()
-
-    tab_home, tab_modules, tab_status, tab_session = st.tabs(
-        ["Resumen", "Módulos", "Estado", "Sesión"]
-    )
-
-    with tab_home:
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            tarjeta_kpi("Cobertura", "13", subtexto="Módulos Streamlit")
-        with c2:
-            tarjeta_kpi("Backend", "FastAPI", subtexto="Servicios financieros")
-        with c3:
-            tarjeta_kpi("Perri", "1y · 3y · 5y", subtexto="Horizontes institucionales")
-        with c4:
-            tarjeta_kpi("Modelo", "ML", subtexto="Predicción de retorno")
-
-        seccion("Flujo recomendado")
-        cols = st.columns(3, gap="large")
-        with cols[0]:
-            render_info_card("1. Contexto", "Revisa activos, moneda, tasa libre de riesgo y benchmark.")
-        with cols[1]:
-            render_info_card("2. Riesgo", "Evalúa volatilidad, CAPM, VaR/CVaR, GARCH y stress testing.")
-        with cols[2]:
-            render_info_card("3. Decisión", "Contrasta Markowitz, señales, Perri, RoboAdvisor y ML.")
-
-        if role == "superuser":
-            nota("Modo superusuario activo: el diseño queda preparado para paneles de auditoría, KYC y gestión institucional.")
-        else:
-            nota("Modo cliente activo: navegación enfocada en consulta, simulación y lectura financiera.")
-
-    with tab_modules:
-        _render_modules_tab()
-
-    with tab_status:
-        _render_status_tab()
-
-    with tab_session:
-        _render_session_tab()
 
 
 _init_session_state()

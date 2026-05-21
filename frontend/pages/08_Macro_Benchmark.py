@@ -294,6 +294,9 @@ modo, filtros_sidebar = setup_dashboard_page(
 )
 
 today = pd.Timestamp.today().normalize()
+portfolio_config = st.session_state.get("portfolio_config", {}) or {}
+auto_benchmark = (portfolio_config.get("benchmark", {}) or {}).get("ticker") or "ACWI"
+st.session_state["macro_benchmark_ticker"] = auto_benchmark
 
 with filtros_sidebar:
     horizonte = st.selectbox(
@@ -322,7 +325,13 @@ with filtros_sidebar:
                 key="macro_benchmark_custom_end",
             )
 
-    benchmark_ticker = st.text_input("Benchmark", value="ACWI", key="macro_benchmark_ticker")
+    benchmark_ticker = st.text_input(
+        "Benchmark",
+        value=auto_benchmark,
+        key="macro_benchmark_ticker",
+        disabled=True,
+        help="Se define automáticamente según la composición del portafolio activo.",
+    )
     base_currency = st.selectbox(
         "Moneda base",
         ["USD"],

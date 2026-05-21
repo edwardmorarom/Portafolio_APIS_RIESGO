@@ -343,6 +343,9 @@ modo, filtros_sidebar = setup_dashboard_page(
 
 today = pd.Timestamp.today().normalize()
 asset_labels, asset_map = _asset_options()
+portfolio_config = st.session_state.get("portfolio_config", {}) or {}
+auto_benchmark = (portfolio_config.get("benchmark", {}) or {}).get("ticker") or BENCHMARK_DEFAULT
+st.session_state["capm_benchmark"] = auto_benchmark
 
 with filtros_sidebar:
     selected_label = st.selectbox(
@@ -377,7 +380,13 @@ with filtros_sidebar:
                 key="capm_custom_end",
             )
 
-    benchmark_ticker = st.text_input("Benchmark", value=BENCHMARK_DEFAULT, key="capm_benchmark")
+    benchmark_ticker = st.text_input(
+        "Benchmark",
+        value=auto_benchmark,
+        key="capm_benchmark",
+        disabled=True,
+        help="Se define automáticamente según la composición del portafolio activo.",
+    )
     base_currency = st.selectbox("Moneda base", ["USD", "EUR", "COP"], index=0, key="capm_base_currency")
 
     weights_decimals, total_pct = _weights_editor(filtros_sidebar, "capm_weight")
