@@ -22,6 +22,12 @@ async def get_garch_analysis(
         pattern="^(normal|t)$",
         description="Distribución de errores para ARCH/GARCH/EGARCH: normal o t-Student",
     ),
+    ewma_lambda: float = Query(
+        default=0.94,
+        ge=0.70,
+        le=0.99,
+        description="Factor lambda para volatilidad EWMA",
+    ),
     service: GarchService = Depends(get_garch_service),
 ) -> GarchResponse:
     try:
@@ -33,6 +39,7 @@ async def get_garch_analysis(
             mode=mode,
             forecast_horizon=forecast_horizon,
             distribution=distribution,
+            ewma_lambda=ewma_lambda,
         )
         return GarchResponse(**result)
     except ValueError as exc:

@@ -3,6 +3,8 @@
 from app.schemas.valuation import (
     BondMetricsRequest,
     BondMetricsResponse,
+    OptionPricingRequest,
+    OptionPricingResponse,
     OptionValuationRequest,
     OptionValuationResponse,
     YieldCurveRequest,
@@ -87,6 +89,39 @@ async def calculate_option(
             r=request.risk_free_rate,
             sigma=request.volatility,
             option_type=request.option_type,
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error en el motor de valoracion: {str(e)}",
+        )
+
+
+@router.post(
+    "/precio",
+    response_model=OptionPricingResponse,
+    summary="Precio de opcion europea con Black-Scholes",
+)
+async def price_option(
+    request: OptionPricingRequest,
+    service: OptionService = Depends(get_option_service),
+):
+    try:
+        result = service.calculate_black_scholes(
+            S=request.S,
+            K=request.K,
+            T=request.T,
+            r=request.r,
+            sigma=request.sigma,
+            option_type=request.tipo,
         )
 
         if "error" in result:

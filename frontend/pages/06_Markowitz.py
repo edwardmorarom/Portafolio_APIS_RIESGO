@@ -97,6 +97,29 @@ def _format_num(x, ndigits: int = 4) -> str:
         return str(x)
 
 
+def _format_delta_num(x, ndigits: int = 6) -> str:
+    if x is None:
+        return "N/D"
+    try:
+        value = float(x)
+        if abs(value) < 10 ** (-ndigits):
+            return "≈ 0"
+        if abs(value) < 0.0001:
+            return f"{value:.2e}"
+        return f"{value:.{ndigits}f}"
+    except Exception:
+        return str(x)
+
+
+def _format_full_precision(x) -> str:
+    if x is None:
+        return "N/D"
+    try:
+        return f"{float(x):.12f}"
+    except Exception:
+        return str(x)
+
+
 def _format_money(x) -> str:
     if x is None:
         return "N/D"
@@ -190,6 +213,7 @@ def _build_frontier_payload(
     n_portfolios: int,
     target_return: float | None,
     risk_profile: str | None,
+    allow_short_selling: bool = False,
 ) -> dict:
     return {
         "tickers": [a["ticker"] for a in CURRENT_PORTFOLIO],
@@ -200,6 +224,7 @@ def _build_frontier_payload(
         "target_return_annual": target_return,
         "risk_profile": risk_profile,
         "return_type": "log",
+        "allow_short_selling": allow_short_selling,
     }
 
 
@@ -248,6 +273,23 @@ def _extract_frontier_df(payload: dict) -> pd.DataFrame:
                 return out.dropna(subset=["volatility", "return"]).reset_index(drop=True)
 
     return pd.DataFrame(columns=["volatility", "return", "sharpe"])
+
+
+def _frontier_df_from_rows(rows: list[dict] | None) -> pd.DataFrame:
+    if not isinstance(rows, list) or not rows:
+        return pd.DataFrame(columns=["volatility", "return", "sharpe"])
+    df = pd.DataFrame(rows)
+    if "volatility" not in df.columns or "return" not in df.columns:
+        return pd.DataFrame(columns=["volatility", "return", "sharpe"])
+    out = pd.DataFrame(
+        {
+            "volatility": pd.to_numeric(df["volatility"], errors="coerce"),
+            "return": pd.to_numeric(df["return"], errors="coerce"),
+        }
+    )
+    if "sharpe" in df.columns:
+        out["sharpe"] = pd.to_numeric(df["sharpe"], errors="coerce")
+    return out.dropna(subset=["volatility", "return"]).reset_index(drop=True)
 
 
 def _extract_simulated_df(payload: dict) -> pd.DataFrame:
@@ -404,6 +446,97 @@ def _metric_from_block(block: dict, *keys):
     return _pick_value(block, *keys)
 
 
+def _weights_from_block(block: dict) -> list[dict]:
+    weights = block.get("weights") if isinstance(block, dict) else None
+    if isinstance(weights, list):
+        return [item for item in weights if isinstance(item, dict)]
+    if isinstance(weights, dict):
+        return [{"asset": asset, "weight": weight} for asset, weight in weights.items()]
+    return []
+
+
+def _zero_weight_assets(*blocks: dict) -> list[str]:
+    assets: set[str] = set()
+    for block in blocks:
+        for item in _weights_from_block(block):
+            try:
+                if abs(float(item.get("weight", 0.0))) <= 1e-4:
+                    assets.add(str(item.get("asset")))
+            except Exception:
+                continue
+    return sorted(asset for asset in assets if asset and asset != "None")
+
+
+def _negative_weight_assets(*blocks: dict) -> list[str]:
+    assets: set[str] = set()
+    for block in blocks:
+        for item in _weights_from_block(block):
+            try:
+                if float(item.get("weight", 0.0)) < -1e-6:
+                    assets.add(str(item.get("asset")))
+            except Exception:
+                continue
+    return sorted(asset for asset in assets if asset and asset != "None")
+
+
+def _build_short_selling_fallback_comparison(
+    restricted_payload: dict,
+    short_payload: dict,
+) -> dict:
+    restricted_min = _extract_min_var(restricted_payload)
+    restricted_sharpe = _extract_max_sharpe(restricted_payload)
+    short_min = _extract_min_var(short_payload)
+    short_sharpe = _extract_max_sharpe(short_payload)
+
+    if not restricted_min or not short_min or not restricted_sharpe or not short_sharpe:
+        return {}
+
+    restricted_min_vol = _metric_from_block(restricted_min, "volatility")
+    short_min_vol = _metric_from_block(short_min, "volatility")
+    restricted_sharpe_value = _metric_from_block(restricted_sharpe, "sharpe")
+    short_sharpe_value = _metric_from_block(short_sharpe, "sharpe")
+    restricted_sharpe_return = _metric_from_block(restricted_sharpe, "return")
+    short_sharpe_return = _metric_from_block(short_sharpe, "return")
+
+    return {
+        "available": True,
+        "methodology": (
+            "Comparación reconstruida por el frontend llamando /portfolio/efficient-frontier dos veces: "
+            "una con allow_short_selling=False y otra con allow_short_selling=True."
+        ),
+        "restricted": {
+            "description": "Con no negatividad: pesos entre 0% y 100%.",
+            "restriction": "w_i >= 0",
+            "frontier": restricted_payload.get("frontier", []),
+            "min_variance": restricted_min,
+            "max_sharpe": restricted_sharpe,
+            "zero_weight_assets": _zero_weight_assets(restricted_min, restricted_sharpe),
+        },
+        "with_short_selling": {
+            "description": "Sin no negatividad: permite pesos negativos.",
+            "restriction": "w_i in R",
+            "frontier": short_payload.get("frontier", []),
+            "min_variance": short_min,
+            "max_sharpe": short_sharpe,
+            "negative_weight_assets": _negative_weight_assets(short_min, short_sharpe),
+        },
+        "cost_of_no_short_constraint": {
+            "variance_cost_min_variance": None
+            if restricted_min_vol is None or short_min_vol is None
+            else float(restricted_min_vol) ** 2 - float(short_min_vol) ** 2,
+            "sharpe_opportunity_cost": None
+            if restricted_sharpe_value is None or short_sharpe_value is None
+            else float(short_sharpe_value) - float(restricted_sharpe_value),
+            "return_gap_max_sharpe": None
+            if restricted_sharpe_return is None or short_sharpe_return is None
+            else float(short_sharpe_return) - float(restricted_sharpe_return),
+            "volatility_gap_min_variance": None
+            if restricted_min_vol is None or short_min_vol is None
+            else float(restricted_min_vol) - float(short_min_vol),
+        },
+    }
+
+
 def _selected_portfolio_block(
     profile_label: str,
     use_target_return: bool,
@@ -494,6 +627,8 @@ def _build_corr_heatmap(corr_df: pd.DataFrame, modo: str, clean_view: bool) -> g
 def _build_frontier_figure(
     frontier_df: pd.DataFrame,
     simulated_df: pd.DataFrame,
+    restricted_frontier_df: pd.DataFrame,
+    short_frontier_df: pd.DataFrame,
     min_var: dict,
     max_sharpe: dict,
     selected_block: dict,
@@ -532,17 +667,40 @@ def _build_frontier_figure(
             )
         )
 
-    if not frontier_df.empty and show_frontier:
-        frontier_line = frontier_df.sort_values("volatility").drop_duplicates(subset=["volatility"])
-        fig.add_trace(
-            go.Scatter(
-                x=frontier_line["volatility"],
-                y=frontier_line["return"],
-                mode="lines",
-                name="Frontera eficiente",
-                line=dict(width=2.6, color="#F97316"),
+    if show_frontier:
+        if not restricted_frontier_df.empty:
+            restricted_line = restricted_frontier_df.sort_values("volatility").drop_duplicates(subset=["volatility"])
+            fig.add_trace(
+                go.Scatter(
+                    x=restricted_line["volatility"],
+                    y=restricted_line["return"],
+                    mode="lines",
+                    name="Frontera long-only (w >= 0)",
+                    line=dict(width=3.0, color="#F97316"),
+                )
             )
-        )
+        if not short_frontier_df.empty:
+            short_line = short_frontier_df.sort_values("volatility").drop_duplicates(subset=["volatility"])
+            fig.add_trace(
+                go.Scatter(
+                    x=short_line["volatility"],
+                    y=short_line["return"],
+                    mode="lines",
+                    name="Frontera con short selling",
+                    line=dict(width=2.8, color="#22D3EE"),
+                )
+            )
+        if restricted_frontier_df.empty and short_frontier_df.empty and not frontier_df.empty:
+            frontier_line = frontier_df.sort_values("volatility").drop_duplicates(subset=["volatility"])
+            fig.add_trace(
+                go.Scatter(
+                    x=frontier_line["volatility"],
+                    y=frontier_line["return"],
+                    mode="lines",
+                    name="Frontera eficiente QP",
+                    line=dict(width=2.6, color="#F97316"),
+                )
+            )
 
     if show_optimal:
         mv_ret = _metric_from_block(min_var, "return", "expected_return", "retorno")
@@ -721,6 +879,12 @@ with filtros_sidebar:
     target_options = chip_toggles([("target", "Usar retorno objetivo", False)], key_prefix="markowitz_target_options")
     use_target_return = target_options["target"]
 
+    short_options = chip_toggles(
+        [("short", "Comparar con short selling", False)],
+        key_prefix="markowitz_short_options",
+    )
+    allow_short_selling = short_options["short"]
+
     target_return_pct = None
     if use_target_return:
         target_return_pct = (
@@ -808,6 +972,7 @@ request_payload = _build_frontier_payload(
     n_portfolios=n_portfolios,
     target_return=target_return_pct,
     risk_profile=risk_profile,
+    allow_short_selling=allow_short_selling,
 )
 
 payload, frontier_error = _fetch_frontier(request_payload)
@@ -895,6 +1060,26 @@ reference_df = _extract_reference_weights_df(reference_weights)
 
 observations = _pick_value(payload, "observations", "n_observations", "sample_size")
 n_assets = _pick_value(payload, "n_assets", "num_assets") or len(CURRENT_PORTFOLIO)
+short_selling_comparison = payload.get("short_selling_comparison") or {}
+if not short_selling_comparison or not short_selling_comparison.get("available", True):
+    restricted_payload, restricted_error = _fetch_frontier({**request_payload, "allow_short_selling": False})
+    short_payload, short_error = _fetch_frontier({**request_payload, "allow_short_selling": True})
+    if not restricted_error and not short_error:
+        short_selling_comparison = _build_short_selling_fallback_comparison(
+            restricted_payload=restricted_payload,
+            short_payload=short_payload,
+        )
+
+restricted_frontier_df = _frontier_df_from_rows(
+    (short_selling_comparison.get("restricted") or {}).get("frontier")
+    if isinstance(short_selling_comparison, dict)
+    else None
+)
+short_frontier_df = _frontier_df_from_rows(
+    (short_selling_comparison.get("with_short_selling") or {}).get("frontier")
+    if isinstance(short_selling_comparison, dict)
+    else None
+)
 
 render_meta_row(
     [
@@ -906,7 +1091,14 @@ render_meta_row(
     ]
 )
 
-tab1, tab2, tab3 = st.tabs(["Portafolios destacados", "Gráficas", "Composición óptima"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    [
+        "Portafolios destacados",
+        "Fronteras y correlación",
+        "Composición óptima",
+        "Long-only vs short selling",
+    ]
+)
 
 with tab1:
     seccion("Portafolio seleccionado")
@@ -1068,25 +1260,6 @@ with tab1:
             subtexto=f"Ticker de referencia: {rf_ticker}.",
         )
 
-    seccion("Interpretación")
-
-    render_info_card(
-        "Lectura del módulo",
-        (
-            "Este módulo muestra que no existe una única mejor cartera: todo depende del equilibrio entre retorno y riesgo. "
-            "La frontera eficiente resume las combinaciones más convenientes, mientras que mínima varianza, máximo Sharpe, perfil del inversor "
-            "y retorno objetivo representan decisiones distintas dentro del mismo problema."
-        ),
-    )
-
-    render_info_card(
-        "Regla de pesos",
-        (
-            "Los pesos manuales solo se habilitan cuando el perfil es 'Sin perfil' y no se usa retorno objetivo. "
-            "Cuando eliges un perfil o un retorno objetivo, los pesos se bloquean porque la composición debe salir del modelo de optimización."
-        ),
-    )
-
 with tab2:
     seccion("Visualizaciones de optimización")
 
@@ -1142,6 +1315,8 @@ with tab2:
         fig_frontier = _build_frontier_figure(
             frontier_df=frontier_df,
             simulated_df=simulated_df,
+            restricted_frontier_df=restricted_frontier_df,
+            short_frontier_df=short_frontier_df,
             min_var=min_var,
             max_sharpe=max_sharpe,
             selected_block=selected_block,
@@ -1153,8 +1328,8 @@ with tab2:
         )
         st.plotly_chart(fig_frontier, use_container_width=True)
         plot_card_footer(
-            "La frontera eficiente resume las mejores combinaciones riesgo-retorno encontradas. "
-            "El punto seleccionado depende del perfil o del retorno objetivo configurado."
+            "La nube muestra al menos 10,000 portafolios aleatorios. Las fronteras resaltadas se resuelven por optimizacion QP/SLSQP, "
+            "comparando long-only contra short selling en el mismo plano riesgo-retorno."
         )
 
     seccion("Interpretación gráfica")
@@ -1283,3 +1458,127 @@ with tab3:
             "y el perfil arriesgado prioriza una cartera con mayor expectativa de retorno."
         ),
     )
+
+with tab4:
+    seccion("Comparación con y sin no negatividad")
+
+    if not short_selling_comparison or not short_selling_comparison.get("available", True):
+        render_info_card(
+            "Comparación no disponible",
+            str(short_selling_comparison.get("message", "El backend no devolvió comparación long-only vs short selling.")),
+        )
+    else:
+        cost_block = short_selling_comparison.get("cost_of_no_short_constraint") or {}
+        methodology = short_selling_comparison.get(
+            "methodology",
+            "Se comparan dos versiones de Markowitz: long-only con w_i >= 0 y short selling con pesos negativos permitidos.",
+        )
+
+        render_info_card(
+            "Qué se está comparando",
+            (
+                f"{methodology} Las dos fronteras aparecen en la pestaña 'Fronteras y correlación' dentro del gráfico "
+                "'Frontera eficiente': línea naranja para long-only y línea azul para short selling."
+            ),
+        )
+
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            tarjeta_kpi(
+                "Costo varianza",
+                _format_delta_num(cost_block.get("variance_cost_min_variance"), 6),
+                subtexto="Valor redondeado; puede tener más decimales.",
+                help_text=(
+                    "Varianza long-only menos varianza short. "
+                    f"Valor con más decimales: {_format_full_precision(cost_block.get('variance_cost_min_variance'))}."
+                ),
+            )
+        with c2:
+            tarjeta_kpi(
+                "Costo Sharpe",
+                _format_delta_num(cost_block.get("sharpe_opportunity_cost"), 4),
+                subtexto="Valor redondeado; puede tener más decimales.",
+                help_text=(
+                    "Sharpe short menos Sharpe long-only. "
+                    f"Valor con más decimales: {_format_full_precision(cost_block.get('sharpe_opportunity_cost'))}."
+                ),
+            )
+        with c3:
+            tarjeta_kpi(
+                "Gap retorno",
+                _format_pct(cost_block.get("return_gap_max_sharpe")),
+                subtexto="Valor redondeado; puede tener más decimales.",
+                help_text=(
+                    "Retorno del max Sharpe con short selling menos long-only. "
+                    f"Valor decimal completo: {_format_full_precision(cost_block.get('return_gap_max_sharpe'))}."
+                ),
+            )
+        with c4:
+            tarjeta_kpi(
+                "Gap volatilidad",
+                _format_pct(cost_block.get("volatility_gap_min_variance")),
+                subtexto="Valor redondeado; puede tener más decimales.",
+                help_text=(
+                    "Volatilidad de mínima varianza long-only menos short selling. "
+                    f"Valor decimal completo: {_format_full_precision(cost_block.get('volatility_gap_min_variance'))}."
+                ),
+            )
+
+        comparison_rows = []
+        for label, block in [
+            ("B - Con no negatividad / long-only", short_selling_comparison.get("restricted")),
+            ("A - Sin no negatividad / short selling", short_selling_comparison.get("with_short_selling")),
+        ]:
+            if isinstance(block, dict):
+                comparison_rows.append(
+                    {
+                        "Versión": label,
+                        "Restricción": block.get("restriction", "N/D"),
+                        "Retorno min var": _format_pct(_metric_from_block(block.get("min_variance", {}), "return")),
+                        "Volatilidad min var": _format_pct(_metric_from_block(block.get("min_variance", {}), "volatility")),
+                        "Retorno max Sharpe": _format_pct(_metric_from_block(block.get("max_sharpe", {}), "return")),
+                        "Sharpe max": _format_num(_metric_from_block(block.get("max_sharpe", {}), "sharpe"), 3),
+                        "Activos cero/negativos": ", ".join(
+                            block.get("zero_weight_assets")
+                            or block.get("negative_weight_assets")
+                            or []
+                        )
+                        or "Ninguno",
+                    }
+                )
+
+        if comparison_rows:
+            st.dataframe(pd.DataFrame(comparison_rows), use_container_width=True, hide_index=True)
+
+        zero_assets = (short_selling_comparison.get("restricted") or {}).get("zero_weight_assets") or []
+        negative_assets = (short_selling_comparison.get("with_short_selling") or {}).get("negative_weight_assets") or []
+        cost_values = [
+            cost_block.get("variance_cost_min_variance"),
+            cost_block.get("sharpe_opportunity_cost"),
+            cost_block.get("return_gap_max_sharpe"),
+            cost_block.get("volatility_gap_min_variance"),
+        ]
+        costs_are_near_zero = all(
+            value is None or abs(float(value)) < 1e-8
+            for value in cost_values
+        )
+
+        if costs_are_near_zero and not negative_assets:
+            render_info_card(
+                "Restricción no vinculante",
+                (
+                    "Para este portafolio y horizonte, permitir short selling no cambia de forma observable "
+                    "la mínima varianza ni el máximo Sharpe. Eso significa que el óptimo sin restricción ya cae "
+                    "dentro de la región long-only, o que no necesita pesos negativos para mejorar."
+                ),
+            )
+
+        render_info_card(
+            "Lectura para la rúbrica",
+            (
+                f"Activos con peso cero en la versión B long-only: {', '.join(zero_assets) if zero_assets else 'ninguno'}. "
+                f"Activos con peso negativo en la versión A con short selling: {', '.join(negative_assets) if negative_assets else 'ninguno'}. "
+                "Si el costo de Sharpe o la reducción de varianza del caso short es alto, imponer no negatividad tiene un costo financiero visible; "
+                "si es bajo, la versión long-only es más defendible para un inversionista minorista."
+            ),
+        )

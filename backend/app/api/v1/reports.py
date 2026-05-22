@@ -23,17 +23,17 @@ def build_report_payload(overrides: dict[str, Any] | None = None) -> dict:
     4. Resultados numéricos clave.
     5. Conclusiones y recomendaciones.
 
-    En la siguiente subtarea este payload se conectará con la configuración global
-    del portafolio y con resultados reales guardados en session_state/frontend.
+    El frontend puede enviar overrides con los resultados reales calculados en la
+    sesion. Si falta una metrica, se marca como no calculada para no inventar datos.
     """
     overrides = overrides or {}
     portfolio_context = overrides.get("portfolio_context") or {
-        "tickers": "Pendiente de selección global del usuario",
-        "horizon": "Pendiente de horizonte global",
-        "weights": "Pendiente de asignación inicial",
+        "tickers": "No informado por el dashboard",
+        "horizon": "No informado por el dashboard",
+        "weights": "No informado por el dashboard",
         "base_currency": "USD",
-        "risk_profile": "Pendiente de perfil KYC",
-        "perri_reference": "Pendiente de portafolio Perri sugerido",
+        "risk_profile": "No informado por el dashboard",
+        "perri_reference": "No informado por el dashboard",
     }
     benchmark_context = overrides.get("benchmark_context") or {}
 
@@ -92,11 +92,11 @@ def build_report_payload(overrides: dict[str, Any] | None = None) -> dict:
     ]
 
     key_results = {
-        "var_portfolio": "Pendiente de conectar resultado real de VaR/CVaR",
-        "markowitz_optimal": "Pendiente de conectar composición óptima Markowitz",
-        "jensen_alpha": "Pendiente de conectar alpha de Jensen/CAPM",
-        "ml_performance": "Pendiente de conectar predicción o métrica ML",
-        "stress_loss": "Pendiente de conectar pérdida bajo escenario de estrés",
+        "var_portfolio": "No calculado en esta sesion",
+        "markowitz_optimal": "No calculado en esta sesion",
+        "jensen_alpha": "No calculado en esta sesion",
+        "ml_performance": "No calculado en esta sesion",
+        "stress_loss": "No calculado en esta sesion",
     }
     key_results.update(overrides.get("key_results") or {})
 

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     llm_api_key: str | None = Field(default=None, description="API key del proveedor LLM")
     llm_base_url: str | None = Field(default=None, description="URL base opcional del proveedor LLM")
     groq_api_key: str | None = Field(default=None, description="API key de GroqCloud para el chatbot")
+    gemini_api_key: str | None = Field(default=None, description="API key de Gemini para el chatbot")
 
     external_api_timeout_seconds: int = Field(default=20, description="Timeout para APIs externas")
     frontend_base_url: str = Field(default="http://localhost:8501", description="URL del frontend")

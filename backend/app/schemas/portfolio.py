@@ -8,7 +8,7 @@ class EfficientFrontierRequest(BaseModel):
     start: str = Field(default="2021-01-01", description="Fecha inicial")
     end: str = Field(default="2026-12-31", description="Fecha final")
     rf_annual: float = Field(default=0.04, ge=0.0, le=1.0, description="Tasa libre de riesgo anual")
-    n_portfolios: int = Field(default=5000, ge=1000, le=50000, description="Número de portafolios simulados")
+    n_portfolios: int = Field(default=5000, ge=1000, le=50000, description="Numero de portafolios simulados")
     return_type: str = Field(default="log", description="Tipo de rendimiento: simple o log")
     target_return_annual: float | None = Field(
         default=None,
@@ -19,6 +19,10 @@ class EfficientFrontierRequest(BaseModel):
     risk_profile: str | None = Field(
         default=None,
         description="Perfil opcional: conservador, arriesgado, minimo_riesgo, maxima_utilidad",
+    )
+    allow_short_selling: bool = Field(
+        default=False,
+        description="Permite pesos negativos para comparar Markowitz con y sin no negatividad",
     )
 
     @model_validator(mode="before")
@@ -40,9 +44,9 @@ class EfficientFrontierRequest(BaseModel):
     def validate_tickers(cls, v: list[str]) -> list[str]:
         cleaned = [item.strip().upper() for item in v if item.strip()]
         if len(cleaned) < 2:
-            raise ValueError("Debe enviar al menos dos tickers válidos")
+            raise ValueError("Debe enviar al menos dos tickers validos")
         if len(cleaned) > 15:
-            raise ValueError("Se permite un máximo de 15 acciones")
+            raise ValueError("Se permite un maximo de 15 acciones")
         return cleaned
 
     @field_validator("return_type")
@@ -61,7 +65,60 @@ class EfficientFrontierRequest(BaseModel):
         value = v.strip().lower()
         allowed = {"conservador", "arriesgado", "minimo_riesgo", "maxima_utilidad"}
         if value not in allowed:
-            raise ValueError("risk_profile no válido")
+            raise ValueError("risk_profile no valido")
+        return value
+
+
+class SavedPortfolioCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120, description="Nombre del portafolio")
+    owner: str | None = Field(default=None, max_length=120, description="Usuario o etiqueta propietaria")
+    description: str | None = Field(default=None, max_length=255, description="Descripcion breve")
+    tickers: list[str] = Field(..., min_length=5, max_length=15, description="Tickers seleccionados")
+    weights_pct: list[float] = Field(..., min_length=5, max_length=15, description="Pesos en porcentaje")
+    horizon: str = Field(..., min_length=1, description="Horizonte de analisis")
+    benchmark: dict | str | None = Field(default=None, description="Benchmark resuelto para el portafolio")
+    base_currency: str = Field(default="USD", min_length=3, max_length=3)
+    confidence_level: float | None = Field(default=None, ge=0.80, le=0.999)
+
+    @model_validator(mode="after")
+    def validate_weights(self) -> "SavedPortfolioCreateRequest":
+        if len(self.tickers) != len(self.weights_pct):
+            raise ValueError("tickers y weights_pct deben tener la misma longitud")
+
+        total = sum(float(weight) for weight in self.weights_pct)
+        if abs(total - 100.0) > 0.05:
+            raise ValueError("Los pesos deben sumar 100% con tolerancia maxima de 0.05 puntos porcentuales")
+
+        cleaned_tickers = [ticker.strip().upper() for ticker in self.tickers if ticker.strip()]
+        if len(cleaned_tickers) < 5:
+            raise ValueError("Debe guardar minimo 5 activos validos")
+
+        self.tickers = cleaned_tickers
+        self.weights_pct = [float(weight) for weight in self.weights_pct]
+        self.base_currency = self.base_currency.strip().upper()
+        return self
+
+
+class SavedPortfolioResponse(BaseModel):
+    id: int
+    name: str
+    owner: str | None = None
+    description: str | None = None
+    weights: dict
+    created_at: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def from_orm_record(cls, value):
+        if hasattr(value, "id"):
+            return {
+                "id": value.id,
+                "name": value.name,
+                "owner": value.owner,
+                "description": value.description,
+                "weights": value.weights,
+                "created_at": value.created_at.isoformat() if value.created_at else "",
+            }
         return value
 
 
@@ -80,7 +137,7 @@ class OptimalPortfolio(BaseModel):
     return_: float = Field(..., alias="return", description="Retorno anualizado")
     volatility: float = Field(..., description="Volatilidad anualizada")
     sharpe: float = Field(..., description="Ratio de Sharpe")
-    weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Composición del portafolio")
+    weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Composicion del portafolio")
 
 
 class TargetReturnPortfolio(BaseModel):
@@ -97,8 +154,9 @@ class ProfileSuggestedPortfolio(BaseModel):
     sharpe: float = Field(..., description="Sharpe del portafolio sugerido")
     weights: list[PortfolioWeightsItem] = Field(default_factory=list, description="Pesos sugeridos")
 
+
 class TopPortfolio(BaseModel):
-    rank: int = Field(..., description="Posición dentro del ranking")
+    rank: int = Field(..., description="Posicion dentro del ranking")
     return_: float = Field(..., alias="return", description="Retorno anualizado")
     volatility: float = Field(..., description="Volatilidad anualizada")
     sharpe: float = Field(..., description="Ratio de Sharpe")
@@ -116,14 +174,14 @@ class PerriObjectiveComparison(BaseModel):
     return_gap: float | None = Field(default=None, description="Diferencia de retorno usuario menos Perri")
     volatility_gap: float | None = Field(default=None, description="Diferencia de volatilidad usuario menos Perri")
     sharpe_gap: float | None = Field(default=None, description="Diferencia de Sharpe usuario menos Perri")
-    verdict: str = Field(..., description="Resultado interpretativo de la comparación")
+    verdict: str = Field(..., description="Resultado interpretativo de la comparacion")
 
 
 class PerriComparison(BaseModel):
-    enabled: bool = Field(..., description="Indica si la comparación contra Perri fue posible")
+    enabled: bool = Field(..., description="Indica si la comparacion contra Perri fue posible")
     portfolio_size: int = Field(..., description="Cantidad de activos del portafolio del usuario")
     horizon: str = Field(..., description="Horizonte Perri usado para comparar")
-    message: str = Field(..., description="Mensaje general de comparación")
+    message: str = Field(..., description="Mensaje general de comparacion")
     comparisons: list[PerriObjectiveComparison] = Field(
         default_factory=list,
         description="Comparaciones contra objetivos Perri",
@@ -138,12 +196,16 @@ class EfficientFrontierResponse(BaseModel):
 
     frontier: list[FrontierPoint] = Field(default_factory=list, description="Puntos de la frontera eficiente")
     simulated_portfolios: list[FrontierPoint] = Field(default_factory=list, description="Nube simulada de portafolios")
-    correlation_matrix: dict[str, dict[str, float]] = Field(default_factory=dict, description="Matriz de correlación")
-    observations: int = Field(..., description="Número de observaciones alineadas")
-    n_assets: int = Field(..., description="Número de activos efectivos")
+    correlation_matrix: dict[str, dict[str, float]] = Field(default_factory=dict, description="Matriz de correlacion")
+    optimization_method: str | None = Field(default=None, description="Metodo numerico usado para resolver Markowitz")
+    frontier_method: str | None = Field(default=None, description="Metodo usado para construir la frontera eficiente")
+    simulation_count: int | None = Field(default=None, description="Cantidad de portafolios aleatorios simulados")
+    formulation: dict = Field(default_factory=dict, description="Formulacion matematica del problema cuadratico")
+    observations: int = Field(..., description="Numero de observaciones alineadas")
+    n_assets: int = Field(..., description="Numero de activos efectivos")
 
-    min_variance: OptimalPortfolio = Field(..., description="Portafolio de mínima varianza")
-    max_sharpe: OptimalPortfolio = Field(..., description="Portafolio de máximo Sharpe")
+    min_variance: OptimalPortfolio = Field(..., description="Portafolio de minima varianza")
+    max_sharpe: OptimalPortfolio = Field(..., description="Portafolio de maximo Sharpe")
     top_portfolios: list[TopPortfolio] = Field(
         default_factory=list,
         description="Ranking de los 5 mejores portafolios por Sharpe",
@@ -154,9 +216,17 @@ class EfficientFrontierResponse(BaseModel):
     )
     suggested_profile_portfolio: ProfileSuggestedPortfolio | None = Field(
         default=None,
-        description="Portafolio sugerido según perfil",
+        description="Portafolio sugerido segun perfil",
     )
     perri_comparison: PerriComparison | None = Field(
         default=None,
-        description="Comparación del portafolio Markowitz contra umbrales institucionales Perri",
+        description="Comparacion del portafolio Markowitz contra umbrales institucionales Perri",
+    )
+    allow_short_selling: bool = Field(
+        default=False,
+        description="Indica si la optimizacion principal permitio pesos negativos",
+    )
+    short_selling_comparison: dict = Field(
+        default_factory=dict,
+        description="Comparacion entre optimizacion con no negatividad y con short selling",
     )

@@ -34,7 +34,7 @@ MODULE_GROUPS = {
         ("Módulo 7", "Señales", "Lectura integrada de señales técnicas por activo.", "pages/07_Señales.py"),
         ("Módulo 9", "Renta fija", "Nelson-Siegel, curva de tasas, duración y convexidad.", "pages/09_Renta_Fija.py"),
         ("Módulo 10", "Opciones", "Black-Scholes, Greeks, payoff y sensibilidad.", "pages/10_Opciones.py"),
-        ("Módulo 12", "Machine Learning", "Predicción de retorno con variables de riesgo y mercado.", "pages/12_Machine_Learning.py"),
+        ("Módulo 12", "Machine Learning", "Detección de anomalías en retornos con Isolation Forest y One-Class SVM.", "pages/12_Machine_Learning.py"),
     ],
 }
 
@@ -57,7 +57,7 @@ MODULE_GROUPS = {
         ("Módulo 7", "Señales", "Lectura integrada de señales técnicas por activo.", "pages/07_Señales.py"),
         ("Módulo 9", "Renta fija", "Nelson-Siegel, curva de tasas, duración y convexidad.", "pages/09_Renta_Fija.py"),
         ("Módulo 10", "Opciones", "Black-Scholes, Greeks, payoff y sensibilidad.", "pages/10_Opciones.py"),
-        ("Módulo 12", "Machine Learning", "Predicción de retorno con variables de riesgo y mercado.", "pages/12_Machine_Learning.py"),
+        ("Módulo 12", "Machine Learning", "Detección de anomalías en retornos con Isolation Forest y One-Class SVM.", "pages/12_Machine_Learning.py"),
     ],
 }
 
@@ -67,6 +67,8 @@ def _init_session_state() -> None:
         st.session_state.logged_in = False
         st.session_state.user_role = None
         st.session_state.user_name = None
+    if "display_decimals" not in st.session_state:
+        st.session_state.display_decimals = 2
 
 
 def _load_users() -> list[dict]:
@@ -155,6 +157,7 @@ def registrar_usuario(
     experience: int,
     tolerance: int,
     investment_objective: str,
+    accepted_habeas_data: bool,
 ) -> tuple[bool, str]:
     username = str(username or "").strip().lower()
     password = str(password or "")
@@ -168,6 +171,9 @@ def registrar_usuario(
 
     if not full_name:
         return False, "Debes ingresar tu nombre completo."
+
+    if not accepted_habeas_data:
+        return False, "Debes aceptar el tratamiento de datos personales para crear la cuenta."
 
     if _username_exists_for_registration(username):
         return False, "Ese usuario ya existe. Prueba con otro nombre de usuario."
@@ -195,6 +201,7 @@ def registrar_usuario(
                 "preferred_horizon": None,
                 "fallback_profile": fallback_profile,
             },
+            "accepted_habeas_data": True,
         }
     )
 
@@ -398,6 +405,17 @@ def _render_login() -> None:
                         index=1,
                     )
 
+                st.markdown(
+                    """
+                    **Autorización de tratamiento de datos personales (Habeas Data).**
+                    Autorizo el almacenamiento y uso de mis datos personales y financieros declarados
+                    para fines académicos del dashboard, estimación de perfil de riesgo, auditoría interna
+                    y generación de reportes. Entiendo que puedo solicitar revisión o eliminación de mi
+                    registro a un superusuario del sistema.
+                    """
+                )
+                accepted_habeas_data = st.checkbox("He leído y acepto la autorización de Habeas Data.")
+
                 register_submitted = st.form_submit_button("Crear cuenta", use_container_width=True)
 
                 if register_submitted:
@@ -412,6 +430,7 @@ def _render_login() -> None:
                             experience=int(experience),
                             tolerance=int(tolerance),
                             investment_objective=investment_objective,
+                            accepted_habeas_data=bool(accepted_habeas_data),
                         )
 
                         if not ok:
@@ -437,9 +456,15 @@ def _render_module_card(module: tuple[str, str, str, str]) -> None:
 
 
 def _render_modules_tab() -> None:
-    group_tabs = st.tabs(list(MODULE_GROUPS.keys()))
+    groups = dict(MODULE_GROUPS)
+    if st.session_state.get("user_role") == "superuser":
+        groups["Administración"] = [
+            ("Admin", "Usuarios", "Consulta, descarga y eliminación de usuarios registrados.", "pages/15_Usuarios.py")
+        ]
 
-    for tab, (_, modules) in zip(group_tabs, MODULE_GROUPS.items()):
+    group_tabs = st.tabs(list(groups.keys()))
+
+    for tab, (_, modules) in zip(group_tabs, groups.items()):
         with tab:
             for row_start in range(0, len(modules), 2):
                 cols = st.columns(2, gap="large")

@@ -430,6 +430,26 @@ def _validate_and_store_config(
     st.session_state["portfolio_config"] = global_config
     st.session_state["robo_portfolio"] = assets
     st.session_state["kyc_profile"] = risk_profile
+    st.session_state.pop("portfolio_persistence_warning", None)
+
+    try:
+        client.save_portfolio(
+            {
+                "name": f"Portafolio {risk_profile} - {horizon_type}",
+                "owner": st.session_state.get("user_name") or "streamlit_user",
+                "description": "Configuracion creada desde el modulo Inicio.",
+                "tickers": tickers,
+                "weights_pct": weights_pct,
+                "horizon": horizon_type,
+                "benchmark": global_config["benchmark"],
+                "base_currency": global_config.get("base_currency", "USD"),
+                "confidence_level": float(confidence_level),
+            }
+        )
+    except Exception as exc:
+        st.session_state["portfolio_persistence_warning"] = (
+            f"La configuracion quedo activa en la sesion, pero no se pudo persistir en backend: {exc}"
+        )
 
     return True, None
 
@@ -985,6 +1005,8 @@ def render_global_portfolio_config() -> None:
                 return
 
             st.success("Portafolio manual guardado como configuración global.")
+            if st.session_state.get("portfolio_persistence_warning"):
+                st.warning(st.session_state["portfolio_persistence_warning"])
             st.switch_page("pages/0_Contextualizacion.py")
 
     config = st.session_state.get("portfolio_config")

@@ -32,6 +32,7 @@ def _current_page_name() -> str:
         "12_Machine_Learning.py",
         "13_Perfil_Riesgo.py",
         "14_Reportes.py",
+        "15_Usuarios.py",
     }
 
     for frame in inspect.stack():
@@ -64,9 +65,16 @@ def setup_dashboard_page(
     # --------------------------------
 
     current_page = _current_page_name()
-    if current_page != "app.py" and not _has_active_portfolio():
-        st.warning("Primero debes seleccionar o crear un portafolio desde Inicio.")
+    if current_page == "15_Usuarios.py" and st.session_state.get("user_role") != "superuser":
+        st.warning("Este módulo solo está habilitado para superusuarios.")
         st.switch_page("app.py")
+
+    if current_page != "app.py" and not _has_active_portfolio():
+        if current_page == "15_Usuarios.py":
+            pass
+        else:
+            st.warning("Primero debes seleccionar o crear un portafolio desde Inicio.")
+            st.switch_page("app.py")
 
     try:
         st.set_page_config(

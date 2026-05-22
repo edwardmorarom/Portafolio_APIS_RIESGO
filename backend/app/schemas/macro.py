@@ -19,6 +19,8 @@ class MacroSnapshotResponse(BaseModel):
     source: str = Field(..., description="Fuente del dato")
     note: str = Field(..., description="Nota metodológica")
     last_updated: str | None = Field(default=None, description="Última actualización")
+    cache_status: str | None = Field(default=None, description="Estado del cache SQLite de 24h")
+    indicators: dict = Field(default_factory=dict, description="Indicadores macro con ultimo valor e historia")
 
 
 class FxSpotResponse(BaseModel):

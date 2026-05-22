@@ -6,7 +6,13 @@ from pathlib import Path
 import streamlit as st
 
 from ui.theme import build_global_css, image_to_base64, safe_text
-from ui.formatting import DEFAULT_DECIMALS, MAX_DECIMALS
+from ui.formatting import (
+    DEFAULT_DECIMALS,
+    MAX_DECIMALS,
+    apply_decimal_display_options,
+    format_percent,
+    patch_streamlit_dataframe_locale,
+)
 
 
 NAV_ITEMS = [
@@ -29,7 +35,7 @@ NAV_ITEMS = [
 
 
 def _navigation_items() -> list[tuple[str, str]]:
-    return [
+    items = [
         ("Inicio", "app.py"),
         ("0 Contexto", "pages/0_Contextualizacion.py"),
         ("1 Técnico", "pages/01_Tecnico.py"),
@@ -46,12 +52,17 @@ def _navigation_items() -> list[tuple[str, str]]:
         ("12 ML", "pages/12_Machine_Learning.py"),
         ("13 Perfil", "pages/13_Perfil_Riesgo.py"),
     ]
+    if st.session_state.get("user_role") == "superuser":
+        items.append(("Admin Usuarios", "pages/15_Usuarios.py"))
+    return items
 
 
 NAV_ITEMS = _navigation_items()
 
 
 def aplicar_estilos_globales(modo: str = "General"):
+    apply_decimal_display_options()
+    patch_streamlit_dataframe_locale()
     st.markdown(build_global_css(modo), unsafe_allow_html=True)
 
 
@@ -297,10 +308,11 @@ def render_sidebar_session():
                 if weight is None:
                     st.write(f"- {ticker}")
                 else:
-                    decimals = int(st.session_state.get("display_decimals", DEFAULT_DECIMALS))
-                    st.write(f"- {ticker}: {float(weight):.{decimals}f}%")
+                    st.write(f"- {ticker}: {format_percent(weight, already_pct=True)}")
     else:
         st.caption("An no hay portafolio global guardado.")
+
+    apply_decimal_display_options()
 
     st.sidebar.divider()
 
@@ -313,6 +325,8 @@ def render_sidebar_session():
         key="display_decimals",
         help="Solo cambia el formato mostrado en KPIs, tablas y reportes; no altera los cálculos internos.",
     )
+
+    apply_decimal_display_options()
 
     st.sidebar.divider()
 
@@ -479,7 +493,7 @@ def render_top_navigation():
                         """,
                         unsafe_allow_html=True,
                     )
-                elif not portfolio_ready and page_name != "app.py":
+                elif not portfolio_ready and page_name not in {"app.py", "15_Usuarios.py"}:
                     st.markdown(
                         f'<div class="top-nav-locked-pill" title="Configura un portafolio en Inicio">{safe_text(label)}</div>',
                         unsafe_allow_html=True,

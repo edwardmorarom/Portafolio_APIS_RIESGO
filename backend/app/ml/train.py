@@ -2,82 +2,95 @@ from pathlib import Path
 
 import joblib
 import numpy as np
-from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.linear_model import Lasso, Ridge
-from sklearn.metrics import mean_absolute_error, r2_score
-from sklearn.model_selection import train_test_split
+from sklearn.ensemble import IsolationForest
+from sklearn.metrics import classification_report
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import OneClassSVM
 
 
 MODEL_PATH = Path(__file__).resolve().parent / "model.joblib"
+FEATURES = ["return", "abs_return", "rolling_mean_5", "rolling_vol_5", "zscore_20"]
 
 
-def generate_training_data():
+def generate_return_series(samples: int = 900) -> tuple[np.ndarray, np.ndarray]:
     rng = np.random.default_rng(42)
+    returns = rng.normal(0.0004, 0.012, samples)
 
-    samples = 500
+    turbulent_slice = slice(samples // 3, samples // 3 + 180)
+    returns[turbulent_slice] = rng.normal(-0.0008, 0.028, len(returns[turbulent_slice]))
 
-    volatility = rng.uniform(0.05, 0.60, samples)
-    sharpe_ratio = rng.uniform(-1.0, 3.0, samples)
-    var_95 = rng.uniform(-0.30, -0.01, samples)
-    beta = rng.uniform(0.5, 2.0, samples)
-    market_return = rng.uniform(-0.15, 0.25, samples)
-    horizon_months = rng.choice([1, 3, 6, 12, 24, 36], samples)
+    anomaly_idx = rng.choice(np.arange(30, samples), size=36, replace=False)
+    returns[anomaly_idx] += rng.choice([-1, 1], size=len(anomaly_idx)) * rng.uniform(0.055, 0.13, len(anomaly_idx))
 
-    X = np.column_stack([
-        volatility,
-        sharpe_ratio,
-        var_95,
-        beta,
-        market_return,
-        horizon_months,
-    ])
-
-    annual_return = (
-        (market_return * 0.4)
-        + (sharpe_ratio * 0.08)
-        - (volatility * 0.15)
-        + (beta * 0.03)
-        + (var_95 * 0.1)
-    )
-
-    noise = rng.normal(0, 0.02, samples)
-    annual_return = annual_return + noise
-    y = np.power(1 + annual_return, horizon_months / 12.0) - 1
-
-    return X, y
+    labels = np.zeros(samples, dtype=int)
+    labels[anomaly_idx] = 1
+    return returns, labels
 
 
-def train_model():
-    X, y = generate_training_data()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+def build_features(returns: np.ndarray) -> np.ndarray:
+    values = np.asarray(returns, dtype=float)
+    rows = []
+    for index, value in enumerate(values):
+        w5 = values[max(0, index - 4) : index + 1]
+        w20 = values[max(0, index - 19) : index + 1]
+        vol20 = float(np.std(w20)) if len(w20) > 1 else 0.0
+        zscore = 0.0 if vol20 == 0 else (float(value) - float(np.mean(w20))) / vol20
+        rows.append(
+            [
+                float(value),
+                abs(float(value)),
+                float(np.mean(w5)),
+                float(np.std(w5)) if len(w5) > 1 else 0.0,
+                float(zscore),
+            ]
+        )
+    return np.asarray(rows, dtype=float)
+
+
+def main() -> None:
+    returns, labels = generate_return_series()
+    X = build_features(returns)
+    split = int(len(X) * 0.8)
+    X_train, X_test = X[:split], X[split:]
+    y_test = labels[split:]
 
     models = {
-        "ridge": Ridge(alpha=1.0),
-        "lasso": Lasso(alpha=0.001, max_iter=10000),
-        "gradient_boosting": GradientBoostingRegressor(random_state=42, n_estimators=120, max_depth=3),
+        "isolation_forest": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("model", IsolationForest(n_estimators=200, contamination=0.05, random_state=42)),
+            ]
+        ),
+        "one_class_svm": Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                ("model", OneClassSVM(kernel="rbf", gamma="scale", nu=0.05)),
+            ]
+        ),
     }
 
     metrics = {}
     for name, model in models.items():
-        model.fit(X_train, y_train)
-        pred = model.predict(X_test)
-        metrics[name] = {
-            "r2": float(r2_score(y_test, pred)),
-            "mae": float(mean_absolute_error(y_test, pred)),
-        }
+        model.fit(X_train)
+        predicted = (model.predict(X_test) == -1).astype(int)
+        metrics[name] = classification_report(y_test, predicted, output_dict=True, zero_division=0)
+        print(f"\n{name}")
+        print(classification_report(y_test, predicted, zero_division=0))
 
     artifact = {
         "models": models,
         "metrics": metrics,
-        "target": "Retorno acumulado a horizonte fijo",
-        "features": ["volatility", "sharpe_ratio", "var_95", "beta", "market_return", "horizon_months"],
-        "training_samples": int(len(X)),
+        "target": "Deteccion de anomalias en retornos",
+        "features": FEATURES,
+        "training_samples": int(len(X_train)),
+        "test_samples": int(len(X_test)),
+        "contamination": 0.05,
+        "version": "3.0.0",
     }
-
     joblib.dump(artifact, MODEL_PATH)
-
-    print(f"Modelo entrenado y guardado en: {MODEL_PATH}")
+    print(f"Modelo guardado: {MODEL_PATH}")
 
 
 if __name__ == "__main__":
-    train_model()
+    main()

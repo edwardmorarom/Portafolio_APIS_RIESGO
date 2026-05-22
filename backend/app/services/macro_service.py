@@ -1,18 +1,63 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from app.clients.macro_client import MacroClient
 from app.clients.market_client import MarketClient
+from app.db.models import MacroCache, utc_now
+from sqlalchemy.orm import Session
 
 
 class MacroService:
-    def __init__(self, client: MacroClient, market_client: MarketClient) -> None:
+    CACHE_TTL = timedelta(hours=24)
+
+    def __init__(self, client: MacroClient, market_client: MarketClient, db: Session | None = None) -> None:
         self.client = client
         self.market_client = market_client
+        self.db = db
+
+    def _cache_key(self, base_currency: str) -> str:
+        return f"macro_snapshot:{base_currency.strip().upper()}"
+
+    def _get_cached_snapshot(self, base_currency: str) -> dict | None:
+        if self.db is None:
+            return None
+        row = (
+            self.db.query(MacroCache)
+            .filter(MacroCache.cache_key == self._cache_key(base_currency))
+            .one_or_none()
+        )
+        if row is None:
+            return None
+        updated_at = row.updated_at
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=utc_now().tzinfo)
+        if utc_now() - updated_at > self.CACHE_TTL:
+            return None
+        payload = dict(row.payload)
+        payload["cache_status"] = "hit"
+        return payload
+
+    def _set_cached_snapshot(self, base_currency: str, payload: dict) -> None:
+        if self.db is None:
+            return
+        key = self._cache_key(base_currency)
+        row = self.db.query(MacroCache).filter(MacroCache.cache_key == key).one_or_none()
+        stored_payload = dict(payload)
+        stored_payload["cache_status"] = "stored"
+        if row is None:
+            self.db.add(MacroCache(cache_key=key, payload=stored_payload))
+        else:
+            row.payload = stored_payload
+            row.updated_at = utc_now()
+        self.db.commit()
 
     def get_macro_snapshot(self, base_currency: str) -> dict:
         base_currency = base_currency.strip().upper()
+
+        cached = self._get_cached_snapshot(base_currency=base_currency)
+        if cached is not None:
+            return cached
 
         snapshot = self.client.get_macro_snapshot(base_currency=base_currency)
         if not isinstance(snapshot, dict):
@@ -37,6 +82,9 @@ class MacroService:
         snapshot["rf_rate_pct"] = risk_free_rate_pct
         snapshot["inflation_pct"] = inflation_yoy
         snapshot["fx_spot"] = fx_spot
+        snapshot["cache_status"] = "miss"
+
+        self._set_cached_snapshot(base_currency=base_currency, payload=snapshot)
 
         return snapshot
 

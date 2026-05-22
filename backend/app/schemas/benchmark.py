@@ -61,6 +61,12 @@ class BenchmarkMetrics(BaseModel):
     max_drawdown: float = Field(..., description="Máximo drawdown")
 
 
+class BenchmarkBase100Point(BaseModel):
+    date: str = Field(..., description="Fecha")
+    portfolio: float = Field(..., description="Indice base 100 del portafolio")
+    benchmark: float = Field(..., description="Indice base 100 del benchmark")
+
+
 class BenchmarkCompareResponse(BaseModel):
     tickers: list[str] = Field(..., description="Tickers del portafolio")
     weights: list[float] = Field(..., description="Pesos del portafolio")
@@ -71,8 +77,13 @@ class BenchmarkCompareResponse(BaseModel):
     portfolio: BenchmarkMetrics = Field(..., description="Métricas del portafolio")
     benchmark: BenchmarkMetrics = Field(..., description="Métricas del benchmark")
     alpha_jensen: float = Field(..., description="Alpha de Jensen")
+    beta_portfolio: float = Field(..., description="Beta del portafolio frente al benchmark")
+    alpha_t_stat: float | None = Field(default=None, description="Estadistico t del alpha")
+    alpha_p_value: float | None = Field(default=None, description="p-value aproximado del alpha")
+    alpha_significant_5pct: bool = Field(..., description="Alpha significativo al 5%")
     tracking_error: float = Field(..., description="Tracking error anualizado")
     information_ratio: float = Field(..., description="Information ratio")
+    base100_series: list[BenchmarkBase100Point] = Field(default_factory=list, description="Serie historica base 100")
     mode: str = Field(..., description="Modo de salida")
     summary: str = Field(..., description="Resumen interpretativo")
     start: str = Field(..., description="Fecha inicial")

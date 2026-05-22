@@ -14,7 +14,7 @@ from ui.dashboard_ui import header_dashboard, nota, plot_card_footer, plot_card_
 from ui.formatting import format_money, format_number, format_percent
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
-from ui.portfolio_state import render_portfolio_scope_note
+from ui.portfolio_state import active_assets, render_portfolio_scope_note
 
 
 def _norm_cdf(value: float) -> float:
@@ -41,6 +41,26 @@ def _black_scholes_price(
     return strike * math.exp(-risk_free_rate * time_to_maturity) * _norm_cdf(-d2) - spot * _norm_cdf(-d1)
 
 
+def _latest_portfolio_spot(ticker: str) -> float | None:
+    end = pd.Timestamp.today().normalize()
+    start = end - pd.DateOffset(days=20)
+    try:
+        payload = get_api_client().get_prices(
+            ticker=ticker,
+            start=start.strftime("%Y-%m-%d"),
+            end=end.strftime("%Y-%m-%d"),
+        )
+        df = pd.DataFrame(payload.get("data", []))
+        if df.empty or "close" not in df.columns:
+            return None
+        close = pd.to_numeric(df["close"], errors="coerce").dropna()
+        if close.empty:
+            return None
+        return float(close.iloc[-1])
+    except Exception:
+        return None
+
+
 modo, filtros_panel = setup_dashboard_page(
     title="Dashboard Riesgo",
     subtitle="Universidad Santo Tomás",
@@ -63,9 +83,23 @@ with filtros_panel:
         "Spot es el precio actual, strike el precio de ejercicio, T el plazo en años, r la tasa libre de riesgo y sigma la volatilidad anual.",
     )
     option_type = st.selectbox("Tipo de opción", ["call", "put"])
+    portfolio_assets = active_assets()
+    spot_default = 100.0
+    selected_underlying = None
+    if portfolio_assets:
+        selected_underlying = st.selectbox(
+            "Subyacente del portafolio",
+            portfolio_assets,
+            format_func=lambda asset: f"{asset.get('ticker', 'N/D')} - {asset.get('name', 'Activo')}",
+            help="Permite valorar una opcion sobre un activo realmente seleccionado en el portafolio inicial.",
+        )
+        latest_spot = _latest_portfolio_spot(str(selected_underlying.get("ticker", "")))
+        if latest_spot is not None:
+            spot_default = latest_spot
+            st.caption(f"Spot sugerido desde backend para {selected_underlying.get('ticker')}: {format_money(latest_spot)}")
     c1, c2 = st.columns(2)
     with c1:
-        spot_price = st.number_input("Spot S", min_value=0.01, value=100.0, step=1.0, help="Precio actual del activo subyacente.")
+        spot_price = st.number_input("Spot S", min_value=0.01, value=float(spot_default), step=1.0, help="Precio actual del activo subyacente.")
         strike_price = st.number_input("Strike K", min_value=0.01, value=105.0, step=1.0, help="Precio de ejercicio pactado para comprar o vender.")
         time_to_maturity = st.number_input("Tiempo T en años", min_value=0.01, value=1.0, step=0.25)
     with c2:
@@ -121,17 +155,17 @@ if result:
     with c1:
         tarjeta_kpi("Precio teórico", format_money(result["price"]), subtexto="Black-Scholes")
     with c2:
-        tarjeta_kpi("Delta", format_number(greeks["delta"], decimals=4), subtexto="Sensibilidad al spot", help_text="Cambio aproximado del precio de la opcion ante un cambio pequeno del spot.")
+        tarjeta_kpi("Delta", format_number(greeks["delta"]), subtexto="Sensibilidad al spot", help_text="Cambio aproximado del precio de la opcion ante un cambio pequeno del spot.")
     with c3:
-        tarjeta_kpi("Gamma", format_number(greeks["gamma"], decimals=4), subtexto="Curvatura del delta", help_text="Cambio del delta cuando cambia el spot.")
+        tarjeta_kpi("Gamma", format_number(greeks["gamma"]), subtexto="Curvatura del delta", help_text="Cambio del delta cuando cambia el spot.")
 
     c4, c5, c6 = st.columns(3)
     with c4:
-        tarjeta_kpi("Vega", format_number(greeks["vega"], decimals=4), subtexto="Sensibilidad a volatilidad", help_text="Sensibilidad del precio ante cambios en volatilidad.")
+        tarjeta_kpi("Vega", format_number(greeks["vega"]), subtexto="Sensibilidad a volatilidad", help_text="Sensibilidad del precio ante cambios en volatilidad.")
     with c5:
-        tarjeta_kpi("Theta", format_number(greeks["theta"], decimals=4), subtexto="Paso del tiempo", help_text="Efecto del paso del tiempo sobre el valor de la opcion.")
+        tarjeta_kpi("Theta", format_number(greeks["theta"]), subtexto="Paso del tiempo", help_text="Efecto del paso del tiempo sobre el valor de la opcion.")
     with c6:
-        tarjeta_kpi("Rho", format_number(greeks["rho"], decimals=4), subtexto="Sensibilidad a tasas", help_text="Sensibilidad del precio ante cambios en la tasa libre de riesgo.")
+        tarjeta_kpi("Rho", format_number(greeks["rho"]), subtexto="Sensibilidad a tasas", help_text="Sensibilidad del precio ante cambios en la tasa libre de riesgo.")
 
     st.dataframe(
         pd.DataFrame(
@@ -191,7 +225,12 @@ if sensitivity_rows:
         use_container_width=True,
     )
     st.dataframe(
-        sensitivity_df.assign(Volatilidad=sensitivity_df["Volatilidad"].map(format_percent)),
+        sensitivity_df.assign(
+            Volatilidad=sensitivity_df["Volatilidad"].map(format_percent),
+            Precio=sensitivity_df["Precio"].map(format_money),
+            Delta=sensitivity_df["Delta"].map(format_number),
+            Vega=sensitivity_df["Vega"].map(format_number),
+        ),
         use_container_width=True,
         hide_index=True,
     )

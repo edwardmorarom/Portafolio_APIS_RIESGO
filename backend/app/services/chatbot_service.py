@@ -103,6 +103,7 @@ class ChatbotService:
                 "gauss",
                 "gaussiana",
                 "gausiana",
+                "gaussiaana",
                 "normal",
                 "student",
                 "t student",
@@ -203,7 +204,7 @@ class ChatbotService:
 
         if topic == "garch" and any(
             term in normalized_question
-            for term in ["gauss", "normal", "student", "distribucion", "distribución", "series de tiempo"]
+            for term in ["gauss", "gaussiaana", "normal", "student", "distribucion", "distribución", "series de tiempo"]
         ):
             distribution_terms = ["normal", "gauss", "student", "ged", "cola", "distribucion", "distribución"]
             if not any(term in normalized for term in distribution_terms):

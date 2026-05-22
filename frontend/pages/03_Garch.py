@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+import numpy as np
 
 from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_meta_row, render_info_card
@@ -81,6 +84,7 @@ def _fetch_garch(
     mode: str,
     forecast_horizon: int,
     distribution: str,
+    ewma_lambda: float,
 ) -> tuple[dict, str | None]:
     client = get_api_client()
 
@@ -93,10 +97,146 @@ def _fetch_garch(
             mode=mode,
             forecast_horizon=forecast_horizon,
             distribution=distribution,
+            ewma_lambda=ewma_lambda,
         )
         return payload, None
     except ApiClientError as exc:
         return {}, exc.message
+
+
+def _calculate_volatility_fallback_from_returns(
+    ticker: str,
+    start: str,
+    end: str,
+    return_type: str,
+    ewma_lambda: float,
+) -> dict:
+    client = get_api_client()
+    try:
+        returns_payload = client.get_returns(ticker=ticker, start=start, end=end)
+    except Exception:
+        return {}
+
+    data = returns_payload.get("data", []) if isinstance(returns_payload, dict) else []
+    column = "log_return" if return_type == "log" else "simple_return"
+    values: list[float] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        try:
+            value = item.get(column)
+            if value is not None:
+                values.append(float(value) * 100.0)
+        except Exception:
+            continue
+
+    series = pd.to_numeric(pd.Series(values), errors="coerce").dropna()
+    if series.empty:
+        return {}
+
+    lambda_value = min(max(float(ewma_lambda), 0.70), 0.99)
+    variance = float(series.var(ddof=1)) if len(series) > 1 else float(series.iloc[0] ** 2)
+    variance = max(variance, 0.0)
+    out: list[float] = []
+    for value in series:
+        variance = lambda_value * variance + (1.0 - lambda_value) * float(value) ** 2
+        out.append(float(np.sqrt(max(variance, 0.0))))
+
+    rolling_window = 20
+    rolling = series.rolling(window=rolling_window).std(ddof=1).dropna()
+    rolling_values = [float(value) for value in rolling.tolist() if np.isfinite(float(value))]
+
+    arch_lm = _calculate_arch_lm_from_series(series)
+
+    return {
+        "ewma_volatility": out,
+        "rolling_volatility": rolling_values,
+        "rolling_volatility_window": rolling_window,
+        "arch_lm": arch_lm,
+    }
+
+
+def _calculate_arch_lm_from_series(series: pd.Series, lags: int = 5) -> dict:
+    clean = pd.to_numeric(series, errors="coerce").dropna()
+    squared = clean.pow(2)
+    effective_lags = min(max(int(lags), 1), max(len(squared) // 5, 1), 10)
+
+    if len(squared) <= effective_lags + 5:
+        return {}
+
+    y = squared.iloc[effective_lags:].to_numpy(dtype=float)
+    x_columns = [
+        squared.shift(lag).iloc[effective_lags:].to_numpy(dtype=float)
+        for lag in range(1, effective_lags + 1)
+    ]
+    x = np.column_stack([np.ones(len(y)), *x_columns])
+
+    try:
+        beta, *_ = np.linalg.lstsq(x, y, rcond=None)
+        fitted = x @ beta
+        total_ss = float(np.sum((y - y.mean()) ** 2))
+        residual_ss = float(np.sum((y - fitted) ** 2))
+        r_squared = 0.0 if total_ss <= 0 else max(0.0, min(1.0, 1.0 - residual_ss / total_ss))
+        lm_stat = float(len(y) * r_squared)
+        z_value = ((lm_stat / effective_lags) ** (1.0 / 3.0) - (1.0 - 2.0 / (9.0 * effective_lags))) / (
+            np.sqrt(2.0 / (9.0 * effective_lags))
+        )
+        p_value = float(0.5 * math.erfc(z_value / math.sqrt(2.0)))
+    except Exception:
+        return {}
+
+    return {
+        "arch_lm_lags": int(effective_lags),
+        "arch_lm_stat": float(lm_stat),
+        "arch_lm_p_value": float(p_value),
+        "arch_lm_conclusion": (
+            "Se detecta heterocedasticidad ARCH remanente al 5%."
+            if p_value < 0.05
+            else "No se detecta heterocedasticidad ARCH remanente al 5%."
+        ),
+    }
+
+
+def _ensure_ewma_series(
+    payload: dict,
+    ticker: str,
+    start: str,
+    end: str,
+    return_type: str,
+    ewma_lambda: float,
+) -> dict:
+    fallback = _calculate_volatility_fallback_from_returns(
+        ticker=ticker,
+        start=start,
+        end=end,
+        return_type=return_type,
+        ewma_lambda=ewma_lambda,
+    )
+    if not fallback:
+        return payload
+
+    current = payload.get("ewma_volatility", []) or []
+    ewma_values = current or fallback.get("ewma_volatility", [])
+    if not ewma_values:
+        return payload
+
+    enriched = dict(payload)
+    enriched.setdefault("ewma_volatility", ewma_values)
+    enriched["ewma_volatility"] = enriched.get("ewma_volatility") or ewma_values
+    enriched["ewma_latest_volatility"] = enriched.get("ewma_latest_volatility") or ewma_values[-1]
+    if not enriched.get("rolling_volatility"):
+        enriched["rolling_volatility"] = fallback.get("rolling_volatility", [])
+        enriched["rolling_volatility_window"] = fallback.get("rolling_volatility_window", 20)
+    for key, value in (fallback.get("arch_lm") or {}).items():
+        if enriched.get(key) is None:
+            enriched[key] = value
+    horizon = int(enriched.get("effective_forecast_horizon") or len(enriched.get("forecast", []) or []) or 10)
+    if not enriched.get("ewma_forecast"):
+        enriched["ewma_forecast"] = [
+            {"step": step, "variance": float(ewma_values[-1] ** 2), "volatility": float(ewma_values[-1])}
+            for step in range(1, max(horizon, 1) + 1)
+        ]
+    return enriched
 
 
 def _format_comparison_table(candidate_models: list[dict]) -> pd.DataFrame:
@@ -163,6 +303,10 @@ def _format_diagnostics_table(payload: dict) -> pd.DataFrame:
         {"Métrica": "JB residuos", "Valor": payload.get("residuals_jarque_bera_stat")},
         {"Métrica": "JB p-value residuos", "Valor": payload.get("residuals_jarque_bera_p_value")},
         {"Métrica": "Conclusión normalidad", "Valor": payload.get("residuals_normality_conclusion")},
+        {"Métrica": "ARCH-LM rezagos", "Valor": payload.get("arch_lm_lags")},
+        {"Métrica": "ARCH-LM estadístico", "Valor": payload.get("arch_lm_stat")},
+        {"Métrica": "ARCH-LM p-value", "Valor": payload.get("arch_lm_p_value")},
+        {"Métrica": "Conclusión ARCH-LM", "Valor": payload.get("arch_lm_conclusion")},
         {"Métrica": "Horizonte efectivo", "Valor": payload.get("effective_forecast_horizon")},
     ]
 
@@ -178,6 +322,84 @@ def _format_diagnostics_table(payload: dict) -> pd.DataFrame:
 
     df["Valor"] = df["Valor"].apply(_fmt)
     return df
+
+
+def _add_window_buttons(fig: go.Figure, max_x: int | float | None) -> go.Figure:
+    if max_x is None:
+        return fig
+    try:
+        upper = float(max_x)
+    except Exception:
+        return fig
+    if upper <= 4:
+        return fig
+
+    buttons = [
+        dict(label="Todo", method="relayout", args=[{"xaxis.autorange": True}]),
+        dict(label="Ult. 5", method="relayout", args=[{"xaxis.range": [max(1, upper - 5), upper]}]),
+        dict(label="Ult. 10", method="relayout", args=[{"xaxis.range": [max(1, upper - 10), upper]}]),
+        dict(label="Ult. 20", method="relayout", args=[{"xaxis.range": [max(1, upper - 20), upper]}]),
+    ]
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                buttons=buttons,
+                x=0.0,
+                xanchor="left",
+                y=1.18,
+                yanchor="top",
+                bgcolor="rgba(15, 23, 42, 0.72)",
+                bordercolor="rgba(148, 163, 184, 0.32)",
+                font=dict(size=10),
+                pad=dict(r=4, t=2, b=2, l=4),
+            )
+        ]
+    )
+    return fig
+
+
+def _add_series_buttons(fig: go.Figure, labels: list[str]) -> go.Figure:
+    if len(labels) <= 1:
+        return fig
+
+    buttons = [
+        dict(
+            label="Todas",
+            method="update",
+            args=[{"visible": [True] * len(labels)}],
+        )
+    ]
+    for index, label in enumerate(labels):
+        visible = [False] * len(labels)
+        visible[index] = True
+        buttons.append(
+            dict(
+                label=str(label)[:18],
+                method="update",
+                args=[{"visible": visible}],
+            )
+        )
+
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                type="buttons",
+                direction="right",
+                buttons=buttons,
+                x=0.0,
+                xanchor="left",
+                y=1.18,
+                yanchor="top",
+                bgcolor="rgba(15, 23, 42, 0.72)",
+                bordercolor="rgba(148, 163, 184, 0.32)",
+                font=dict(size=10),
+                pad=dict(r=4, t=2, b=2, l=4),
+            )
+        ]
+    )
+    return fig
 
 
 def _extract_best_model_series(payload: dict) -> pd.DataFrame:
@@ -259,8 +481,128 @@ def _build_conditional_volatility_figure(payload: dict, modo: str) -> tuple[go.F
         show_xgrid=True,
         show_ygrid=True,
     )
+    if not series_df.empty:
+        labels = [str(label) for label in series_df["model"].dropna().unique()]
+        fig = _add_series_buttons(fig, labels) if len(labels) > 1 else _add_window_buttons(fig, series_df["x"].max())
 
     return fig, has_multiple_models
+
+
+def _extract_ewma_comparison_df(payload: dict) -> pd.DataFrame:
+    rows: list[dict] = []
+
+    ewma_lambda_value = payload.get("ewma_lambda", 0.94)
+    ewma_label = f"EWMA λ={float(ewma_lambda_value):.2f}"
+
+    ewma_raw = payload.get("ewma_volatility", []) or []
+    if not ewma_raw:
+        ewma_raw = payload.get("ewma_series", []) or payload.get("volatility_ewma", []) or []
+
+    ewma_values = pd.to_numeric(
+        pd.Series(ewma_raw),
+        errors="coerce",
+    )
+
+    for index, value in enumerate(ewma_values, start=1):
+        if pd.notna(value):
+            rows.append(
+                {
+                    "x": index,
+                    "volatility": float(value),
+                    "serie": ewma_label,
+                }
+            )
+
+    if not rows:
+        ewma_forecast = payload.get("ewma_forecast", []) or []
+        for point in ewma_forecast:
+            if not isinstance(point, dict):
+                continue
+            try:
+                rows.append(
+                    {
+                        "x": int(point.get("step", len(rows) + 1)),
+                        "volatility": float(point.get("volatility")),
+                        "serie": f"{ewma_label} forecast",
+                    }
+                )
+            except Exception:
+                continue
+
+    if not rows and payload.get("ewma_latest_volatility") is not None:
+        try:
+            latest = float(payload["ewma_latest_volatility"])
+            reference_len = max(
+                len(payload.get("conditional_volatility", []) or []),
+                int(payload.get("effective_forecast_horizon") or 1),
+                2,
+            )
+            for index in range(1, reference_len + 1):
+                rows.append(
+                    {
+                        "x": index,
+                        "volatility": latest,
+                        "serie": f"{ewma_label} ultimo estimado",
+                    }
+                )
+        except Exception:
+            pass
+
+    rolling_window = int(payload.get("rolling_volatility_window") or 20)
+    rolling_values = pd.to_numeric(
+        pd.Series(payload.get("rolling_volatility", []) or []),
+        errors="coerce",
+    )
+
+    for index, value in enumerate(rolling_values, start=rolling_window):
+        if pd.notna(value):
+            rows.append(
+                {
+                    "x": index,
+                    "volatility": float(value),
+                    "serie": f"Volatilidad muestral rodante {rolling_window} obs.",
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def _build_ewma_comparison_figure(payload: dict, modo: str) -> go.Figure:
+    df = _extract_ewma_comparison_df(payload)
+
+    fig = go.Figure()
+
+    if not df.empty:
+        for serie in df["serie"].dropna().unique():
+            part = df[df["serie"] == serie]
+            fig.add_trace(
+                go.Scatter(
+                    x=part["x"],
+                    y=part["volatility"],
+                    mode="lines",
+                    name=str(serie),
+                    line=dict(
+                        width=2.6,
+                        dash="solid",
+                    ),
+                )
+            )
+
+    fig = style_plotly_figure(
+        fig,
+        modo=modo,
+        title="EWMA vs volatilidad muestral rodante",
+        xaxis_title="Observación",
+        yaxis_title="Volatilidad",
+        show_xgrid=True,
+        show_ygrid=True,
+    )
+    if not df.empty:
+        labels = [str(label) for label in df["serie"].dropna().unique()]
+        fig = _add_series_buttons(fig, labels) if len(labels) > 1 else _add_window_buttons(fig, df["x"].max())
+
+    return fig
+
 
 def compact_help_card(title: str, help_text: str, caption: str = ""):
     caption_html = (
@@ -319,8 +661,9 @@ def _build_forecast_figure(
             go.Scatter(
                 x=x_vals,
                 y=y_vals,
-                mode="markers",
+                mode="lines+markers",
                 name="Volatilidad esperada",
+                line=dict(width=2.6, color="#1D4ED8"),
                 marker=dict(
                     size=12 if len(forecast_df) == 1 else 9,
                     color="#1D4ED8",
@@ -343,21 +686,6 @@ def _build_forecast_figure(
                     ),
                 )
             )
-        else:
-            fig.add_trace(
-                go.Scatter(
-                    x=x_vals,
-                    y=y_vals,
-                    mode="lines",
-                    name="Trayectoria forecast",
-                    line=dict(
-                        width=2.4,
-                        dash="dot",
-                        color="#8A1538",
-                    ),
-                )
-            )
-
     fig = style_plotly_figure(
         fig,
         modo=modo,
@@ -367,6 +695,8 @@ def _build_forecast_figure(
         show_xgrid=not clean_view,
         show_ygrid=not clean_view,
     )
+    if not forecast_df.empty:
+        fig = _add_window_buttons(fig, forecast_df["step"].max())
 
     return fig
 
@@ -402,12 +732,15 @@ def _diagnostic_guide(payload: dict) -> str:
     aic = payload.get("best_model_aic")
     bic = payload.get("best_model_bic")
     jb_p = payload.get("residuals_jarque_bera_p_value")
+    arch_lm_p = payload.get("arch_lm_p_value")
     normality = str(payload.get("residuals_normality_conclusion", ""))
+    arch_lm = str(payload.get("arch_lm_conclusion", ""))
     obs = payload.get("observations")
 
     aic_text = f"{float(aic):.4f}" if aic is not None else "N/D"
     bic_text = f"{float(bic):.4f}" if bic is not None else "N/D"
     jb_text = f"{float(jb_p):.6f}" if jb_p is not None else "N/D"
+    arch_lm_text = f"{float(arch_lm_p):.6f}" if arch_lm_p is not None else "N/D"
 
     normality_read = (
         "Los residuos aún parecen alejarse de normalidad."
@@ -419,7 +752,8 @@ def _diagnostic_guide(payload: dict) -> str:
         f"Para diagnosticar el ajuste, primero identifica el modelo ganador: {model} con errores {dist_label}. "
         f"Luego revisa AIC={aic_text} y BIC={bic_text}; valores más bajos favorecen ese ajuste frente a los demás. "
         f"Después observa el test de Jarque-Bera sobre residuos estandarizados: p-value={jb_text}. "
-        f"{normality_read} Finalmente, valida que el número de observaciones ({obs}) sea razonable para sustentar el ajuste."
+        f"{normality_read} Revisa también ARCH-LM: p-value={arch_lm_text}; {arch_lm.lower()} "
+        f"Finalmente, valida que el número de observaciones ({obs}) sea razonable para sustentar el ajuste."
     )
 
 
@@ -513,6 +847,19 @@ with filtros_sidebar:
     )
     distribution = "t" if distribution_label == "t-Student" else "normal"
 
+    ewma_lambda = st.slider(
+        "Lambda EWMA",
+        min_value=0.70,
+        max_value=0.99,
+        value=0.94,
+        step=0.01,
+        key="garch_ewma_lambda",
+        help=(
+            "Factor de decaimiento para EWMA. Valores altos dan mas peso al historial; "
+            "valores bajos reaccionan mas rapido a choques recientes."
+        ),
+    )
+
     diag_options = chip_toggles([("diagnostico", "Mostrar diagnóstico", True)], key_prefix="garch_diag_options")
     mostrar_diagnostico = diag_options["diagnostico"]
 
@@ -539,6 +886,15 @@ payload, garch_error = _fetch_garch(
     mode=modo.lower(),
     forecast_horizon=forecast_horizon,
     distribution=distribution,
+    ewma_lambda=ewma_lambda,
+)
+payload = _ensure_ewma_series(
+    payload=payload,
+    ticker=ticker,
+    start=start_date.strftime("%Y-%m-%d"),
+    end=end_date.strftime("%Y-%m-%d"),
+    return_type=return_type,
+    ewma_lambda=ewma_lambda,
 )
 
 # 1. Título del módulo actualizado
@@ -698,6 +1054,29 @@ else:
 
 seccion("Volatilidad y pronóstico")
 
+render_info_card(
+    "EWMA y volatilidad muestral rodante",
+    (
+        "EWMA estima la varianza de forma recursiva: σ²t = λ · σ²t-1 + (1 − λ) · r²t-1. "
+        "Con λ=0.94 se replica el estándar RiskMetrics, pero el usuario puede cambiar λ desde el filtro lateral. "
+        "La línea EWMA se compara contra la volatilidad muestral rodante para ver si el modelo reacciona más rápido o más lento "
+        "ante choques recientes. Ventajas: es parsimonioso, no estima muchos parámetros y usa decaimiento constante. "
+        "Limitaciones: no captura asimetría como EGARCH y no impone una varianza incondicional finita como algunos modelos GARCH."
+    ),
+)
+
+ewma_comparison_df = _extract_ewma_comparison_df(payload)
+
+if ewma_comparison_df.empty:
+    st.info("No fue posible construir la serie EWMA con el backend activo ni con los retornos de mercado disponibles.")
+else:
+    fig_ewma = _build_ewma_comparison_figure(payload, modo=modo)
+    st.plotly_chart(fig_ewma, use_container_width=True)
+    plot_card_footer(
+        "Lectura: si EWMA sube más rápido que la volatilidad rodante, el modelo está reaccionando con mayor sensibilidad a choques recientes. "
+        "Si se mueve más suave, λ está dando más peso al historial."
+    )
+
 g1, g2 = st.columns(2, gap="large")
 
 with g1:
@@ -735,7 +1114,8 @@ with g2:
         modo=modo,
         caption="Sirve para anticipar si el riesgo estimado tiende a mantenerse, subir o bajar en el corto plazo.",
     )
-    forecast_df = pd.DataFrame(payload.get("forecast", []))
+    forecast_df = _extract_forecast_df(payload)
+    forecast_df.attrs["forecast_by_model"] = payload.get("forecast_by_model", {})
 
     fig_forecast = _build_forecast_figure(
         forecast_df,

@@ -191,6 +191,88 @@ def _render_module_switch() -> str:
     return st.session_state.get("fixed_income_module_view", "Renta fija")
 
 
+def _bond_sensitivity_df(bond_result: dict) -> pd.DataFrame:
+    rows = bond_result.get("sensitivity", []) or []
+    if not rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+    numeric_cols = [
+        "shock_bp",
+        "shocked_yield",
+        "price_linear_duration",
+        "price_duration_convexity",
+        "price_exact_reprice",
+        "pct_change_linear_duration",
+        "pct_change_duration_convexity",
+        "pct_change_exact_reprice",
+    ]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df.dropna(subset=["shock_bp"]).sort_values("shock_bp")
+
+
+def _build_bond_sensitivity_figure(df: pd.DataFrame, modo: str) -> go.Figure:
+    fig = go.Figure()
+    series = [
+        ("pct_change_linear_duration", "Lineal con duracion"),
+        ("pct_change_duration_convexity", "Duracion + convexidad"),
+        ("pct_change_exact_reprice", "Reprice exacto"),
+    ]
+
+    for column, label in series:
+        if column not in df.columns:
+            continue
+        fig.add_trace(
+            go.Scatter(
+                x=df["shock_bp"],
+                y=df[column],
+                mode="lines+markers",
+                name=label,
+                line=dict(width=2.4),
+            )
+        )
+
+    return style_plotly_figure(
+        fig,
+        modo=modo,
+        title="Sensibilidad precio-tasa",
+        xaxis_title="Shock de tasa (pb)",
+        yaxis_title="Cambio porcentual del precio",
+        show_xgrid=True,
+        show_ygrid=True,
+    )
+
+
+def _classify_curve_shape(maturities: list[float], yields: list[float]) -> tuple[str, float, str]:
+    curve = sorted(zip(maturities, yields), key=lambda item: item[0])
+    if len(curve) < 2:
+        return "N/D", 0.0, "No hay puntos suficientes para clasificar la curva."
+
+    short_rate = float(curve[0][1])
+    long_rate = float(curve[-1][1])
+    slope_bp = (long_rate - short_rate) * 10000.0
+
+    if slope_bp > 25:
+        return (
+            "Normal",
+            slope_bp,
+            "La curva normal suele asociarse con expectativa de crecimiento y prima positiva por plazo.",
+        )
+    if slope_bp < -25:
+        return (
+            "Invertida",
+            slope_bp,
+            "La curva invertida suele leerse como tension macro: el mercado exige mas retorno en el corto plazo que en el largo.",
+        )
+    return (
+        "Plana",
+        slope_bp,
+        "La curva plana sugiere transicion o incertidumbre: la prima por plazo es baja y las expectativas estan comprimidas.",
+    )
+
+
 def _render_bond_purchase_tab(key_prefix: str) -> None:
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -367,6 +449,22 @@ default_curve = pd.DataFrame(
         "Tasa observada": [0.030, 0.034, 0.039, 0.043, 0.047, 0.049],
     }
 )
+curve_source_note = "Curva metodologica local."
+try:
+    treasury_payload = client.get_treasury_curve()
+    treasury_points = treasury_payload.get("points", []) if isinstance(treasury_payload, dict) else []
+    if treasury_points:
+        default_curve = pd.DataFrame(
+            {
+                "Vencimiento (aÃ±os)": [float(point["maturity_years"]) for point in treasury_points],
+                "Tasa observada": [float(point["yield_rate"]) for point in treasury_points],
+            }
+        )
+        curve_source_note = treasury_payload.get("message", "Curva Treasury cargada desde backend.")
+except Exception:
+    pass
+
+st.caption(curve_source_note)
 curve_inputs = st.data_editor(
     default_curve,
     hide_index=True,
@@ -426,6 +524,7 @@ if run_analysis:
 seccion("Estructura temporal")
 if curve_result:
     params = curve_result["params"]
+    curve_shape, slope_bp, curve_implication = _classify_curve_shape(maturities, yields)
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         tarjeta_kpi("Nivel", format_percent(params["beta0"]), subtexto="Beta 0", help_text="Nivel general de tasas estimado por la curva Nelson-Siegel.")
@@ -436,18 +535,36 @@ if curve_result:
     with c4:
         tarjeta_kpi("RMSE", format_number(curve_result["rmse"], decimals=4), subtexto="Error de ajuste", help_text="Error promedio de ajuste entre tasas observadas y curva estimada.")
 
+    s1, s2 = st.columns(2)
+    with s1:
+        tarjeta_kpi(
+            "Forma curva",
+            curve_shape,
+            subtexto=f"Pendiente corto-largo: {format_number(slope_bp, decimals=1)} pb.",
+            help_text="Clasificacion basada en la diferencia entre el vencimiento mas largo y el mas corto disponible.",
+        )
+    with s2:
+        tarjeta_kpi(
+            "Puntos FRED",
+            str(len(maturities)),
+            subtexto="DGS3MO, DGS1, DGS2, DGS5, DGS10 y DGS30 cuando FRED esta disponible.",
+        )
+
     grid = np.linspace(min(maturities), max(maturities), 120)
     fitted = _nelson_siegel_curve(grid, tau=params["tau"], beta0=params["beta0"], beta1=params["beta1"], beta2=params["beta2"])
+    observed = pd.DataFrame({"maturity": maturities, "yield": yields}).sort_values("maturity")
+    interpolated = np.interp(grid, observed["maturity"].to_numpy(), observed["yield"].to_numpy())
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=maturities, y=yields, mode="markers", name="Observado", marker=dict(size=9)))
+    fig.add_trace(go.Scatter(x=grid, y=interpolated, mode="lines", name="Spot interpolada lineal", line=dict(width=2.4, dash="dot")))
     fig.add_trace(go.Scatter(x=grid, y=fitted, mode="lines", name="Nelson-Siegel", line=dict(width=3)))
-    plot_card_header("Curva ajustada", "Compara tasas observadas contra la curva suavizada Nelson-Siegel.", modo=modo)
+    plot_card_header("Curva ajustada", "Compara puntos Treasury observados, curva spot interpolada y curva suavizada Nelson-Siegel.", modo=modo)
     st.plotly_chart(
         style_plotly_figure(fig, modo=modo, title="Curva de rendimiento", xaxis_title="Vencimiento en años", yaxis_title="Tasa"),
         use_container_width=True,
     )
-    plot_card_footer("Una curva más inclinada suele anticipar mayor prima por plazo; una curva plana reduce esa compensación.")
+    plot_card_footer(curve_implication)
 else:
     render_info_card("Curva pendiente", "Ejecuta el cálculo para ver parámetros, ajuste y visualización.")
 
@@ -471,6 +588,42 @@ if bond_result:
             "Vencimiento": f"{int(maturity_years)} años",
         }
     )
+
+    sensitivity_df = _bond_sensitivity_df(bond_result)
+    if not sensitivity_df.empty:
+        seccion("Sensibilidad a tasas")
+        plot_card_header(
+            "Shocks de curva",
+            "Compara el cambio de precio ante shocks de +/-50, +/-100 y +/-200 pb usando duracion, duracion + convexidad y repricing exacto.",
+            modo=modo,
+            caption="La convexidad mejora la aproximacion cuando el movimiento de tasas es grande.",
+        )
+        st.plotly_chart(
+            _build_bond_sensitivity_figure(sensitivity_df, modo=modo),
+            use_container_width=True,
+        )
+        table_df = sensitivity_df.rename(
+            columns={
+                "shock_bp": "Shock pb",
+                "shocked_yield": "Yield shock",
+                "price_linear_duration": "Precio lineal D",
+                "price_duration_convexity": "Precio D+C",
+                "price_exact_reprice": "Precio exacto",
+                "pct_change_linear_duration": "Cambio D",
+                "pct_change_duration_convexity": "Cambio D+C",
+                "pct_change_exact_reprice": "Cambio exacto",
+            }
+        )
+        for col in ["Yield shock", "Cambio D", "Cambio D+C", "Cambio exacto"]:
+            if col in table_df.columns:
+                table_df[col] = table_df[col].map(format_percent)
+        for col in ["Precio lineal D", "Precio D+C", "Precio exacto"]:
+            if col in table_df.columns:
+                table_df[col] = table_df[col].map(format_money)
+        st.dataframe(table_df, use_container_width=True, hide_index=True)
+        plot_card_footer(
+            "Lectura: ante subidas de tasa el precio cae; la curva exacta muestra la relacion no lineal que la convexidad intenta aproximar."
+        )
 else:
     render_info_card("Bono pendiente", "Ejecuta el cálculo para obtener precio, duración y convexidad.")
 

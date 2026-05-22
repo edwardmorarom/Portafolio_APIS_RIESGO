@@ -225,6 +225,49 @@ def _comparison_table(benchmark_payload: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _macro_history_chart(macro_payload: dict, modo: str, clean_view: bool) -> go.Figure:
+    fig = go.Figure()
+    indicators = macro_payload.get("indicators") if isinstance(macro_payload, dict) else {}
+    labels = {
+        "risk_free_rate": "Tasa libre de riesgo",
+        "inflation": "Inflacion",
+        "usdcop": "USD/COP",
+    }
+    colors = {
+        "risk_free_rate": "#2563EB",
+        "inflation": "#8A1538",
+        "usdcop": "#047857",
+    }
+
+    if isinstance(indicators, dict):
+        for key, label in labels.items():
+            item = indicators.get(key)
+            history = item.get("history") if isinstance(item, dict) else None
+            if not isinstance(history, list) or not history:
+                continue
+            fig.add_trace(
+                go.Scatter(
+                    x=[point.get("date") for point in history if isinstance(point, dict)],
+                    y=[point.get("value") for point in history if isinstance(point, dict)],
+                    mode="lines",
+                    name=label,
+                    line=dict(width=2.5, color=colors.get(key)),
+                )
+            )
+
+    fig = style_plotly_figure(
+        fig,
+        modo=modo,
+        title="Historia de indicadores macro",
+        xaxis_title="Fecha",
+        yaxis_title="Valor",
+        show_xgrid=not clean_view,
+        show_ygrid=not clean_view,
+    )
+    fig.update_layout(margin=dict(l=24, r=24, t=58, b=24))
+    return fig
+
+
 def _efficiency_conclusion(benchmark_payload: dict) -> str:
     portfolio = _metric_block(benchmark_payload, "portfolio")
     benchmark = _metric_block(benchmark_payload, "benchmark")
@@ -254,39 +297,63 @@ def _efficiency_conclusion(benchmark_payload: dict) -> str:
 def _build_base100_chart(benchmark_payload: dict, modo: str, clean_view: bool) -> go.Figure:
     fig = go.Figure()
 
-    port_metrics = _metric_block(benchmark_payload, "portfolio")
-    bench_metrics = _metric_block(benchmark_payload, "benchmark")
-
-    port_cum = _pick_value(port_metrics, "cumulative_return")
-    bench_cum = _pick_value(bench_metrics, "cumulative_return")
-
-    if port_cum is not None and bench_cum is not None:
-        start_label = benchmark_payload.get("start", "Inicio")
-        end_label = benchmark_payload.get("end", "Fin")
-        x = [start_label, end_label]
-        y_port = [100, 100 * (1 + float(port_cum))]
-        y_bench = [100, 100 * (1 + float(bench_cum))]
-
+    base100_series = benchmark_payload.get("base100_series")
+    if isinstance(base100_series, list) and base100_series:
+        dates = [point.get("date") for point in base100_series if isinstance(point, dict)]
+        port_values = [point.get("portfolio") for point in base100_series if isinstance(point, dict)]
+        bench_values = [point.get("benchmark") for point in base100_series if isinstance(point, dict)]
         fig.add_trace(
             go.Scatter(
-                x=x,
-                y=y_port,
-                mode="lines+markers",
+                x=dates,
+                y=port_values,
+                mode="lines",
                 name="Portafolio",
                 line=dict(width=3, color="#2563EB"),
-                marker=dict(size=8),
             )
         )
         fig.add_trace(
             go.Scatter(
-                x=x,
-                y=y_bench,
-                mode="lines+markers",
+                x=dates,
+                y=bench_values,
+                mode="lines",
                 name="Benchmark",
                 line=dict(width=3, color="#8A1538"),
-                marker=dict(size=8),
             )
         )
+    else:
+        port_metrics = _metric_block(benchmark_payload, "portfolio")
+        bench_metrics = _metric_block(benchmark_payload, "benchmark")
+
+        port_cum = _pick_value(port_metrics, "cumulative_return")
+        bench_cum = _pick_value(bench_metrics, "cumulative_return")
+
+        if port_cum is not None and bench_cum is not None:
+            start_label = benchmark_payload.get("start", "Inicio")
+            end_label = benchmark_payload.get("end", "Fin")
+            x = [start_label, end_label]
+            y_port = [100, 100 * (1 + float(port_cum))]
+            y_bench = [100, 100 * (1 + float(bench_cum))]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=y_port,
+                    mode="lines+markers",
+                    name="Portafolio",
+                    line=dict(width=3, color="#2563EB"),
+                    marker=dict(size=8),
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=y_bench,
+                    mode="lines+markers",
+                    name="Benchmark",
+                    line=dict(width=3, color="#8A1538"),
+                    marker=dict(size=8),
+                )
+            )
 
     fig = style_plotly_figure(
         fig,
@@ -491,6 +558,16 @@ render_info_card(
 )
 
 
+plot_card_header(
+    "Indicadores macro historicos",
+    "Tasa libre de riesgo, inflacion y tipo de cambio con ultimo valor destacado en las tarjetas superiores.",
+    modo=modo,
+    caption="El backend conserva el snapshot macro en SQLite con TTL de 24 horas.",
+)
+st.plotly_chart(_macro_history_chart(macro_payload, modo=modo, clean_view=False), use_container_width=True)
+plot_card_footer(f"Estado cache macro: {macro_payload.get('cache_status', 'N/D')}.")
+
+
 seccion("Comparación contra benchmark")
 
 c1, c2, c3 = st.columns(3)
@@ -525,6 +602,28 @@ with c3:
             "Information Ratio mide si el exceso de retorno frente al benchmark compensa "
             "la desviación asumida respecto a esa referencia."
         ),
+    )
+
+port_cum_return = _pick_value(portfolio, "cumulative_return")
+bench_cum_return = _pick_value(benchmark, "cumulative_return")
+return_gap = None
+if port_cum_return is not None and bench_cum_return is not None:
+    return_gap = float(port_cum_return) - float(bench_cum_return)
+
+kret1, kret2 = st.columns(2)
+with kret1:
+    tarjeta_kpi(
+        "Rendimiento portafolio",
+        _format_pct(port_cum_return),
+        subtexto=f"Diferencia frente al benchmark: {_format_pct(return_gap)}.",
+        help_text="Rendimiento acumulado del portafolio en el horizonte seleccionado.",
+    )
+with kret2:
+    tarjeta_kpi(
+        "Rendimiento benchmark",
+        _format_pct(bench_cum_return),
+        subtexto=f"Referencia usada: {benchmark_ticker.strip() or 'ACWI'}.",
+        help_text="Rendimiento acumulado del benchmark en el mismo horizonte.",
     )
 
 plot_card_header(

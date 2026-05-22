@@ -26,7 +26,12 @@ class AlertsService:
         rsi_oversold: float = 30.0,
         stoch_overbought: float = 80.0,
         stoch_oversold: float = 20.0,
+        sma_short_window: int = 20,
+        sma_long_window: int = 50,
     ) -> dict:
+        if sma_short_window >= sma_long_window:
+            raise ValueError("sma_short_window debe ser menor que sma_long_window")
+
         df = self._load_data(ticker=ticker, start=start, end=end)
 
         close = pd.to_numeric(df["Close"], errors="coerce")
@@ -36,7 +41,8 @@ class AlertsService:
         out = pd.DataFrame(index=df.index)
         out["close"] = close
 
-        out["sma_20"] = close.rolling(20).mean()
+        out["sma_short"] = close.rolling(sma_short_window).mean()
+        out["sma_long"] = close.rolling(sma_long_window).mean()
         out["ema_20"] = close.ewm(span=20, adjust=False).mean()
 
         delta = close.diff()
@@ -104,6 +110,7 @@ class AlertsService:
 
         items.append({
             "indicator": "RSI",
+            "rule": "rsi_extreme_zone",
             "status": rsi_status,
             "signal": rsi_signal,
             "severity": rsi_severity,
@@ -144,6 +151,7 @@ class AlertsService:
 
         items.append({
             "indicator": "MACD",
+            "rule": "macd_signal_cross",
             "status": macd_status,
             "signal": macd_signal_name,
             "severity": macd_severity,
@@ -179,6 +187,7 @@ class AlertsService:
 
         items.append({
             "indicator": "Bollinger",
+            "rule": "bollinger_band_touch",
             "status": bb_status,
             "signal": bb_signal,
             "severity": bb_severity,
@@ -190,35 +199,36 @@ class AlertsService:
         })
 
         # Moving averages
-        ma_diff = float(last["sma_20"] - last["ema_20"])
+        ma_diff = float(last["sma_short"] - last["sma_long"])
         ma_status = "normal"
         ma_signal = "sin_senal"
         ma_severity = "baja"
         ma_general = "No se detecta cruce reciente entre medias móviles."
-        ma_stat = f"SMA20-EMA20={ma_diff:.4f}."
+        ma_stat = f"SMA{sma_short_window}-SMA{sma_long_window}={ma_diff:.4f}."
 
-        if prev["sma_20"] <= prev["ema_20"] and last["sma_20"] > last["ema_20"]:
+        if prev["sma_short"] <= prev["sma_long"] and last["sma_short"] > last["sma_long"]:
             ma_status = "alert"
-            ma_signal = "cruce_alcista_medias"
+            ma_signal = "golden_cross"
             ma_severity = "media"
             ma_general = "Se observa un cruce alcista entre medias móviles."
-            ma_stat = "SMA20 cruzó por encima de EMA20."
+            ma_stat = f"SMA{sma_short_window} cruzo por encima de SMA{sma_long_window}."
             total_alerts += 1
-        elif prev["sma_20"] >= prev["ema_20"] and last["sma_20"] < last["ema_20"]:
+        elif prev["sma_short"] >= prev["sma_long"] and last["sma_short"] < last["sma_long"]:
             ma_status = "alert"
-            ma_signal = "cruce_bajista_medias"
+            ma_signal = "death_cross"
             ma_severity = "media"
             ma_general = "Se observa un cruce bajista entre medias móviles."
-            ma_stat = "SMA20 cruzó por debajo de EMA20."
+            ma_stat = f"SMA{sma_short_window} cruzo por debajo de SMA{sma_long_window}."
             total_alerts += 1
         elif abs(ma_diff) < 0.1:
             ma_status = "watch"
             ma_signal = "cercano_cruce_medias"
             ma_general = "Las medias están muy próximas entre sí."
-            ma_stat = f"SMA20-EMA20={ma_diff:.4f}, cercana a cero."
+            ma_stat = f"SMA{sma_short_window}-SMA{sma_long_window}={ma_diff:.4f}, cercana a cero."
 
         items.append({
             "indicator": "MovingAverages",
+            "rule": "sma_golden_death_cross",
             "status": ma_status,
             "signal": ma_signal,
             "severity": ma_severity,
@@ -259,6 +269,7 @@ class AlertsService:
 
         items.append({
             "indicator": "Stochastic",
+            "rule": "stochastic_kd_extreme_cross",
             "status": stoch_status,
             "signal": stoch_signal,
             "severity": stoch_severity,

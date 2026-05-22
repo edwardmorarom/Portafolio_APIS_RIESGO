@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import html
 import math
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from services.api_client import ApiClientError, get_api_client
 from ui.cards import render_info_card, render_meta_row
@@ -108,6 +108,8 @@ def _fetch_alerts_for_asset(
     rsi_oversold: float,
     stoch_overbought: float,
     stoch_oversold: float,
+    sma_short_window: int,
+    sma_long_window: int,
 ) -> tuple[dict, str | None]:
     client = get_api_client()
     try:
@@ -119,6 +121,8 @@ def _fetch_alerts_for_asset(
             rsi_oversold=rsi_oversold,
             stoch_overbought=stoch_overbought,
             stoch_oversold=stoch_oversold,
+            sma_short_window=sma_short_window,
+            sma_long_window=sma_long_window,
         )
         if not isinstance(payload, dict):
             return {}, f"Respuesta no válida para {ticker}: {type(payload).__name__}"
@@ -133,9 +137,9 @@ def _infer_signal_status(alert: dict) -> tuple[str, str, str]:
     action = _safe_str(_pick_value(alert, "signal", "action", "status", "state")).lower()
     title = _safe_str(_pick_value(alert, "title", "name", "indicator", "type")).lower()
 
-    if any(x in action for x in ["buy", "compra", "bull", "alcista"]):
+    if any(x in action for x in ["buy", "compra", "bull", "alcista", "golden_cross"]):
         return "Compra", "#15803D", "#DCFCE7"
-    if any(x in action for x in ["sell", "venta", "bear", "bajista"]):
+    if any(x in action for x in ["sell", "venta", "bear", "bajista", "death_cross"]):
         return "Venta", "#B91C1C", "#FEE2E2"
     if any(x in action for x in ["neutral", "hold", "espera", "sin_senal", "sin señal"]):
         return "Neutral", "#475569", "#E2E8F0"
@@ -206,8 +210,8 @@ def _human_value(alert: dict) -> str:
 def _render_signal_card(alert: dict):
     status, badge_color, badge_bg = _infer_signal_status(alert)
     title = _human_title(alert)
-    description = _human_description(alert)
-    signal_date = _human_date(alert)
+    description = _safe_str(_pick_value(alert, "signal", "action", "state")).replace("_", " ").title()
+    signal_date = _safe_str(_pick_value(alert, "rule", "category", "source")).replace("_", " ").title()
     signal_value = _human_value(alert)
 
     accent = {
@@ -228,6 +232,8 @@ def _render_signal_card(alert: dict):
         "Neutral": "🟡",
     }.get(status, "🟡")
 
+    icon = "*"
+
     card_html = f"""
     <div style="
         background: {soft_bg};
@@ -236,7 +242,7 @@ def _render_signal_card(alert: dict):
         border-radius: 20px;
         box-shadow: 0 14px 28px rgba(15,23,42,0.07);
         padding: 1rem 1rem 1rem 1rem;
-        min-height: 260px;
+        min-height: 170px;
         font-family: Arial, sans-serif;
     ">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.8rem;">
@@ -262,7 +268,7 @@ def _render_signal_card(alert: dict):
         </div>
 
         <div style="
-            font-size:0.94rem;
+            font-size:0.90rem;
             font-weight:700;
             color:#334155;
             margin-bottom:0.85rem;
@@ -284,7 +290,7 @@ def _render_signal_card(alert: dict):
                 padding: 0.65rem 0.75rem;
             ">
                 <div style="font-size:0.74rem;color:#64748B;font-weight:800;text-transform:uppercase;letter-spacing:0;">
-                    Fecha
+                    Regla
                 </div>
                 <div style="font-size:0.86rem;color:#0F172A;font-weight:700;margin-top:0.18rem;">
                     {signal_date}
@@ -316,12 +322,12 @@ def _render_signal_card(alert: dict):
             color:#334155;
             font-weight:600;
         ">
-            Estado actual: <span style="color:{accent};font-weight:800;">{status.lower()}</span>
+            Estado: <span style="color:{accent};font-weight:800;">{status.lower()}</span>
         </div>
     </div>
     """
 
-    components.html(card_html, height=300, scrolling=False)
+    st.markdown(card_html, unsafe_allow_html=True)
 
 
 def _build_summary_rows(asset_results: list[dict]) -> pd.DataFrame:
@@ -352,6 +358,212 @@ def _build_summary_rows(asset_results: list[dict]) -> pd.DataFrame:
         )
 
     return pd.DataFrame(rows)
+
+
+def _clean_label(value) -> str:
+    return html.escape(_safe_str(value).replace("_", " ").strip().title())
+
+
+def _render_signal_card(alert: dict):
+    status, badge_color, badge_bg = _infer_signal_status(alert)
+    title = html.escape(_human_title(alert))
+    description = html.escape(_human_description(alert))
+    rule = _clean_label(_pick_value(alert, "rule", "category", "source", "indicator", "type"))
+    signal_date = html.escape(_human_date(alert))
+    signal_value = html.escape(_human_value(alert))
+
+    accent = {
+        "Compra": "#0F8A4B",
+        "Venta": "#B42318",
+        "Neutral": "#52606D",
+    }.get(status, "#52606D")
+
+    st.markdown(
+        f"""
+        <div class="signal-card" style="--accent:{accent}; --badge:{badge_color}; --badge-bg:{badge_bg};">
+            <div class="signal-card__top">
+                <div>
+                    <div class="signal-card__eyebrow">{rule}</div>
+                    <div class="signal-card__title">{title}</div>
+                </div>
+                <span class="signal-card__badge">{html.escape(status.upper())}</span>
+            </div>
+            <div class="signal-card__body">{description}</div>
+            <div class="signal-card__meta">
+                <div>
+                    <span>Fecha</span>
+                    <strong>{signal_date}</strong>
+                </div>
+                <div>
+                    <span>Valor</span>
+                    <strong>{signal_value}</strong>
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _signal_counts(alerts: list[dict]) -> tuple[int, int, int]:
+    counts = {"Compra": 0, "Venta": 0, "Neutral": 0}
+    for alert in alerts:
+        status, _, _ = _infer_signal_status(alert)
+        counts[status] = counts.get(status, 0) + 1
+    return counts["Compra"], counts["Venta"], counts["Neutral"]
+
+
+def _render_asset_signal_header(item: dict):
+    alerts = item.get("alerts", [])
+    n_buy, n_sell, n_neutral = _signal_counts(alerts)
+    title = html.escape(f"{item['name']} ({item['ticker']})")
+
+    st.markdown(
+        f"""
+        <div class="signal-asset-header">
+            <div>
+                <div class="signal-asset-header__label">Activo monitoreado</div>
+                <div class="signal-asset-header__title">{title}</div>
+            </div>
+            <div class="signal-asset-header__counts">
+                <span class="is-buy">{n_buy} compra</span>
+                <span class="is-sell">{n_sell} venta</span>
+                <span class="is-neutral">{n_neutral} neutral</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _inject_signal_styles():
+    st.markdown(
+        """
+        <style>
+        .signal-asset-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 1.15rem 0 0.75rem;
+            padding: 0.95rem 1rem;
+            border: 1px solid rgba(15, 23, 42, 0.10);
+            border-radius: 8px;
+            background: #FFFFFF;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+        }
+        .signal-asset-header__label {
+            color: #64748B;
+            font-size: 0.76rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .signal-asset-header__title {
+            color: #0F172A;
+            font-size: 1.02rem;
+            font-weight: 850;
+            margin-top: 0.1rem;
+        }
+        .signal-asset-header__counts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            justify-content: flex-end;
+        }
+        .signal-asset-header__counts span,
+        .signal-card__badge {
+            border-radius: 999px;
+            font-size: 0.74rem;
+            font-weight: 850;
+            padding: 0.34rem 0.62rem;
+            white-space: nowrap;
+        }
+        .is-buy { background: #EAFBF1; color: #0F8A4B; }
+        .is-sell { background: #FFF0EE; color: #B42318; }
+        .is-neutral { background: #EEF2F6; color: #52606D; }
+        .signal-card {
+            min-height: 180px;
+            margin-bottom: 0.9rem;
+            padding: 1rem;
+            border: 1px solid rgba(15, 23, 42, 0.10);
+            border-left: 5px solid var(--accent);
+            border-radius: 8px;
+            background: #FFFFFF;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        }
+        .signal-card__top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .signal-card__eyebrow {
+            color: #64748B;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .signal-card__title {
+            color: #0F172A;
+            font-size: 1rem;
+            font-weight: 850;
+            line-height: 1.25;
+            margin-top: 0.12rem;
+        }
+        .signal-card__badge {
+            background: var(--badge-bg);
+            color: var(--badge);
+            border: 1px solid color-mix(in srgb, var(--badge) 20%, transparent);
+        }
+        .signal-card__body {
+            color: #334155;
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.45;
+            min-height: 3.8rem;
+        }
+        .signal-card__meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.55rem;
+            margin-top: 0.85rem;
+        }
+        .signal-card__meta div {
+            border: 1px solid rgba(148, 163, 184, 0.20);
+            border-radius: 8px;
+            padding: 0.58rem 0.65rem;
+            background: #F8FAFC;
+        }
+        .signal-card__meta span {
+            display: block;
+            color: #64748B;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .signal-card__meta strong {
+            display: block;
+            color: #0F172A;
+            font-size: 0.86rem;
+            margin-top: 0.12rem;
+        }
+        @media (max-width: 760px) {
+            .signal-asset-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+            .signal-asset-header__counts {
+                justify-content: flex-start;
+            }
+            .signal-card__top {
+                flex-direction: column;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 modo, filtros_sidebar = setup_dashboard_page(
@@ -401,6 +613,9 @@ with filtros_sidebar:
     rsi_oversold = st.slider("RSI sobreventa", 10, 50, 30, 1, key="signals_rsi_oversold")
     stoch_overbought = st.slider("Estocástico sobrecompra", 50, 95, 80, 1, key="signals_stoch_overbought")
     stoch_oversold = st.slider("Estocástico sobreventa", 5, 50, 20, 1, key="signals_stoch_oversold")
+    sma_short_window = st.slider("SMA corta", 5, 80, 20, 1, key="signals_sma_short_window")
+    sma_long_min = max(int(sma_short_window) + 1, 20)
+    sma_long_window = st.slider("SMA larga", sma_long_min, 260, max(50, sma_long_min), 1, key="signals_sma_long_window")
 
 start_date, end_date = _resolve_dates(
     horizonte=horizonte,
@@ -412,6 +627,8 @@ start_date, end_date = _resolve_dates(
 if start_date >= end_date:
     st.error("La fecha inicial debe ser menor que la fecha final.")
     st.stop()
+
+_inject_signal_styles()
 
 header_dashboard(
     "Mód. 7: Señales técnicas",
@@ -442,6 +659,8 @@ for asset in portfolio_assets:
         rsi_oversold=float(rsi_oversold),
         stoch_overbought=float(stoch_overbought),
         stoch_oversold=float(stoch_oversold),
+        sma_short_window=int(sma_short_window),
+        sma_long_window=int(sma_long_window),
     )
 
     if err:
@@ -456,6 +675,7 @@ render_meta_row(
     [
         ("Horizonte", horizonte),
         ("RSI", f"{rsi_oversold}/{rsi_overbought}"),
+        ("SMA corta/larga", f"{sma_short_window}/{sma_long_window}"),
         ("Estocástico", f"{stoch_oversold}/{stoch_overbought}"),
         ("Activos", str(len(portfolio_assets))),
     ]
@@ -494,8 +714,8 @@ render_info_card(
 seccion("Panel de alertas por activo")
 
 for item in asset_results:
-    st.markdown(f"### {item['name']} ({item['ticker']})")
     alerts = item.get("alerts", [])
+    _render_asset_signal_header(item)
 
     if not alerts:
         render_info_card(

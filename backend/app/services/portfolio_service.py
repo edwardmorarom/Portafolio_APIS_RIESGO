@@ -183,6 +183,11 @@ class PortfolioService:
             return float(np.exp(daily_return * 252) - 1.0)
         return float(daily_return * 252)
 
+    def _daily_return_from_annual(self, annual_return: float, return_type: str) -> float:
+        if return_type == "log":
+            return float(np.log1p(annual_return) / 252)
+        return float(annual_return / 252)
+
     def _portfolio_metrics(
         self,
         weights: np.ndarray,
@@ -265,39 +270,109 @@ class PortfolioService:
 
         return simulated, weights_store
 
-    def _build_frontier_points(self, simulated: list[dict]) -> list[dict]:
-        if not simulated:
-            return []
+    def _optimize_target_variance(
+        self,
+        tickers: list[str],
+        mean_daily: pd.Series,
+        cov_daily: pd.DataFrame,
+        rf_annual: float,
+        return_type: str,
+        target_return_annual: float,
+        allow_short_selling: bool = False,
+    ) -> tuple[np.ndarray, dict]:
+        num_assets = len(tickers)
+        target_daily = self._daily_return_from_annual(target_return_annual, return_type=return_type)
 
-        df = pd.DataFrame(simulated)
-        df = df.replace([np.inf, -np.inf], np.nan).dropna()
+        def objective(weights: np.ndarray) -> float:
+            return float(weights.T @ cov_daily.values @ weights)
 
-        if df.empty:
-            return []
+        constraints = [
+            {"type": "eq", "fun": lambda x: np.sum(x) - 1.0},
+            {"type": "eq", "fun": lambda x: float(np.sum(mean_daily.values * x) - target_daily)},
+        ]
+        bounds = (
+            tuple((-1.0, 1.0) for _ in range(num_assets))
+            if allow_short_selling
+            else tuple((0.0, 1.0) for _ in range(num_assets))
+        )
+        init_guess = np.repeat(1.0 / num_assets, num_assets)
 
-        df = df.sort_values(["volatility", "return"]).reset_index(drop=True)
+        result = minimize(
+            objective,
+            init_guess,
+            method="SLSQP",
+            bounds=bounds,
+            constraints=constraints,
+            options={"maxiter": 1000, "ftol": 1e-10},
+        )
+
+        if not result.success:
+            raise ValueError(str(result.message))
+
+        weights = np.asarray(result.x, dtype=float)
+        metrics = self._portfolio_metrics(
+            weights=weights,
+            mean_daily=mean_daily,
+            cov_daily=cov_daily,
+            rf_annual=rf_annual,
+            return_type=return_type,
+        )
+        return weights, metrics
+
+    def _build_qp_frontier_points(
+        self,
+        tickers: list[str],
+        mean_daily: pd.Series,
+        cov_daily: pd.DataFrame,
+        rf_annual: float,
+        return_type: str,
+        allow_short_selling: bool = False,
+        points: int = 40,
+    ) -> list[dict]:
+        annual_returns = [
+            self._annual_return_from_daily(float(value), return_type=return_type)
+            for value in mean_daily.values
+        ]
+        lower = float(min(annual_returns))
+        upper = float(max(annual_returns))
+
+        if np.isclose(lower, upper):
+            targets = [lower]
+        else:
+            targets = np.linspace(lower, upper, points)
 
         frontier_rows: list[dict] = []
-        best_return_so_far = -np.inf
+        seen: set[tuple[float, float]] = set()
 
-        for _, row in df.iterrows():
-            current_return = float(row["return"])
-
-            if current_return > best_return_so_far:
-                frontier_rows.append(
-                    {
-                        "volatility": float(row["volatility"]),
-                        "return": current_return,
-                        "sharpe": float(row["sharpe"]),
-                    }
+        for target in targets:
+            try:
+                weights, metrics = self._optimize_target_variance(
+                    tickers=tickers,
+                    mean_daily=mean_daily,
+                    cov_daily=cov_daily,
+                    rf_annual=rf_annual,
+                    return_type=return_type,
+                    target_return_annual=float(target),
+                    allow_short_selling=allow_short_selling,
                 )
-                best_return_so_far = current_return
+            except Exception:
+                continue
 
-        if len(frontier_rows) > 300:
-            indexes = np.linspace(0, len(frontier_rows) - 1, 300).astype(int)
-            frontier_rows = [frontier_rows[i] for i in indexes]
+            key = (round(float(metrics["volatility"]), 8), round(float(metrics["return"]), 8))
+            if key in seen:
+                continue
+            seen.add(key)
+            frontier_rows.append(
+                {
+                    "volatility": float(metrics["volatility"]),
+                    "return": float(metrics["return"]),
+                    "sharpe": float(metrics["sharpe"]),
+                    "target_return": float(target),
+                    "weights": self._weights_payload(tickers, weights),
+                }
+            )
 
-        return frontier_rows
+        return sorted(frontier_rows, key=lambda item: item["volatility"])
 
     def _optimize_min_variance(
         self,
@@ -306,21 +381,15 @@ class PortfolioService:
         cov_daily: pd.DataFrame,
         rf_annual: float,
         return_type: str,
+        allow_short_selling: bool = False,
     ) -> tuple[np.ndarray, dict]:
         num_assets = len(tickers)
 
         def objective(weights: np.ndarray) -> float:
-            metrics = self._portfolio_metrics(
-                weights=weights,
-                mean_daily=mean_daily,
-                cov_daily=cov_daily,
-                rf_annual=rf_annual,
-                return_type=return_type,
-            )
-            return float(metrics["volatility"])
+            return float(weights.T @ cov_daily.values @ weights)
 
         constraints = [{"type": "eq", "fun": lambda x: np.sum(x) - 1.0}]
-        bounds = tuple((0.0, 1.0) for _ in range(num_assets))
+        bounds = tuple((-1.0, 1.0) for _ in range(num_assets)) if allow_short_selling else tuple((0.0, 1.0) for _ in range(num_assets))
         init_guess = np.repeat(1.0 / num_assets, num_assets)
 
         result = minimize(
@@ -352,6 +421,7 @@ class PortfolioService:
         cov_daily: pd.DataFrame,
         rf_annual: float,
         return_type: str,
+        allow_short_selling: bool = False,
     ) -> tuple[np.ndarray, dict]:
         num_assets = len(tickers)
 
@@ -366,7 +436,7 @@ class PortfolioService:
             return -float(metrics["sharpe"])
 
         constraints = [{"type": "eq", "fun": lambda x: np.sum(x) - 1.0}]
-        bounds = tuple((0.0, 1.0) for _ in range(num_assets))
+        bounds = tuple((-1.0, 1.0) for _ in range(num_assets)) if allow_short_selling else tuple((0.0, 1.0) for _ in range(num_assets))
         init_guess = np.repeat(1.0 / num_assets, num_assets)
 
         result = minimize(
@@ -395,24 +465,32 @@ class PortfolioService:
         self,
         target_return_annual: float | None,
         tickers: list[str],
-        simulated: list[dict],
-        weights_store: list[np.ndarray],
+        mean_daily: pd.Series,
+        cov_daily: pd.DataFrame,
+        rf_annual: float,
+        return_type: str,
+        allow_short_selling: bool,
     ) -> dict | None:
-        if target_return_annual is None or not simulated or not weights_store:
+        if target_return_annual is None:
             return None
 
-        df = pd.DataFrame(simulated)
-        if df.empty or "return" not in df.columns:
+        try:
+            selected_weights, selected_metrics = self._optimize_target_variance(
+                tickers=tickers,
+                mean_daily=mean_daily,
+                cov_daily=cov_daily,
+                rf_annual=rf_annual,
+                return_type=return_type,
+                target_return_annual=target_return_annual,
+                allow_short_selling=allow_short_selling,
+            )
+        except Exception:
             return None
-
-        idx = int((df["return"] - target_return_annual).abs().idxmin())
-        selected_weights = weights_store[idx]
-        selected_row = simulated[idx]
 
         return {
             "target_return_annual": float(target_return_annual),
-            "achieved_return_annual": float(selected_row["return"]),
-            "volatility_annual": float(selected_row["volatility"]),
+            "achieved_return_annual": float(selected_metrics["return"]),
+            "volatility_annual": float(selected_metrics["volatility"]),
             "weights": self._weights_payload(tickers, selected_weights),
         }
 
@@ -695,6 +773,113 @@ class PortfolioService:
 
         return top
 
+    def _build_short_selling_comparison(
+        self,
+        tickers: list[str],
+        mean_daily: pd.Series,
+        cov_daily: pd.DataFrame,
+        rf_annual: float,
+        return_type: str,
+    ) -> dict:
+        try:
+            restricted_min_w, restricted_min_m = self._optimize_min_variance(
+                tickers=tickers,
+                mean_daily=mean_daily,
+                cov_daily=cov_daily,
+                rf_annual=rf_annual,
+                return_type=return_type,
+                allow_short_selling=False,
+            )
+            restricted_sharpe_w, restricted_sharpe_m = self._optimize_max_sharpe(
+                tickers=tickers,
+                mean_daily=mean_daily,
+                cov_daily=cov_daily,
+                rf_annual=rf_annual,
+                return_type=return_type,
+                allow_short_selling=False,
+            )
+            short_min_w, short_min_m = self._optimize_min_variance(
+                tickers=tickers,
+                mean_daily=mean_daily,
+                cov_daily=cov_daily,
+                rf_annual=rf_annual,
+                return_type=return_type,
+                allow_short_selling=True,
+            )
+            short_sharpe_w, short_sharpe_m = self._optimize_max_sharpe(
+                tickers=tickers,
+                mean_daily=mean_daily,
+                cov_daily=cov_daily,
+                rf_annual=rf_annual,
+                return_type=return_type,
+                allow_short_selling=True,
+            )
+        except Exception as exc:
+            return {
+                "available": False,
+                "message": f"No fue posible comparar restricciones de no negatividad: {exc}",
+            }
+
+        def _negative_assets(weights: np.ndarray) -> list[str]:
+            return [tickers[i] for i, weight in enumerate(weights) if float(weight) < -1e-6]
+
+        def _zero_assets(weights: np.ndarray) -> list[str]:
+            return [tickers[i] for i, weight in enumerate(weights) if abs(float(weight)) <= 1e-4]
+
+        restricted_frontier = self._build_qp_frontier_points(
+            tickers=tickers,
+            mean_daily=mean_daily,
+            cov_daily=cov_daily,
+            rf_annual=rf_annual,
+            return_type=return_type,
+            allow_short_selling=False,
+        )
+        short_frontier = self._build_qp_frontier_points(
+            tickers=tickers,
+            mean_daily=mean_daily,
+            cov_daily=cov_daily,
+            rf_annual=rf_annual,
+            return_type=return_type,
+            allow_short_selling=True,
+        )
+        variance_cost = float(restricted_min_m["volatility"] ** 2 - short_min_m["volatility"] ** 2)
+        sharpe_cost = float(short_sharpe_m["sharpe"] - restricted_sharpe_m["sharpe"])
+
+        return {
+            "available": True,
+            "methodology": (
+                "Cada frontera se resuelve como QP: minimizar w' Sigma w sujeto a retorno objetivo, "
+                "suma de pesos igual a 1 y, en la version B, w_i >= 0."
+            ),
+            "restricted": {
+                "description": "Sin short selling: pesos entre 0% y 100%.",
+                "restriction": "w_i >= 0",
+                "frontier": restricted_frontier,
+                "min_variance": self._portfolio_payload(tickers, restricted_min_w, restricted_min_m),
+                "max_sharpe": self._portfolio_payload(tickers, restricted_sharpe_w, restricted_sharpe_m),
+                "zero_weight_assets": sorted(set(_zero_assets(restricted_min_w) + _zero_assets(restricted_sharpe_w))),
+            },
+            "with_short_selling": {
+                "description": "Con short selling metodologico: pesos entre -100% y 100%, suma total 100%.",
+                "restriction": "w_i in R con bounds numericos [-100%, 100%]",
+                "frontier": short_frontier,
+                "min_variance": self._portfolio_payload(tickers, short_min_w, short_min_m),
+                "max_sharpe": self._portfolio_payload(tickers, short_sharpe_w, short_sharpe_m),
+                "negative_weight_assets": sorted(set(_negative_assets(short_min_w) + _negative_assets(short_sharpe_w))),
+            },
+            "cost_of_no_short_constraint": {
+                "variance_cost_min_variance": variance_cost,
+                "sharpe_opportunity_cost": sharpe_cost,
+                "return_gap_max_sharpe": float(short_sharpe_m["return"] - restricted_sharpe_m["return"]),
+                "volatility_gap_min_variance": float(restricted_min_m["volatility"] - short_min_m["volatility"]),
+            },
+            "interpretation": (
+                "Si el caso con short selling mejora Sharpe o reduce volatilidad, la restriccion de no negatividad "
+                "esta limitando la frontera. Si no mejora de forma relevante, el portafolio long-only es suficiente "
+                "y mas defendible para un inversionista tradicional."
+            ),
+        }
+
     def build_efficient_frontier(
         self,
         tickers: list[str],
@@ -705,6 +890,7 @@ class PortfolioService:
         return_type: str,
         target_return_annual: float | None = None,
         risk_profile: str | None = None,
+        allow_short_selling: bool = False,
     ) -> dict:
         returns_df = self._build_returns_matrix(
             tickers=tickers,
@@ -739,7 +925,14 @@ class PortfolioService:
             return_type=return_type,
         )
 
-        frontier = self._build_frontier_points(simulated)
+        frontier = self._build_qp_frontier_points(
+            tickers=effective_tickers,
+            mean_daily=mean_daily,
+            cov_daily=cov_daily,
+            rf_annual=rf_annual,
+            return_type=return_type,
+            allow_short_selling=allow_short_selling,
+        )
 
         min_var_weights, min_var_metrics = self._optimize_min_variance(
             tickers=effective_tickers,
@@ -747,6 +940,7 @@ class PortfolioService:
             cov_daily=cov_daily,
             rf_annual=rf_annual,
             return_type=return_type,
+            allow_short_selling=allow_short_selling,
         )
 
         max_sharpe_weights, max_sharpe_metrics = self._optimize_max_sharpe(
@@ -755,13 +949,17 @@ class PortfolioService:
             cov_daily=cov_daily,
             rf_annual=rf_annual,
             return_type=return_type,
+            allow_short_selling=allow_short_selling,
         )
 
         target_portfolio = self._select_target_return_portfolio(
             target_return_annual=target_return_annual,
             tickers=effective_tickers,
-            simulated=simulated,
-            weights_store=weights_store,
+            mean_daily=mean_daily,
+            cov_daily=cov_daily,
+            rf_annual=rf_annual,
+            return_type=return_type,
+            allow_short_selling=allow_short_selling,
         )
 
         profile_portfolio = self._select_profile_portfolio(
@@ -801,6 +999,17 @@ class PortfolioService:
             "frontier": frontier,
             "simulated_portfolios": simulated,
             "correlation_matrix": corr_matrix,
+            "optimization_method": "SLSQP QP: min w' Sigma w sujeto a mu'w = target, sum(w)=1 y bounds de no negatividad/short selling.",
+            "frontier_method": "qp_target_return_grid",
+            "simulation_count": int(n_portfolios),
+            "formulation": {
+                "objective": "minimize w.T @ Sigma @ w",
+                "constraints": [
+                    "mu.T @ w == target_return",
+                    "sum(w) == 1",
+                    "w_i >= 0 cuando allow_short_selling=False",
+                ],
+            },
             "observations": int(len(returns_df)),
             "n_assets": int(len(effective_tickers)),
             "min_variance": min_variance_payload,
@@ -820,5 +1029,13 @@ class PortfolioService:
                 min_variance_payload=min_variance_payload,
                 max_sharpe_payload=max_sharpe_payload,
                 max_return_payload=max_return_payload,
+            ),
+            "allow_short_selling": bool(allow_short_selling),
+            "short_selling_comparison": self._build_short_selling_comparison(
+                tickers=effective_tickers,
+                mean_daily=mean_daily,
+                cov_daily=cov_daily,
+                rf_annual=rf_annual,
+                return_type=return_type,
             ),
         }

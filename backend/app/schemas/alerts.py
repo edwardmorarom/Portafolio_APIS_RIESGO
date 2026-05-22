@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class AlertsResponseItem(BaseModel):
     indicator: str = Field(..., description="Nombre del indicador")
+    rule: str = Field(..., description="Regla tecnica evaluada")
     status: str = Field(..., description="Estado: normal, watch o alert")
     signal: str = Field(..., description="Tipo de señal")
     severity: str = Field(..., description="Nivel de severidad")
@@ -29,6 +30,8 @@ class AlertsRequestParams(BaseModel):
     rsi_oversold: float = Field(default=30.0, ge=0.0, le=50.0)
     stoch_overbought: float = Field(default=80.0, ge=50.0, le=100.0)
     stoch_oversold: float = Field(default=20.0, ge=0.0, le=50.0)
+    sma_short_window: int = Field(default=20, ge=2, le=120)
+    sma_long_window: int = Field(default=50, ge=5, le=260)
 
     @field_validator("ticker")
     @classmethod
@@ -37,3 +40,9 @@ class AlertsRequestParams(BaseModel):
         if not value:
             raise ValueError("ticker no puede ser vacio")
         return value
+
+    @model_validator(mode="after")
+    def validate_moving_average_windows(self):
+        if self.sma_short_window >= self.sma_long_window:
+            raise ValueError("sma_short_window debe ser menor que sma_long_window")
+        return self

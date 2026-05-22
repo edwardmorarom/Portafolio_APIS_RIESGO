@@ -37,38 +37,45 @@ El proyecto incluye actualmente:
 - Job para guardar la ultima optimizacion en JSON.
 - GitHub Actions para CI.
 - GitHub Actions programado para actualizacion de Perri.
+- Render blueprint para despliegue backend.
 - Dockerfile del backend.
 - docker-compose.yml.
 - Tests con pytest y TestClient.
 - Machine Learning con train, joblib, Singleton y endpoint predictivo.
+- Persistencia de logs de prediccion ML.
+- Persistencia de portafolios guardados.
 - Modelo ML persistido en backend/app/ml/model.joblib.
 - Endpoints /api/v1/ml/status y /api/v1/ml/predict.
 - Nelson-Siegel para curva de rendimiento.
+- Curva Treasury desde FRED con fallback metodologico identificado.
 - Metricas de bono: precio, duracion Macaulay, duracion modificada y convexidad.
+- Sensibilidad de bono ante shocks de +/-50, +/-100 y +/-200 pb con duracion, duracion + convexidad y repricing exacto.
+- Compra simulada de bono TES.
 - Black-Scholes para opciones europeas.
 - Cinco Greeks: delta, gamma, vega, theta y rho.
 - Paridad put-call validada por test.
 - Stress testing con shocks de tasa, mercado y volatilidad.
 - CAPM.
 - Markowitz.
+- Frontera eficiente Markowitz por QP/SLSQP con comparacion long-only vs short selling.
 - VaR/CVaR.
 - Backtesting Kupiec.
-- GARCH.
+- EWMA, ARCH, GARCH y EGARCH.
+- Diagnostico ARCH-LM y pronostico multi-paso de volatilidad.
 - Macro y benchmark.
 - RoboAdvisor.
 - Login basico.
 - KYC / preferencias de inversionista.
-- Dashboard Streamlit con paginas 0 a 12.
+- Reporte ejecutivo PDF.
+- Chatbot IA configurable con proveedor local, Gemini o Groq.
+- Dashboard Streamlit con paginas financieras y reporte.
 
 Pendiente o parcial:
 
-- Deploy final backend.
-- Deploy final frontend.
-- Chatbot con IA externa integrada.
+- Deploy final backend/frontend con URL publica real.
 - Admin dashboard completo.
 - Roles robustos.
-- Reportes PDF.
-- Informe ejecutivo final.
+- Informe ejecutivo final de sustentacion.
 
 ---
 
@@ -788,6 +795,8 @@ Documentos recomendados:
 ```text
 docs/01_arquitectura_tecnica.md
 docs/02_endpoints_backend_frontend.md
+docs/03_cierre_rubrica.md
+docs/04_guion_sustentacion.md
 ```
 
 ---

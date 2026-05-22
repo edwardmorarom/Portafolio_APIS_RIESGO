@@ -1,56 +1,47 @@
-﻿from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
-from app.ml.predictor import MODEL_TARGET, MODEL_TYPE, MODEL_VERSION, MLPredictor
-from app.schemas.ml_schema import MLPredictionRequest, MLPredictionResponse
+from app.db.database import get_db
+from app.db.models import PredictionLog
+from app.ml.predictor import MLPredictor
+from app.schemas.ml_schema import MLAnomalyDetectionRequest, MLAnomalyDetectionResponse
 
 
 router = APIRouter(tags=["Machine Learning"])
 
-predictor = MLPredictor()
+
+def get_predictor() -> MLPredictor:
+    return MLPredictor()
 
 
 @router.get("/status")
-def get_ml_status() -> dict:
+def get_ml_status(predictor: MLPredictor = Depends(get_predictor)) -> dict:
     return predictor.metadata()
 
 
-@router.post("/predict", response_model=MLPredictionResponse)
-def predict_return(payload: MLPredictionRequest):
+@router.post("/predict", response_model=MLAnomalyDetectionResponse)
+def predict_anomalies(
+    payload: MLAnomalyDetectionRequest,
+    predictor: MLPredictor = Depends(get_predictor),
+    db: Session = Depends(get_db),
+):
     try:
-        prediction = predictor.predict(
-            volatility=payload.volatility,
-            sharpe_ratio=payload.sharpe_ratio,
-            var_95=payload.var_95,
-            beta=payload.beta,
-            market_return=payload.market_return,
-            horizon_months=payload.horizon_months,
-            model_name=payload.model_name,
+        result = predictor.predict(returns=payload.returns, ticker=payload.ticker)
+        db.add(
+            PredictionLog(
+                model_version=predictor.model_version,
+                ticker=payload.ticker.strip().upper() or "PORTFOLIO",
+                input_features={
+                    "returns_count": len(payload.returns),
+                    "contamination": payload.contamination,
+                    "nu": payload.nu,
+                    "task": "anomaly_detection",
+                },
+                prediction=float(result["anomalies_consensus"]),
+            )
         )
-        model_predictions = predictor.predict_all(
-            volatility=payload.volatility,
-            sharpe_ratio=payload.sharpe_ratio,
-            var_95=payload.var_95,
-            beta=payload.beta,
-            market_return=payload.market_return,
-            horizon_months=payload.horizon_months,
-        )
-
-        if prediction >= 0.10:
-            interpretation = "Predicción favorable: el retorno acumulado estimado compensa mejor el riesgo ingresado."
-        elif prediction >= 0.00:
-            interpretation = "Predicción moderada: el retorno acumulado estimado es positivo, pero requiere contrastar con VaR y volatilidad."
-        else:
-            interpretation = "Predicción adversa: el retorno acumulado estimado es bajo o negativo y debe leerse como alerta de riesgo."
-
-        return MLPredictionResponse(
-            predicted_return=prediction,
-            model_predictions=model_predictions,
-            horizon_months=payload.horizon_months,
-            model_version=MODEL_VERSION,
-            model_type=MODEL_TYPE,
-            target=MODEL_TARGET,
-            interpretation=interpretation,
-        )
-
+        db.commit()
+        return MLAnomalyDetectionResponse(**result)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

@@ -101,3 +101,26 @@ class PredictionLog(Base):
     input_features: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     prediction: Mapped[float] = mapped_column(Float, nullable=False)
     actual: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class SignalLog(Base):
+    __tablename__ = "signals_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    ticker: Mapped[str] = mapped_column(String(20), index=True, nullable=False)
+    rule: Mapped[str] = mapped_column(String(80), index=True, nullable=False)
+    value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    signal: Mapped[str] = mapped_column(String(80), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+
+
+class MacroCache(Base):
+    __tablename__ = "macro_cache"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    cache_key: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)

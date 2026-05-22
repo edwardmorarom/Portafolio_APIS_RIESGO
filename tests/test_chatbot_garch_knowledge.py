@@ -79,3 +79,17 @@ def test_chatbot_financial_series_distribution_routes_to_garch():
     assert "Student" in result["answer"]
     assert "normal" in result["answer"].lower()
 
+
+def test_chatbot_tolerates_common_garch_distribution_typos():
+    service = ChatbotService()
+
+    result = service.answer_question(
+        question="Para el modelo ARCH, GARCH y EGARHC, entre distribucion gaussiaana y t cual recomiendas?",
+        mode="estadistico",
+    )
+
+    assert result["supported"] is True
+    assert result["topics"][0] == "garch"
+    assert "Student" in result["answer"]
+    assert "horizonte" not in result["answer"].lower()
+

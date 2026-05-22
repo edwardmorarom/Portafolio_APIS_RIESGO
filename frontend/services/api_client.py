@@ -31,20 +31,6 @@ def _read_secret(key: str, default: str | None = None) -> str | None:
     value = os.getenv(key, default)
     return str(value) if value is not None else None
 
-    # ---------- Reports ----------
-    def get_executive_summary_report(self) -> dict[str, Any]:
-        return self.get(
-            "/reports/executive-summary",
-            include_api_key=True,
-        )
-    # ---------- Machine Learning ----------
-    def predict_ml_return(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self.post(
-            "/ml/predict",
-            json_payload=payload,
-            include_api_key=True,
-        )
-
 @st.cache_resource
 def get_api_config() -> ApiConfig:
     base_url = _read_secret("BACKEND_BASE_URL", "http://127.0.0.1:8000")
@@ -271,6 +257,8 @@ class ApiClient:
         rsi_oversold: float = 30.0,
         stoch_overbought: float = 80.0,
         stoch_oversold: float = 20.0,
+        sma_short_window: int = 20,
+        sma_long_window: int = 50,
     ) -> dict[str, Any]:
         return self.get(
             f"/alerts/{ticker}",
@@ -281,6 +269,8 @@ class ApiClient:
                 "rsi_oversold": rsi_oversold,
                 "stoch_overbought": stoch_overbought,
                 "stoch_oversold": stoch_oversold,
+                "sma_short_window": sma_short_window,
+                "sma_long_window": sma_long_window,
             },
         )
 
@@ -294,6 +284,7 @@ class ApiClient:
         mode: str = "general",
         forecast_horizon: int = 5,
         distribution: str = "normal",
+        ewma_lambda: float = 0.94,
     ) -> dict[str, Any]:
         return self.get(
             f"/garch/{ticker}",
@@ -304,6 +295,7 @@ class ApiClient:
                 "mode": mode,
                 "forecast_horizon": forecast_horizon,
                 "distribution": distribution,
+                "ewma_lambda": ewma_lambda,
             },
         )
 
@@ -350,6 +342,19 @@ class ApiClient:
 
     def get_efficient_frontier(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self.post_efficient_frontier(payload)
+
+    def save_portfolio(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post(
+            "/portfolio/saved",
+            json_payload=payload,
+            include_api_key=True,
+        )
+
+    def list_saved_portfolios(self, owner: str | None = None) -> dict[str, Any]:
+        params: dict[str, Any] = {}
+        if owner:
+            params["owner"] = owner
+        return self.get("/portfolio/saved", params=params, include_api_key=True)
 
     # ---------- Macro ----------
     def get_macro(self, base_currency: str = "USD") -> dict[str, Any]:
@@ -443,6 +448,9 @@ class ApiClient:
             raise
 
     # ---------- Fixed Income ----------
+    def get_treasury_curve(self) -> dict[str, Any]:
+        return self.get("/fixed-income/treasury-curve")
+
     def simulate_bond_purchase(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self.post(
             "/fixed-income/bond/purchase",
@@ -452,6 +460,13 @@ class ApiClient:
 
     # ---------- Machine Learning ----------
     def predict_ml_return(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post(
+            "/ml/predict",
+            json_payload=payload,
+            include_api_key=True,
+        )
+
+    def predict_ml_anomalies(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self.post(
             "/ml/predict",
             json_payload=payload,

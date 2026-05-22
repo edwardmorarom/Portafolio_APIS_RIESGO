@@ -127,11 +127,37 @@ class YieldService:
             / price
         )
 
+        sensitivity = []
+        for shock_bp in [-200, -100, -50, 50, 100, 200]:
+            delta_yield = shock_bp / 10000.0
+            shocked_yield = max(market_yield + delta_yield, 0.0)
+            exact_price = sum(
+                cf / ((1 + shocked_yield) ** t)
+                for t, cf in cashflows
+            )
+            linear_price = price * (1.0 - modified_duration * delta_yield)
+            convexity_price = price * (
+                1.0 - modified_duration * delta_yield + 0.5 * convexity * (delta_yield**2)
+            )
+            sensitivity.append(
+                {
+                    "shock_bp": int(shock_bp),
+                    "shocked_yield": float(shocked_yield),
+                    "price_linear_duration": float(linear_price),
+                    "price_duration_convexity": float(convexity_price),
+                    "price_exact_reprice": float(exact_price),
+                    "pct_change_linear_duration": float((linear_price / price) - 1.0),
+                    "pct_change_duration_convexity": float((convexity_price / price) - 1.0),
+                    "pct_change_exact_reprice": float((exact_price / price) - 1.0),
+                }
+            )
+
         return {
             "price": float(price),
             "duration": float(macaulay_duration),
             "modified_duration": float(modified_duration),
             "convexity": float(convexity),
+            "sensitivity": sensitivity,
         }
 
     @staticmethod

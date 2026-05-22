@@ -119,6 +119,26 @@ def test_black_scholes_put_call_parity():
 
     assert abs((call_price - put_price) - parity_value) < 1e-6
 
+
+def test_opcion_precio_endpoint_accepts_rubric_contract():
+    response = client.post(
+        "/api/v1/opcion/precio",
+        json={
+            "S": 100,
+            "K": 100,
+            "T": 1,
+            "r": 0.05,
+            "sigma": 0.2,
+            "tipo": "call",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["price"] > 0
+    assert set(data["greeks"].keys()) == {"delta", "gamma", "vega", "theta", "rho"}
+
 def test_bond_metrics_endpoint():
     response = client.post(
         "/api/v1/valuation/bond-metrics",
@@ -138,3 +158,10 @@ def test_bond_metrics_endpoint():
     assert data["duration"] > 0
     assert data["modified_duration"] > 0
     assert data["convexity"] > 0
+    assert len(data["sensitivity"]) == 6
+    assert {
+        "shock_bp",
+        "price_linear_duration",
+        "price_duration_convexity",
+        "price_exact_reprice",
+    }.issubset(data["sensitivity"][0])

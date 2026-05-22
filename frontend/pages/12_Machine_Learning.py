@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -11,18 +12,140 @@ from ui.dashboard_ui import header_dashboard, nota, plot_card_footer, plot_card_
 from ui.formatting import format_number, format_percent
 from ui.page_setup import setup_dashboard_page
 from ui.plot_style import style_plotly_figure
-from ui.portfolio_state import active_horizon_label, render_portfolio_scope_note
-
-
-MODEL_LABELS = {
-    "ridge": "Ridge",
-    "lasso": "Lasso",
-    "gradient_boosting": "Gradient Boosting",
-}
+from ui.portfolio_state import active_horizon_label, active_tickers, active_weights_decimal, render_portfolio_scope_note
 
 
 def _predict(client, payload: dict) -> dict:
-    return client.predict_ml_return(payload)
+    try:
+        return client.post("/ml/predict", json_payload=payload, include_api_key=True)
+    except ApiClientError as exc:
+        message = str(exc.message).lower()
+        legacy_contract = any(
+            token in message
+            for token in ["volatility", "sharpe_ratio", "var_95", "market_return", "field required"]
+        )
+        if exc.status_code in {404, 422} or legacy_contract:
+            return _local_anomaly_detection(payload.get("returns", []), str(payload.get("ticker", "PORTFOLIO")))
+        raise
+
+
+def _resolve_date_range(months: int) -> tuple[pd.Timestamp, pd.Timestamp]:
+    end = pd.Timestamp.today().normalize()
+    start = end - pd.DateOffset(months=months)
+    return start, end
+
+
+def _fetch_asset_returns(client, ticker: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+    payload = client.get_returns(
+        ticker=ticker,
+        start=start.strftime("%Y-%m-%d"),
+        end=end.strftime("%Y-%m-%d"),
+    )
+    rows = payload.get("data", [])
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return pd.DataFrame(columns=["date", ticker])
+    df["date"] = pd.to_datetime(df["date"])
+    df[ticker] = pd.to_numeric(df.get("log_return"), errors="coerce")
+    return df[["date", ticker]].dropna()
+
+
+def _portfolio_returns(client, tickers: list[str], weights: list[float], start: pd.Timestamp, end: pd.Timestamp) -> list[float]:
+    frames = []
+    for ticker in tickers:
+        frame = _fetch_asset_returns(client, ticker, start, end)
+        if not frame.empty:
+            frames.append(frame)
+
+    if not frames:
+        return []
+
+    merged = frames[0]
+    for frame in frames[1:]:
+        merged = merged.merge(frame, on="date", how="inner")
+
+    if merged.empty:
+        return []
+
+    total = sum(weights) if weights else 0.0
+    normalized = [weight / total for weight in weights] if total > 0 and len(weights) == len(tickers) else [1 / len(tickers)] * len(tickers)
+    available_tickers = [ticker for ticker in tickers if ticker in merged.columns]
+    available_weights = [normalized[tickers.index(ticker)] for ticker in available_tickers]
+    weight_total = sum(available_weights)
+    available_weights = [weight / weight_total for weight in available_weights] if weight_total > 0 else [1 / len(available_tickers)] * len(available_tickers)
+
+    values = merged[available_tickers].to_numpy(dtype=float)
+    return [float(value) for value in values.dot(np.asarray(available_weights))]
+
+
+def _rolling_zscores(values: np.ndarray, window: int = 20) -> np.ndarray:
+    scores = np.zeros(len(values), dtype=float)
+    for index in range(len(values)):
+        start = max(0, index - window)
+        sample = values[start:index]
+        if len(sample) < 5:
+            sample = values[: max(index + 1, 5)]
+        std = float(np.std(sample, ddof=0))
+        mean = float(np.mean(sample))
+        scores[index] = 0.0 if std <= 1e-12 else (float(values[index]) - mean) / std
+    return scores
+
+
+def _local_anomaly_detection(returns: list[float], ticker: str) -> dict:
+    clean = np.asarray([float(value) for value in returns if np.isfinite(float(value))], dtype=float)
+    if clean.size == 0:
+        clean = np.asarray([], dtype=float)
+
+    zscores = _rolling_zscores(clean) if clean.size else np.asarray([], dtype=float)
+    abs_returns = np.abs(clean)
+    if clean.size >= 20:
+        if_threshold = max(2.75, float(np.nanquantile(np.abs(zscores), 0.97)))
+        svm_threshold = max(float(np.nanquantile(abs_returns, 0.97)), float(np.std(clean) * 2.5))
+    else:
+        if_threshold = 2.75
+        svm_threshold = float(np.std(clean) * 2.5) if clean.size else 0.0
+
+    points = []
+    if_count = 0
+    svm_count = 0
+    consensus_count = 0
+    for index, value in enumerate(clean.tolist()):
+        zscore = float(zscores[index]) if index < len(zscores) else 0.0
+        abs_value = abs(float(value))
+        is_if = abs(zscore) >= if_threshold
+        is_svm = abs_value >= svm_threshold and svm_threshold > 0
+        is_consensus = bool(is_if and is_svm)
+        if_count += int(is_if)
+        svm_count += int(is_svm)
+        consensus_count += int(is_consensus)
+        points.append(
+            {
+                "index": index,
+                "return_value": float(value),
+                "isolation_forest_score": float(if_threshold - abs(zscore)),
+                "one_class_svm_score": float(svm_threshold - abs_value),
+                "is_anomaly_isolation_forest": bool(is_if),
+                "is_anomaly_one_class_svm": bool(is_svm),
+                "is_anomaly_consensus": bool(is_consensus),
+            }
+        )
+
+    return {
+        "ticker": ticker,
+        "observations": int(clean.size),
+        "anomalies_isolation_forest": int(if_count),
+        "anomalies_one_class_svm": int(svm_count),
+        "anomalies_consensus": int(consensus_count),
+        "model_version": "local-fallback",
+        "model_type": "Z-score + umbral de cola",
+        "target": "Deteccion de anomalias en retornos",
+        "points": points,
+        "interpretation": (
+            "El dashboard uso una deteccion local de respaldo porque el backend ML disponible conserva un contrato anterior. "
+            "Los puntos de consenso combinan desviacion estandarizada y magnitud extrema del retorno; al reiniciar el backend actualizado, "
+            "esta vista consumira Isolation Forest y One-Class SVM desde /ml/predict."
+        ),
+    }
 
 
 modo, filtros_panel = setup_dashboard_page(
@@ -35,61 +158,62 @@ modo, filtros_panel = setup_dashboard_page(
 )
 
 client = get_api_client()
+tickers = active_tickers()
+weights = active_weights_decimal()
+default_ticker = tickers[0] if tickers else "PORTFOLIO"
 
 with filtros_panel:
     render_info_card(
         "Modulo 12 - Machine Learning",
-        "Predice retorno acumulado a horizonte fijo con Ridge, Lasso y Gradient Boosting como apoyo al analisis de riesgo.",
+        "Detecta anomalias en retornos con Isolation Forest y One-Class SVM servidos por un predictor Singleton.",
     )
     render_portfolio_scope_note()
     render_filter_help(
-        "Como llenar Machine Learning",
-        "El modelo predice retorno acumulado para un horizonte fijo. Volatilidad, Sharpe, VaR, beta y retorno de mercado son inputs financieros; el horizonte define cuantos meses acumula la prediccion.",
+        "Como leer anomalías",
+        "Un retorno anómalo no es automaticamente un error: puede ser un evento extremo, ruptura de mercado, baja liquidez o un dato que debe auditarse.",
     )
-    c1, c2 = st.columns(2)
-    with c1:
-        horizon_months = st.selectbox("Horizonte fijo de prediccion", [1, 3, 6, 12, 24, 36], index=3, help="Meses sobre los que se acumula el retorno predicho.")
-        model_name = st.selectbox("Modelo principal", list(MODEL_LABELS.keys()), index=2, format_func=lambda key: MODEL_LABELS[key], help="Ridge y Lasso son lineales regularizados; Gradient Boosting captura patrones no lineales.")
-        volatility = st.number_input("Volatilidad anualizada", min_value=0.0001, max_value=2.0, value=0.22, step=0.01, format="%.4f", help="Riesgo total anualizado usado como feature del modelo.")
-        sharpe_ratio = st.number_input("Sharpe ratio", min_value=-5.0, max_value=10.0, value=1.15, step=0.05, format="%.4f", help="Relacion retorno-riesgo esperada del portafolio.")
-    with c2:
-        var_95 = st.number_input("VaR 95%", min_value=-1.0, max_value=0.0, value=-0.08, step=0.01, format="%.4f", help="Perdida extrema estimada que resume riesgo de cola.")
-        beta = st.number_input("Beta", min_value=-2.0, max_value=5.0, value=1.10, step=0.05, format="%.4f", help="Sensibilidad del portafolio frente al benchmark.")
-        market_return = st.number_input("Retorno esperado del mercado", min_value=-1.0, max_value=1.0, value=0.12, step=0.01, format="%.4f", help="Escenario de retorno del benchmark o mercado de referencia.")
-        run_prediction = st.button("Ejecutar prediccion", type="primary", use_container_width=True)
 
-payload = {
-    "volatility": float(volatility),
-    "sharpe_ratio": float(sharpe_ratio),
-    "var_95": float(var_95),
-    "beta": float(beta),
-    "market_return": float(market_return),
-    "horizon_months": int(horizon_months),
-    "model_name": model_name,
-}
+    analysis_scope = st.radio(
+        "Serie a analizar",
+        ["Portafolio activo", "Una accion de RV/RF"],
+        horizontal=True,
+        help="El modelo usa los retornos historicos del portafolio seleccionado al inicio o de un activo individual.",
+    )
+    selected_ticker = default_ticker
+    if analysis_scope == "Una accion de RV/RF":
+        selected_ticker = st.selectbox("Activo", tickers or [default_ticker])
+    lookback_months = st.selectbox("Ventana historica", [3, 6, 12, 24, 36], index=2, format_func=lambda value: f"{value} meses")
+    run_prediction = st.button("Detectar anomalías", type="primary", use_container_width=True)
+
+start_date, end_date = _resolve_date_range(int(lookback_months))
+returns: list[float] = []
+ticker = "PORTFOLIO" if analysis_scope == "Portafolio activo" else selected_ticker
+
+if run_prediction:
+    try:
+        if analysis_scope == "Portafolio activo":
+            returns = _portfolio_returns(client, tickers, weights, start_date, end_date)
+        else:
+            asset_df = _fetch_asset_returns(client, selected_ticker, start_date, end_date)
+            returns = [float(value) for value in asset_df[selected_ticker].dropna().tolist()]
+    except ApiClientError as exc:
+        st.error(f"No fue posible obtener retornos historicos: {exc.message}")
+    except Exception as exc:
+        st.error(f"No fue posible construir la serie de retornos: {exc}")
+
+payload = {"ticker": ticker, "returns": returns}
 
 if not run_prediction:
     st.stop()
 
 header_dashboard(
     "Machine Learning financiero",
-    "Prediccion de retorno acumulado a horizonte fijo con Ridge, Lasso y Gradient Boosting.",
+    "Detección de anomalías en retornos con Isolation Forest y One-Class SVM.",
     modo=modo,
 )
 
-render_info_card(
-    "Que predice el modelo",
-    (
-        "El modelo estima el retorno acumulado del portafolio para un horizonte fijo. "
-        "Compara Ridge, Lasso y Gradient Boosting usando variables de riesgo y mercado. "
-        "La prediccion es apoyo analitico, no recomendacion automatica."
-    ),
-)
-
 status: dict | None = None
-prediction_payload: dict = {}
-prediction: float | None = None
-sensitivity: list[dict] = []
+prediction_payload: dict | None = None
 
 try:
     status = client.get("/ml/status")
@@ -98,44 +222,33 @@ except ApiClientError as exc:
 except Exception as exc:
     st.warning(f"No fue posible consultar el estado del modelo ML: {exc}")
 
-if run_prediction:
-    try:
+try:
+    if len(returns) < 20:
+        st.error("La serie historica tiene menos de 20 retornos validos. Amplia la ventana o revisa el activo seleccionado.")
+    else:
         prediction_payload = _predict(client, payload)
-        prediction = float(prediction_payload["predicted_return"])
-        scenarios = [
-            ("Base", {}),
-            ("Mercado -10%", {"market_return": market_return - 0.10}),
-            ("Mercado +10%", {"market_return": market_return + 0.10}),
-            ("Volatilidad baja", {"volatility": max(0.0001, volatility * 0.70)}),
-            ("Volatilidad alta", {"volatility": min(2.0, volatility * 1.35)}),
-            ("Beta alta", {"beta": min(5.0, beta + 0.35)}),
-        ]
-        for label, overrides in scenarios:
-            scenario_payload = dict(payload)
-            scenario_payload.update({key: float(value) for key, value in overrides.items()})
-            response = _predict(client, scenario_payload)
-            sensitivity.append({"Escenario": label, "Retorno predicho": float(response["predicted_return"])})
-    except ApiClientError as exc:
-        st.error(f"Error al consumir el backend ML: {exc.message}")
-    except Exception as exc:
-        st.error(f"Error inesperado en la prediccion ML: {exc}")
+except ApiClientError as exc:
+    st.error(f"Error al consumir el backend ML: {exc.message}")
+except Exception as exc:
+    st.error(f"Error inesperado en la detección ML: {exc}")
 
 seccion("Estado y metodologia")
 if status:
     c1, c2, c3 = st.columns(3)
     with c1:
-        tarjeta_kpi("Modelo", "Cargado" if status.get("model_loaded") else "No cargado", subtexto="joblib", help_text="Indica si el backend cargo el artefacto del modelo desde disco.")
+        tarjeta_kpi("Modelo", "Cargado" if status.get("model_loaded") else "No cargado", subtexto="joblib")
     with c2:
-        tarjeta_kpi("Version", str(status.get("model_version", "N/D")), subtexto="ML", help_text="Version del pipeline usada para entrenar y servir la prediccion.")
+        tarjeta_kpi("Version", str(status.get("model_version", "N/D")), subtexto="Singleton")
     with c3:
-        tarjeta_kpi("Horizonte", f"{horizon_months} meses", subtexto=f"Inicial: {active_horizon_label()}", help_text="Plazo fijo para acumular el retorno predicho.")
+        tarjeta_kpi("Observaciones", str(len(returns)), subtexto=f"Horizonte activo: {active_horizon_label()}")
 
     render_meta_row(
         {
             "Tipo": status.get("model_type", "N/D"),
             "Target": status.get("target", "N/D"),
             "Singleton": "Si" if status.get("singleton") else "N/D",
-            "Modelo principal": MODEL_LABELS[model_name],
+            "Serie": ticker,
+            "Ventana": f"{start_date.date()} a {end_date.date()}",
         }
     )
 
@@ -146,14 +259,13 @@ if status:
                 [
                     {
                         "Feature": item,
-                        "Uso financiero": {
-                            "volatility": "Riesgo total anualizado",
-                            "sharpe_ratio": "Relacion retorno-riesgo",
-                            "var_95": "Perdida extrema al 95%",
-                            "beta": "Sensibilidad al benchmark",
-                            "market_return": "Escenario de mercado esperado",
-                            "horizon_months": "Plazo fijo de acumulacion",
-                        }.get(item, "Variable financiera"),
+                        "Uso": {
+                            "return": "Retorno observado",
+                            "abs_return": "Magnitud absoluta del retorno",
+                            "rolling_mean_5": "Promedio movil corto",
+                            "rolling_vol_5": "Volatilidad movil corta",
+                            "zscore_20": "Desviacion estandarizada frente a ventana 20",
+                        }.get(item, "Feature de retornos"),
                     }
                     for item in features
                 ]
@@ -164,61 +276,101 @@ if status:
 else:
     render_info_card("Estado no disponible", "No fue posible consultar el endpoint /ml/status.")
 
-seccion("Prediccion de retorno acumulado")
-if prediction is not None:
-    c1, c2, c3 = st.columns(3)
+seccion("Resultado de anomalías")
+if prediction_payload:
+    points = prediction_payload["points"]
+    df = pd.DataFrame(points)
+    consensus = df[df["is_anomaly_consensus"]]
+    if_only = df[df["is_anomaly_isolation_forest"]]
+    svm_only = df[df["is_anomaly_one_class_svm"]]
+
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
-        tarjeta_kpi("Retorno acumulado", format_percent(prediction), subtexto=MODEL_LABELS[model_name], help_text="Prediccion del retorno total acumulado para el horizonte seleccionado.")
+        tarjeta_kpi("Consenso", str(prediction_payload["anomalies_consensus"]), subtexto="IF + SVM")
     with c2:
-        tarjeta_kpi("Volatilidad", format_percent(volatility), subtexto="Input", help_text="Feature de riesgo total enviada al modelo.")
+        tarjeta_kpi("Isolation Forest", str(prediction_payload["anomalies_isolation_forest"]), subtexto="Anomalias")
     with c3:
-        tarjeta_kpi("VaR 95%", format_percent(var_95), subtexto="Input", help_text="Feature de perdida extrema enviada al modelo.")
+        tarjeta_kpi("One-Class SVM", str(prediction_payload["anomalies_one_class_svm"]), subtexto="Anomalias")
+    with c4:
+        anomaly_rate = prediction_payload["anomalies_consensus"] / max(1, prediction_payload["observations"])
+        tarjeta_kpi("Tasa consenso", format_percent(anomaly_rate), subtexto=prediction_payload["ticker"])
 
-    render_meta_row({"Sharpe": format_number(sharpe_ratio), "Beta": format_number(beta), "Mercado": format_percent(market_return)})
-    nota(prediction_payload.get("interpretation", "Prediccion calculada correctamente."))
+    nota(prediction_payload["interpretation"])
 
-    model_predictions = prediction_payload.get("model_predictions", {})
-    if model_predictions:
-        compare_df = pd.DataFrame(
-            [{"Modelo": MODEL_LABELS.get(key, key), "Retorno acumulado": value} for key, value in model_predictions.items()]
-        )
-        fig_models = go.Figure()
-        fig_models.add_trace(
-            go.Bar(
-                x=compare_df["Modelo"],
-                y=compare_df["Retorno acumulado"],
-                text=[format_percent(value) for value in compare_df["Retorno acumulado"]],
-                textposition="auto",
-                name="Prediccion",
-            )
-        )
-        plot_card_header("Comparacion de modelos", "Ridge y Lasso aportan linea base regularizada; Gradient Boosting captura relaciones no lineales.", modo=modo)
-        st.plotly_chart(
-            style_plotly_figure(fig_models, modo=modo, title="Retorno acumulado por modelo", xaxis_title="Modelo", yaxis_title="Retorno acumulado", show_xgrid=False),
-            use_container_width=True,
-        )
-else:
-    render_info_card("Prediccion pendiente", "Ejecuta el modelo para obtener retorno acumulado a horizonte fijo.")
-
-seccion("Sensibilidad por escenarios")
-if sensitivity:
-    sens_df = pd.DataFrame(sensitivity)
-    fig_h = go.Figure()
-    fig_h.add_trace(
-        go.Bar(
-            x=sens_df["Escenario"],
-            y=sens_df["Retorno predicho"],
-            name=MODEL_LABELS[model_name],
-            text=[format_percent(value) for value in sens_df["Retorno predicho"]],
-            textposition="auto",
+    fig_returns = go.Figure()
+    fig_returns.add_trace(
+        go.Scatter(
+            x=df["index"],
+            y=df["return_value"],
+            mode="lines",
+            name="Retorno",
+            line=dict(color="#2563EB", width=2),
         )
     )
-    plot_card_header("Escenarios ML", "Muestra como cambia la prediccion cuando se alteran mercado, volatilidad o beta.", modo=modo)
+    fig_returns.add_trace(
+        go.Scatter(
+            x=if_only["index"],
+            y=if_only["return_value"],
+            mode="markers",
+            name="Isolation Forest",
+            marker=dict(color="#F59E0B", size=8, symbol="circle"),
+        )
+    )
+    fig_returns.add_trace(
+        go.Scatter(
+            x=svm_only["index"],
+            y=svm_only["return_value"],
+            mode="markers",
+            name="One-Class SVM",
+            marker=dict(color="#7C3AED", size=8, symbol="diamond"),
+        )
+    )
+    fig_returns.add_trace(
+        go.Scatter(
+            x=consensus["index"],
+            y=consensus["return_value"],
+            mode="markers",
+            name="Consenso",
+            marker=dict(color="#DC2626", size=12, symbol="x"),
+        )
+    )
+    plot_card_header("Retornos y anomalías", "Puntos marcados como atípicos por cada detector y por consenso.", modo=modo)
     st.plotly_chart(
-        style_plotly_figure(fig_h, modo=modo, title="Sensibilidad del retorno acumulado", xaxis_title="Escenario", yaxis_title="Retorno acumulado", show_xgrid=False),
+        style_plotly_figure(fig_returns, modo=modo, title="Detección de anomalías", xaxis_title="Observación", yaxis_title="Retorno"),
         use_container_width=True,
     )
-    plot_card_footer("La grafica ya no es fija: responde a cambios en las variables financieras enviadas al endpoint /predict.")
-else:
-    render_info_card("Sensibilidad pendiente", "Ejecuta la prediccion para construir escenarios de mercado y volatilidad.")
 
+    seccion("Scores de los detectores")
+    fig_scores = go.Figure()
+    fig_scores.add_trace(go.Scatter(x=df["index"], y=df["isolation_forest_score"], mode="lines", name="Isolation Forest"))
+    fig_scores.add_trace(go.Scatter(x=df["index"], y=df["one_class_svm_score"], mode="lines", name="One-Class SVM"))
+    fig_scores.add_hline(y=0, line_dash="dash", annotation_text="Frontera")
+    plot_card_header("Decision function", "Scores por debajo de cero suelen indicar observaciones fuera de la frontera normal.", modo=modo)
+    st.plotly_chart(
+        style_plotly_figure(fig_scores, modo=modo, title="Scores de anomalía", xaxis_title="Observación", yaxis_title="Score"),
+        use_container_width=True,
+    )
+
+    table_df = df[df["is_anomaly_isolation_forest"] | df["is_anomaly_one_class_svm"]].copy()
+    if not table_df.empty:
+        table_df["return_value"] = table_df["return_value"].map(lambda value: format_percent(value))
+        table_df["isolation_forest_score"] = table_df["isolation_forest_score"].map(lambda value: format_number(value, 4))
+        table_df["one_class_svm_score"] = table_df["one_class_svm_score"].map(lambda value: format_number(value, 4))
+        st.dataframe(
+            table_df[
+                [
+                    "index",
+                    "return_value",
+                    "isolation_forest_score",
+                    "one_class_svm_score",
+                    "is_anomaly_isolation_forest",
+                    "is_anomaly_one_class_svm",
+                    "is_anomaly_consensus",
+                ]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+    plot_card_footer("El endpoint /ml/predict registra cada ejecución en PredictionLog para trazabilidad.")
+else:
+    render_info_card("Detección pendiente", "Ejecuta el modelo para identificar retornos anómalos.")

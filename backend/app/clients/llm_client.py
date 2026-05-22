@@ -34,7 +34,9 @@ class LLMClient:
 
     def _resolve_api_key(self) -> str | None:
         if self.provider == "groq":
-            return self.settings.groq_api_key
+            return self.settings.groq_api_key or self.settings.llm_api_key
+        if self.provider == "gemini":
+            return self.settings.gemini_api_key or self.settings.llm_api_key
         return self.settings.llm_api_key
 
     def _resolve_base_url(self) -> str:

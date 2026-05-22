@@ -11,6 +11,7 @@ class GarchRequest(BaseModel):
     mode: str = Field(default="estadistico", description="general o estadistico")
     forecast_horizon: int = Field(default=5, ge=1, le=30, description="Horizonte de pronostico")
     distribution: str = Field(default="normal", description="Distribución de errores: normal o t")
+    ewma_lambda: float = Field(default=0.94, ge=0.70, le=0.99, description="Factor lambda EWMA")
 
     @field_validator("ticker")
     @classmethod
@@ -79,6 +80,13 @@ class GarchResponse(BaseModel):
     residuals_jarque_bera_stat: float
     residuals_jarque_bera_p_value: float
     residuals_normality_conclusion: str
+    arch_lm_lags: int = Field(default=5, description="Rezagos usados en el diagnostico ARCH-LM")
+    arch_lm_stat: float = Field(default=0.0, description="Estadistico LM sobre residuos estandarizados")
+    arch_lm_p_value: float = Field(default=1.0, description="P-value del diagnostico ARCH-LM")
+    arch_lm_conclusion: str = Field(
+        default="No calculado",
+        description="Lectura del diagnostico ARCH-LM de heterocedasticidad remanente",
+    )
 
     conditional_volatility: list[float] = Field(
         default_factory=list,
@@ -88,6 +96,29 @@ class GarchResponse(BaseModel):
     conditional_volatility_by_model: dict[str, list[float]] = Field(
         default_factory=dict,
         description="Serie de volatilidad condicional por modelo candidato",
+    )
+
+    ewma_lambda: float = Field(default=0.94, description="Factor lambda usado en EWMA")
+    ewma_volatility: list[float] = Field(
+        default_factory=list,
+        description="Serie de volatilidad EWMA en la misma escala de retornos del modelo",
+    )
+    ewma_latest_volatility: float | None = Field(
+        default=None,
+        description="Ultima volatilidad estimada por EWMA",
+    )
+    ewma_forecast: list[GarchForecastPoint] = Field(
+        default_factory=list,
+        description="Pronostico EWMA; se mantiene constante si no hay nuevo choque observado",
+    )
+
+    rolling_volatility_window: int = Field(
+        default=20,
+        description="Ventana usada para volatilidad muestral rodante",
+    )
+    rolling_volatility: list[float] = Field(
+        default_factory=list,
+        description="Volatilidad muestral rodante usada como comparación contra EWMA",
     )
 
     forecast: list[GarchForecastPoint] = Field(

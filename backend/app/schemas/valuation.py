@@ -1,5 +1,5 @@
 ﻿from __future__ import annotations
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List, Dict
 
 # --- ESQUEMAS PARA NELSON-SIEGEL ---
@@ -40,6 +40,43 @@ class OptionValuationResponse(BaseModel):
     greeks: Greeks
     params: Dict[str, float]
 
+
+class OptionPricingRequest(BaseModel):
+    S: float = Field(..., gt=0, description="Precio actual del subyacente")
+    K: float = Field(..., gt=0, description="Strike de la opcion")
+    T: float = Field(..., description="Tiempo a vencimiento en anos")
+    r: float = Field(..., description="Tasa libre de riesgo anual")
+    sigma: float = Field(..., description="Volatilidad anualizada")
+    tipo: str = Field(..., description="call o put")
+
+    @field_validator("T")
+    @classmethod
+    def validate_t(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("T debe ser mayor que 0")
+        return value
+
+    @field_validator("sigma")
+    @classmethod
+    def validate_sigma(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("sigma debe ser mayor que 0")
+        return value
+
+    @field_validator("tipo")
+    @classmethod
+    def validate_tipo(cls, value: str) -> str:
+        normalized = value.lower()
+        if normalized not in {"call", "put"}:
+            raise ValueError('tipo debe ser "call" o "put"')
+        return normalized
+
+
+class OptionPricingResponse(BaseModel):
+    price: float
+    greeks: Greeks
+    params: Dict[str, float]
+
 # --- ESQUEMAS PARA BONOS ---
 
 class BondMetricsRequest(BaseModel):
@@ -49,8 +86,20 @@ class BondMetricsRequest(BaseModel):
     market_yield: float = Field(..., ge=0)
 
 
+class BondSensitivityPoint(BaseModel):
+    shock_bp: int
+    shocked_yield: float
+    price_linear_duration: float
+    price_duration_convexity: float
+    price_exact_reprice: float
+    pct_change_linear_duration: float
+    pct_change_duration_convexity: float
+    pct_change_exact_reprice: float
+
+
 class BondMetricsResponse(BaseModel):
     price: float
     duration: float
     modified_duration: float
     convexity: float
+    sensitivity: list[BondSensitivityPoint] = Field(default_factory=list)

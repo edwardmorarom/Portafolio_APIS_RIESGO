@@ -53,8 +53,9 @@ def get_portfolio_service(client: MarketClient = Depends(get_market_client)) -> 
 def get_macro_service(
     client: MacroClient = Depends(get_macro_client),
     market_client: MarketClient = Depends(get_market_client),
+    db=Depends(get_db),
 ) -> MacroService:
-    return MacroService(client=client, market_client=market_client)
+    return MacroService(client=client, market_client=market_client, db=db)
 
 
 def get_capm_service(
