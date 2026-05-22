@@ -18,6 +18,11 @@ class _KycOnlyLLM:
         return "El KYC define el perfil del inversionista y su tolerancia al riesgo."
 
 
+class _HorizonOnlyLLM:
+    def generate_answer(self, question: str, context: str, mode: str) -> str:
+        return "El horizonte afecta el riesgo porque cambia la ventana de datos."
+
+
 def test_chatbot_answers_supported_var_question():
     with TestClient(app) as client:
         response = client.post(
@@ -131,6 +136,57 @@ def test_chatbot_general_dashboard_and_horizon_questions_are_contextual():
     assert answer_dashboard != answer_horizon
 
 
+def test_chatbot_handles_greeting_without_falling_back_to_kyc():
+    service = ChatbotService()
+
+    payload = service.answer_question(
+        question="hola, como estás?",
+        mode="general",
+        module="kyc",
+    )
+
+    assert payload["supported"] is True
+    assert payload["topics"] == []
+    assert "hola" in payload["answer"].lower()
+    assert "kyc financiero permite identificar" not in payload["answer"].lower()
+
+
+def test_chatbot_answers_fixed_income_module_and_bond_maturity():
+    service = ChatbotService()
+
+    payload_module = service.answer_question(
+        question="para que es el modulo de renta fija",
+        mode="general",
+        module="kyc",
+    )
+    payload_maturity = service.answer_question(
+        question="que es el vencimiento de un bono",
+        mode="general",
+    )
+
+    assert payload_module["supported"] is True
+    assert payload_module["topics"][0] == "nelson_siegel"
+    assert "renta fija" in payload_module["answer"].lower()
+    assert payload_maturity["topics"][0] == "nelson_siegel"
+    assert "vencimiento" in payload_maturity["answer"].lower()
+
+
+def test_chatbot_routes_var_model_selection_to_kupiec_backtesting():
+    service = ChatbotService()
+
+    payload = service.answer_question(
+        question="como elijo el mejor modelo del metodo VaR",
+        mode="general",
+        module="kyc",
+    )
+
+    assert payload["supported"] is True
+    assert payload["topics"][0] == "kupiec"
+    answer = payload["answer"].lower()
+    assert "kupiec" in answer
+    assert "excepciones" in answer or "excedencias" in answer
+
+
 def test_chatbot_question_topic_wins_over_module_hint():
     service = ChatbotService()
 
@@ -158,3 +214,34 @@ def test_chatbot_discards_misaligned_kyc_llm_answer_for_var():
     assert payload["supported"] is True
     assert "VaR" in payload["answer"] or "var" in payload["answer"].lower()
     assert "KYC define" not in payload["answer"]
+
+
+def test_chatbot_discards_misaligned_llm_answer_for_distribution_question():
+    service = ChatbotService(llm_client=_HorizonOnlyLLM())
+
+    payload = service.answer_question(
+        question="Entre la distribucion gaussiana y la t cual recomiendas para series de tiempo financieras?",
+        mode="estadistico",
+    )
+
+    assert payload["supported"] is True
+    assert payload["topics"][0] == "garch"
+    assert "Student" in payload["answer"]
+    assert "horizonte afecta" not in payload["answer"]
+
+
+def test_chatbot_ml_model_selection_mentions_gradient_boosting():
+    service = ChatbotService()
+
+    payload = service.answer_question(
+        question="De los 3 modelos de Machine Learning cual es el mas adecuado para este portafolio?",
+        mode="general",
+        module="ml",
+    )
+
+    assert payload["supported"] is True
+    assert payload["topics"][0] == "ml"
+    answer = payload["answer"].lower()
+    assert "gradient" in answer
+    assert "ridge" in answer
+    assert "lasso" in answer

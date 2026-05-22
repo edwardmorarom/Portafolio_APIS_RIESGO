@@ -85,14 +85,27 @@ CHATBOT_KNOWLEDGE_BASE = {
         ],
     },
     "kupiec": {
-        "keywords": ["kupiec", "backtesting", "excedencias", "violaciones", "lr_pof", "proportion of failures"],
+        "keywords": [
+            "kupiec",
+            "backtesting",
+            "excedencias",
+            "violaciones",
+            "lr_pof",
+            "proportion of failures",
+            "mejor metodo var",
+            "mejor método var",
+            "elegir var",
+            "modelo var",
+        ],
         "title": "Backtesting de Kupiec",
         "source_type": "teoria",
         "reference": "Proyecto Integrador Riesgo USTA: test de Kupiec para validar la proporcion de fallas del VaR.",
         "general": (
             "El test de Kupiec valida si la cantidad de veces que las perdidas reales superan el VaR es coherente con "
             "el nivel de confianza elegido. Si hay demasiadas excedencias, el modelo puede estar subestimando el riesgo; "
-            "si hay muy pocas, puede estar siendo demasiado conservador."
+            "si hay muy pocas, puede estar siendo demasiado conservador. Para escoger entre VaR historico, parametrico "
+            "y Monte Carlo conviene comparar excepciones observadas contra esperadas, p-value, estabilidad del resultado "
+            "y supuestos del metodo; no se debe escoger solo el VaR mas bajo."
         ),
         "estadistico": (
             "Kupiec, o prueba de proporcion de fallas, compara la tasa observada de violaciones contra la tasa esperada. "
@@ -183,6 +196,12 @@ CHATBOT_KNOWLEDGE_BASE = {
             "aic",
             "bic",
             "residuos",
+            "distribucion",
+            "distribución",
+            "normal",
+            "student",
+            "t student",
+            "ged",
             "pronostico",
             "pron?stico",
         ],
@@ -192,17 +211,21 @@ CHATBOT_KNOWLEDGE_BASE = {
         "general": (
             "Los modelos ARCH, GARCH y EGARCH sirven para estudiar volatilidad financiera cambiante en el tiempo. "
             "Son utiles cuando los rendimientos presentan agrupamientos de volatilidad: periodos tranquilos seguidos de periodos turbulentos. "
-            "En el proyecto se usan para diagnosticar y pronosticar volatilidad condicional."
+            "En el proyecto se usan para diagnosticar y pronosticar volatilidad condicional. Para rendimientos financieros, "
+            "suele ser mejor iniciar con distribucion t de Student porque captura colas pesadas; luego se compara contra normal "
+            "y, si el software lo permite, GED usando AIC, BIC y diagnosticos de residuos."
         ),
         "estadistico": (
             "Estadisticamente, GARCH modela la varianza condicional como funcion de choques pasados y volatilidad pasada. "
             "El backend compara ARCH, GARCH y EGARCH usando criterios como AIC y BIC, revisa diagnosticos de residuos "
-            "y genera pronosticos de volatilidad."
+            "y genera pronosticos de volatilidad. Mi recomendacion practica es probar normal, t de Student y GED: si hay "
+            "colas pesadas o eventos extremos, t de Student suele ajustar mejor; si los residuos estandarizados son cercanos "
+            "a normales, la normal puede bastar. La decision final debe salir de AIC/BIC, residuos y capacidad fuera de muestra."
         ),
         "followups": [
             "Por que se usa GARCH en series financieras?",
             "Que significa volatilidad condicional?",
-            "Como se interpreta AIC y BIC en GARCH?",
+            "Que distribucion conviene para GARCH?",
         ],
     },
     "perri": {
@@ -283,12 +306,28 @@ CHATBOT_KNOWLEDGE_BASE = {
     },
     "nelson_siegel": {
         "keywords": [
+            "renta fija",
+            "bono",
+            "bonos",
+            "tes",
             "nelson",
             "siegel",
             "nelson-siegel",
             "curva de tasas",
             "yield curve",
             "tasas",
+            "yield",
+            "cupon",
+            "cupón",
+            "vencimiento",
+            "fecha de vencimiento",
+            "precio limpio",
+            "precio sucio",
+            "duracion",
+            "duración",
+            "duracion modificada",
+            "duración modificada",
+            "dv01",
             "estructura temporal",
             "beta0",
             "beta1",
@@ -302,19 +341,22 @@ CHATBOT_KNOWLEDGE_BASE = {
         "source_type": "modulo",
         "reference": "Proyecto Integrador Riesgo USTA: YieldService para ajuste de curva de tasas.",
         "general": (
-            "Nelson-Siegel es un modelo para representar la curva de tasas de interes a diferentes vencimientos. "
-            "Resume la estructura temporal mediante componentes de nivel, pendiente y curvatura. "
-            "En el proyecto se usa para ajustar una curva teorica a tasas observadas por vencimiento."
+            "El modulo de renta fija sirve para estudiar instrumentos de deuda, especialmente bonos. Permite construir "
+            "una curva de tasas con Nelson-Siegel usando nivel, pendiente y curvatura, y simular la compra de un bono "
+            "TES revisando cupones, vencimiento, precio limpio, precio sucio, valor presente de flujos, duracion "
+            "modificada y DV01. El vencimiento es la fecha en la que el emisor devuelve el valor nominal del bono y "
+            "paga el ultimo flujo pactado."
         ),
         "estadistico": (
             "El modelo estima parametros beta0, beta1, beta2 y tau. beta0 representa el nivel de largo plazo, "
             "beta1 captura la pendiente de corto plazo, beta2 representa la curvatura y tau controla la velocidad "
-            "de decaimiento de los factores. El ajuste busca minimizar el error entre tasas observadas y tasas estimadas."
+            "de decaimiento de los factores. En bonos, los flujos futuros se descuentan con el yield periodico y la "
+            "sensibilidad a tasas se resume con duracion modificada y DV01."
         ),
         "followups": [
-            "Que representa beta0 en Nelson-Siegel?",
+            "Que es el vencimiento de un bono?",
             "Para que sirve modelar la curva de tasas?",
-            "Que significan nivel, pendiente y curvatura?",
+            "Como se interpreta el DV01?",
         ],
     },
 
@@ -387,6 +429,14 @@ CHATBOT_KNOWLEDGE_BASE = {
             "modelo",
             "retorno predicho",
             "singleton",
+            "ridge",
+            "lasso",
+            "gradient boosting",
+            "gradient",
+            "boosting",
+            "tres modelos",
+            "3 modelos",
+            "mejor modelo",
         ],
         "title": "Machine Learning financiero",
         "source_type": "modulo",
@@ -394,12 +444,17 @@ CHATBOT_KNOWLEDGE_BASE = {
         "general": (
             "El módulo de Machine Learning estima el retorno esperado del portafolio usando variables financieras "
             "como volatilidad, Sharpe, VaR, beta y retorno de mercado. Funciona como complemento predictivo para "
-            "contrastar riesgo, no como recomendación automática ni prueba causal."
+            "contrastar riesgo, no como recomendación automática ni prueba causal. Entre Ridge, Lasso y Gradient "
+            "Boosting, para este portafolio suele ser más adecuado usar Gradient Boosting como modelo principal "
+            "cuando se busca capturar relaciones no lineales entre riesgo, mercado y retorno acumulado; Ridge y "
+            "Lasso quedan como referencias más estables e interpretables."
         ),
         "estadistico": (
             "El backend carga un modelo persistido con joblib mediante un Singleton para evitar recargarlo en cada request. "
             "El endpoint /ml/predict recibe features de riesgo y devuelve una predicción de retorno esperado con una lectura "
-            "financiera breve."
+            "financiera breve. Ridge ayuda cuando hay multicolinealidad, Lasso puede reducir peso de variables poco útiles "
+            "y Gradient Boosting suele capturar mejor patrones no lineales; por eso conviene elegirlo si sus métricas fuera "
+            "de muestra superan a Ridge y Lasso sin señales claras de sobreajuste."
         ),
         "followups": [
             "Qué features usa el modelo ML?",

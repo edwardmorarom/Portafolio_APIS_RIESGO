@@ -82,6 +82,9 @@ payload = {
     "option_type": option_type,
 }
 
+if not run_analysis:
+    st.stop()
+
 header_dashboard(
     "Opciones",
     "Valoración Black-Scholes, Greeks, payoff y sensibilidad de una opción europea.",
@@ -110,8 +113,6 @@ if run_analysis:
         st.error(f"Error al consumir backend de opciones: {exc.message}")
     except Exception as exc:
         st.error(f"Error inesperado: {exc}")
-else:
-    nota("Ajusta los parámetros y ejecuta la valoración para ver precio, Greeks y sensibilidad.")
 
 seccion("Precio y Greeks")
 if result:

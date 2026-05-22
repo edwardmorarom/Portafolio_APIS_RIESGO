@@ -68,6 +68,9 @@ payload = {
     "model_name": model_name,
 }
 
+if not run_prediction:
+    st.stop()
+
 header_dashboard(
     "Machine Learning financiero",
     "Prediccion de retorno acumulado a horizonte fijo con Ridge, Lasso y Gradient Boosting.",
@@ -116,8 +119,6 @@ if run_prediction:
         st.error(f"Error al consumir el backend ML: {exc.message}")
     except Exception as exc:
         st.error(f"Error inesperado en la prediccion ML: {exc}")
-else:
-    nota("Ajusta las variables de riesgo y ejecuta la prediccion para consultar el modelo backend.")
 
 seccion("Estado y metodologia")
 if status:
@@ -221,18 +222,3 @@ if sensitivity:
 else:
     render_info_card("Sensibilidad pendiente", "Ejecuta la prediccion para construir escenarios de mercado y volatilidad.")
 
-seccion("Sustento para exposicion")
-render_info_card(
-    "Por que estos modelos",
-    (
-        "Ridge reduce inestabilidad por multicolinealidad, Lasso puede disminuir el peso de variables poco utiles y "
-        "Gradient Boosting captura relaciones no lineales entre riesgo, beta, mercado y retorno acumulado."
-    ),
-)
-render_info_card(
-    "Supuestos y limites",
-    (
-        "Ridge/Lasso requieren una relacion aproximadamente estable entre variables y retorno. Gradient Boosting no exige linealidad, "
-        "pero requiere controlar sobreajuste y revisar metricas fuera de muestra. Ningun modelo prueba causalidad ni reemplaza VaR, CAPM o stress testing."
-    ),
-)

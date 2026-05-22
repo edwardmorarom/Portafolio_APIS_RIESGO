@@ -327,52 +327,13 @@ def _render_bond_purchase_tab(key_prefix: str) -> None:
 modo, filtros_panel = setup_dashboard_page(
     title="Dashboard Riesgo",
     subtitle="Universidad Santo Tomás",
-    filtros_label="Parámetros de renta fija",
-    filtros_expanded=True,
+    filtros_label=None,
+    filtros_expanded=False,
     page_title="Renta Fija",
     page_icon="💵",
 )
 
 client = get_api_client()
-
-with filtros_panel:
-    render_info_card(
-        "Modulo 9 - Renta fija",
-        "Construye una curva Nelson-Siegel, valora bonos y estima sensibilidad a tasas para instrumentos de deuda.",
-    )
-    render_portfolio_scope_note()
-    render_filter_help(
-        "Cómo llenar renta fija",
-        "Edita la tabla de puntos de curva: vencimiento en años y tasa decimal. Ejemplo: 0.043 equivale a 4.30%. Luego define el bono a valorar.",
-    )
-
-    default_curve = pd.DataFrame(
-        {
-            "Vencimiento (años)": [1, 2, 5, 10, 20, 30],
-            "Tasa observada": [0.030, 0.034, 0.039, 0.043, 0.047, 0.049],
-        }
-    )
-    curve_inputs = st.data_editor(
-        default_curve,
-        hide_index=True,
-        use_container_width=True,
-        num_rows="dynamic",
-        column_config={
-            "Vencimiento (años)": st.column_config.NumberColumn("Vencimiento (años)", min_value=0.25, step=0.25, format="%.2f"),
-            "Tasa observada": st.column_config.NumberColumn("Tasa observada", min_value=0.0, max_value=1.0, step=0.001, format="%.4f"),
-        },
-        key="fixed_income_curve_editor",
-    )
-
-    b1, b2 = st.columns(2)
-    with b1:
-        face_value = st.number_input("Valor nominal", min_value=1.0, value=1000.0, step=100.0, help="Monto principal que paga el bono al vencimiento.")
-        coupon_rate = st.number_input("Cupón anual", min_value=0.0, value=0.045, step=0.005, format="%.4f")
-    with b2:
-        maturity_years = st.number_input("Vencimiento del bono", min_value=1, value=7, step=1, help="Numero de anos hasta el pago final del bono.")
-        market_yield = st.number_input("Yield de mercado", min_value=0.0, value=0.048, step=0.005, format="%.4f", help="Tasa de descuento de mercado usada para valorar el bono.")
-
-    run_analysis = st.button("Calcular renta fija", type="primary", use_container_width=True)
 
 header_dashboard(
     "Renta fija",
@@ -389,6 +350,44 @@ if module_view == "Compra de bono TES":
     )
     _render_bond_purchase_tab("bond_buy")
     st.stop()
+
+render_info_card(
+    "Modulo 9 - Renta fija",
+    "Construye una curva Nelson-Siegel, valora bonos y estima sensibilidad a tasas para instrumentos de deuda.",
+)
+render_portfolio_scope_note()
+render_filter_help(
+    "Cómo llenar renta fija",
+    "Edita la tabla de puntos de curva: vencimiento en años y tasa decimal. Ejemplo: 0.043 equivale a 4.30%. Luego define el bono a valorar.",
+)
+
+default_curve = pd.DataFrame(
+    {
+        "Vencimiento (años)": [1, 2, 5, 10, 20, 30],
+        "Tasa observada": [0.030, 0.034, 0.039, 0.043, 0.047, 0.049],
+    }
+)
+curve_inputs = st.data_editor(
+    default_curve,
+    hide_index=True,
+    use_container_width=True,
+    num_rows="dynamic",
+    column_config={
+        "Vencimiento (años)": st.column_config.NumberColumn("Vencimiento (años)", min_value=0.25, step=0.25, format="%.2f"),
+        "Tasa observada": st.column_config.NumberColumn("Tasa observada", min_value=0.0, max_value=1.0, step=0.001, format="%.4f"),
+    },
+    key="fixed_income_curve_editor",
+)
+
+b1, b2 = st.columns(2)
+with b1:
+    face_value = st.number_input("Valor nominal", min_value=1.0, value=1000.0, step=100.0, help="Monto principal que paga el bono al vencimiento.")
+    coupon_rate = st.number_input("Cupón anual", min_value=0.0, value=0.045, step=0.005, format="%.4f")
+with b2:
+    maturity_years = st.number_input("Vencimiento del bono", min_value=1, value=7, step=1, help="Numero de anos hasta el pago final del bono.")
+    market_yield = st.number_input("Yield de mercado", min_value=0.0, value=0.048, step=0.005, format="%.4f", help="Tasa de descuento de mercado usada para valorar el bono.")
+
+run_analysis = st.button("Calcular renta fija", type="primary", use_container_width=True)
 
 curve_df = pd.DataFrame(curve_inputs).dropna()
 maturities = pd.to_numeric(curve_df["Vencimiento (años)"], errors="coerce").dropna().tolist()

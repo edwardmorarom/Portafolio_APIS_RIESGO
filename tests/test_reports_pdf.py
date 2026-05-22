@@ -35,3 +35,19 @@ def test_custom_report_pdf_uses_dashboard_context():
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert response.content.startswith(b"%PDF")
+
+
+def test_report_summary_keeps_rubric_sections_to_five_pages_scope():
+    with TestClient(app) as client:
+        response = client.get("/api/v1/reports/executive-summary")
+
+    assert response.status_code == 200
+    payload = response.json()
+    sections = payload["sections"]
+
+    assert len(sections) == 5
+    assert "Riesgo financiero" in sections[0]["title"]
+    assert "Decisiones metodológicas" in sections[1]["title"]
+    assert "Arquitectura técnica" in sections[2]["title"]
+    assert "Resultados numéricos clave" in sections[3]["title"]
+    assert "Conclusiones" in sections[4]["title"]

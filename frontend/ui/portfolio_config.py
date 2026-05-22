@@ -91,7 +91,7 @@ def _asset_label(asset: dict[str, Any]) -> str:
     ticker = asset.get("ticker", "")
     country = display_country(asset)
     asset_type = _asset_type_label(asset)
-    benchmark = asset.get("benchmark_ticker") or resolve_benchmark([asset])["ticker"]
+    benchmark = resolve_benchmark([asset])["ticker"]
     return f"{asset_type['short']} · {name} · {ticker} · País: {country} · BM: {benchmark}"
 
 
@@ -105,7 +105,7 @@ def _selected_assets_table(assets: list[dict[str, Any]]) -> pd.DataFrame:
                 "Activo": asset.get("name", "N/D"),
                 "Ticker": asset.get("ticker", "N/D"),
                 "País": display_country(asset),
-                "BM": asset.get("benchmark_ticker") or resolve_benchmark([asset])["ticker"],
+                "BM": resolve_benchmark([asset])["ticker"],
             }
         )
     return pd.DataFrame(rows)
@@ -536,6 +536,40 @@ def _render_portfolio_config_styles() -> None:
                 margin: 0.45rem 0 0.85rem 0;
             }
 
+            .stTabs [data-baseweb="tab-list"] {
+                gap: 0.7rem !important;
+                width: 100% !important;
+                background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(17, 24, 39, 0.86)) !important;
+                border: 1px solid rgba(56, 189, 248, 0.26) !important;
+                border-radius: 18px !important;
+                padding: 0.5rem !important;
+                box-shadow: 0 16px 34px rgba(2, 8, 23, 0.24) !important;
+            }
+
+            .stTabs [data-baseweb="tab"] {
+                min-height: 54px !important;
+                padding: 0.7rem 1.05rem !important;
+                border-radius: 14px !important;
+                background: rgba(30, 41, 59, 0.72) !important;
+                color: #DDE7F5 !important;
+                border: 1px solid rgba(148, 163, 184, 0.22) !important;
+                font-weight: 900 !important;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+            }
+
+            .stTabs [data-baseweb="tab"]:hover {
+                background: rgba(30, 64, 175, 0.34) !important;
+                border-color: rgba(56, 189, 248, 0.42) !important;
+                color: #FFFFFF !important;
+            }
+
+            .stTabs [aria-selected="true"] {
+                background: linear-gradient(135deg, #38BDF8 0%, #2563EB 100%) !important;
+                color: #FFFFFF !important;
+                border-color: rgba(125, 211, 252, 0.78) !important;
+                box-shadow: 0 12px 24px rgba(37, 99, 235, 0.30) !important;
+            }
+
             .portfolio-manual-title {
                 color: #F8FAFC;
                 font-size: 1.08rem;
@@ -623,11 +657,11 @@ def render_global_portfolio_config() -> None:
 
     st.markdown("---")
 
-    tab_auto, tab_perri, tab_manual = st.tabs(
+    tab_manual, tab_auto, tab_perri = st.tabs(
         [
+            "Crear mi portafolio",
             "Recomendado para mí",
             "Portafolios precalculados",
-            "Crear mi portafolio",
         ]
     )
 
@@ -828,7 +862,7 @@ def render_global_portfolio_config() -> None:
                 }
             )
 
-            random_col, hint_col = st.columns([0.35, 0.65])
+            random_col, equal_col, hint_col = st.columns([0.30, 0.30, 0.40])
             with random_col:
                 randomize_weights = st.button(
                     "Asignar pesos aleatorios",
@@ -836,11 +870,24 @@ def render_global_portfolio_config() -> None:
                     disabled=selected_count == 0,
                     key="manual_random_weights",
                 )
+            with equal_col:
+                equalize_weights = st.button(
+                    "Asignar pesos iguales",
+                    use_container_width=True,
+                    disabled=selected_count == 0,
+                    key="manual_equal_weights",
+                )
             with hint_col:
                 st.caption("Si la suma queda casi en 100%, el sistema ajusta el último decimal al guardar.")
 
             if randomize_weights:
                 generated_weights = _random_weights(selected_count)
+                for idx, ticker in enumerate(selected_tickers):
+                    st.session_state[_weight_key(ticker, idx)] = generated_weights[idx]
+                st.rerun()
+
+            if equalize_weights:
+                generated_weights = _normalize_weights([100.0 / selected_count] * selected_count)
                 for idx, ticker in enumerate(selected_tickers):
                     st.session_state[_weight_key(ticker, idx)] = generated_weights[idx]
                 st.rerun()

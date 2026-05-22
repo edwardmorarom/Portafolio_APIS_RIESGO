@@ -55,17 +55,46 @@ def _current_report_payload(mode: str, custom_notes: str = "") -> dict:
     }
 
     sections = [
-        {"title": "1. Resumen ejecutivo", "description": f"Modo de reporte: {mode}. Horizonte: {active_horizon_label()}. Benchmark: {benchmark['ticker']}."},
-        {"title": "2. Composición del portafolio", "description": str(composition) if composition else "Sin portafolio activo seleccionado."},
-        {"title": "3. Benchmark y justificación", "description": benchmark.get("explanation", benchmark.get("reason", ""))},
-        {"title": "4. Rendimientos y volatilidad", "description": key_results["rendimientos"] + " " + key_results["volatilidad"]},
-        {"title": "5. VaR, CVaR y Kupiec", "description": key_results["var_cvar_kupiec"]},
-        {"title": "6. CAPM y Markowitz", "description": key_results["capm"] + " " + key_results["markowitz"]},
-        {"title": "7. Stress testing", "description": key_results["stress"]},
-        {"title": "8. Renta fija y opciones", "description": key_results["renta_fija_opciones"]},
-        {"title": "9. Machine Learning", "description": key_results["machine_learning"]},
-        {"title": "10. Conclusiones y recomendaciones", "description": custom_notes or "Conclusión generada desde la configuración actual sin inventar resultados no calculados."},
-        {"title": "11. Tests, Docker, deploy y CI", "description": "El criterio 13 se evidencia con Dockerfile multi-stage, docker-compose y GitHub Actions ejecutando pytest."},
+        {
+            "title": "1. Riesgo financiero y hallazgos",
+            "description": (
+                f"El riesgo financiero es la posibilidad de pérdidas por mercado, volatilidad, tasas o eventos extremos. "
+                f"Portafolio: {', '.join(tickers) or 'N/D'}. Horizonte: {active_horizon_label()}. Benchmark: {benchmark['ticker']}."
+            ),
+        },
+        {
+            "title": "2. Decisiones metodológicas",
+            "description": (
+                "Los activos provienen de la configuración inicial; el benchmark se define automáticamente por composición. "
+                "GARCH se usa para volatilidad condicional; VaR histórico, paramétrico y Monte Carlo para pérdida de cola; "
+                "ML predice retorno acumulado como apoyo analítico, no como recomendación automática."
+            ),
+        },
+        {
+            "title": "3. Arquitectura técnica",
+            "description": (
+                "Cinco capas: frontend Streamlit, backend FastAPI, contratos Pydantic/servicios financieros, "
+                "persistencia SQLAlchemy/SQLite y capa ML con Singleton. Docker, deploy y CI evidencian operación técnica."
+            ),
+        },
+        {
+            "title": "4. Resultados numéricos clave",
+            "description": (
+                f"VaR/Kupiec: {key_results['var_cvar_kupiec']} "
+                f"Markowitz: {key_results['markowitz']} "
+                f"CAPM/alpha: {key_results['capm']} "
+                f"ML: {key_results['machine_learning']} "
+                f"Stress: {key_results['stress']} "
+                "No se inventan cifras no calculadas."
+            ),
+        },
+        {
+            "title": "5. Conclusiones y recomendaciones",
+            "description": custom_notes or (
+                "La decisión de inversión debe depender del perfil KYC, la eficiencia frente al benchmark, "
+                "el balance retorno-riesgo, la pérdida bajo estrés y la consistencia de los modelos."
+            ),
+        },
     ]
 
     return {

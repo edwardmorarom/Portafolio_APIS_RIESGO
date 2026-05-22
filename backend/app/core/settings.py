@@ -1,6 +1,6 @@
 ﻿from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,10 +28,11 @@ class Settings(BaseSettings):
 
     # Configuraci?n opcional para chatbot con IA real.
     # No se deben quemar claves en c?digo. Usar .env local o secrets del proveedor.
-    llm_provider: str = Field(default="local", description="Proveedor LLM para chatbot: local, openai, azure, gemini u otro")
+    llm_provider: str = Field(default="local", description="Proveedor LLM para chatbot: local, gemini, groq u otro")
     llm_model: str = Field(default="local-expert", description="Modelo LLM configurado para el chatbot")
     llm_api_key: str | None = Field(default=None, description="API key del proveedor LLM")
     llm_base_url: str | None = Field(default=None, description="URL base opcional del proveedor LLM")
+    groq_api_key: str | None = Field(default=None, description="API key de GroqCloud para el chatbot")
 
     external_api_timeout_seconds: int = Field(default=20, description="Timeout para APIs externas")
     frontend_base_url: str = Field(default="http://localhost:8501", description="URL del frontend")
@@ -53,6 +54,17 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def parse_debug_flag(cls, value: object) -> object:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"release", "prod", "production"}:
+                return False
+            if normalized in {"dev", "debug", "true", "1", "yes", "on"}:
+                return True
+        return value
 
 
 @lru_cache

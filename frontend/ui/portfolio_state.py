@@ -124,7 +124,7 @@ def asset_label(asset: dict[str, Any]) -> str:
     name = asset.get("name", "Activo")
     ticker = asset.get("ticker", "N/D")
     country = display_country(asset)
-    benchmark = asset.get("benchmark_ticker") or active_benchmark()
+    benchmark = resolve_benchmark([asset])["ticker"]
     return f"{name} · {ticker} · País: {country} · BM: {benchmark}"
 
 

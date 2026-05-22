@@ -50,3 +50,32 @@ def test_chatbot_garch_statistical_answer_mentions_aic_bic_and_residuals():
     assert "BIC" in result["answer"]
     assert "residuos" in result["answer"]
 
+
+def test_chatbot_garch_distribution_question_recommends_student_t():
+    service = ChatbotService()
+
+    result = service.answer_question(
+        question="Para ARCH, GARCH y EGARCH que distribucion me recomiendas usar?",
+        mode="estadistico",
+        module="garch",
+    )
+
+    assert result["supported"] is True
+    assert "Student" in result["answer"]
+    assert "AIC" in result["answer"]
+    assert "BIC" in result["answer"]
+
+
+def test_chatbot_financial_series_distribution_routes_to_garch():
+    service = ChatbotService()
+
+    result = service.answer_question(
+        question="Entre la distribucion gaussiana y la t cual recomiendas para series de tiempo financieras?",
+        mode="estadistico",
+    )
+
+    assert result["supported"] is True
+    assert result["topics"][0] == "garch"
+    assert "Student" in result["answer"]
+    assert "normal" in result["answer"].lower()
+

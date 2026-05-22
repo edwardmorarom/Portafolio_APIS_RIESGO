@@ -19,7 +19,43 @@ def test_resolve_benchmark_uses_spy_for_us_only_portfolio():
     benchmark = resolve_benchmark(assets)
 
     assert benchmark["ticker"] == "SPY"
-    assert benchmark["criterion"] == "us_only"
+    assert benchmark["criterion"] == "us_equity_only"
+
+
+def test_resolve_benchmark_uses_spy_for_us_equities_even_with_old_acwi_metadata():
+    assets = [
+        {
+            "ticker": "AAPL",
+            "name": "Apple",
+            "country": "Global / US-listed",
+            "asset_type": "renta_variable",
+            "benchmark_ticker": "ACWI",
+        },
+        {
+            "ticker": "NVDA",
+            "name": "NVIDIA",
+            "country": "N/D",
+            "asset_type": "renta_variable",
+            "benchmark_ticker": "ACWI",
+        },
+    ]
+
+    benchmark = resolve_benchmark(assets)
+
+    assert benchmark["ticker"] == "SPY"
+    assert benchmark["criterion"] == "us_equity_only"
+
+
+def test_resolve_benchmark_does_not_use_spy_for_us_fixed_income_mix():
+    assets = [
+        {"ticker": "AAPL", "name": "Apple", "country": "US", "asset_type": "renta_variable"},
+        {"ticker": "AGG", "name": "US Aggregate Bond ETF", "country": "US", "asset_type": "renta_fija"},
+    ]
+
+    benchmark = resolve_benchmark(assets)
+
+    assert benchmark["ticker"] == "ACWI"
+    assert benchmark["criterion"] == "global_or_mixed"
 
 
 def test_resolve_benchmark_uses_acwi_for_international_portfolio():

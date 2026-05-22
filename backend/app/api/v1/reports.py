@@ -115,23 +115,46 @@ def build_report_payload(overrides: dict[str, Any] | None = None) -> dict:
         ),
     ]
 
-    sections = overrides.get("sections") or [
-        {"title": "1. Resumen ejecutivo", "description": "Síntesis del portafolio seleccionado, horizonte, pesos, benchmark y principales lecturas de riesgo."},
-        {"title": "2. Composición del portafolio y países", "description": "Lista de activos, país de origen, tipo de activo, benchmark metodológico y pesos definidos por el usuario."},
+    requested_sections = overrides.get("sections")
+    sections = requested_sections[:5] if isinstance(requested_sections, list) and requested_sections else [
         {
-            "title": "3. Benchmark y justificación",
+            "title": "1. Riesgo financiero y hallazgos",
             "description": (
-                f"Benchmark aplicado: {benchmark_context.get('ticker', portfolio_context.get('benchmark', 'N/D'))}. "
-                f"{benchmark_context.get('explanation', benchmark_context.get('reason', 'Se define automáticamente según la composición del portafolio.'))}"
+                "El riesgo financiero es la posibilidad de pérdidas por cambios en mercado, volatilidad, tasas, "
+                "liquidez o eventos extremos. Este reporte resume solo hallazgos calculados o declarados por el dashboard: "
+                f"portafolio {portfolio_context.get('tickers', 'N/D')}, horizonte {portfolio_context.get('horizon', 'N/D')} "
+                f"y benchmark {benchmark_context.get('ticker', portfolio_context.get('benchmark', 'N/D'))}."
             ),
         },
-        {"title": "4. Rendimientos, volatilidad, VaR/CVaR y Kupiec", "description": "Consolida retorno, volatilidad, VaR histórico, paramétrico y Monte Carlo, CVaR complementario y validación Kupiec cuando exista."},
-        {"title": "5. CAPM, Markowitz y eficiencia", "description": "Incluye beta, alpha de Jensen, retorno esperado CAPM, frontera eficiente, Sharpe y lectura de eficiencia frente al benchmark."},
-        {"title": "6. Stress testing", "description": "Resume escenario base, escenarios adversos, pérdida estimada del portafolio y comparación defensiva contra el benchmark."},
-        {"title": "7. Renta fija y opciones", "description": "Documenta curva de tasas, duración, convexidad, valoración Black-Scholes y Greeks cuando el análisis aplique."},
-        {"title": "8. Machine Learning", "description": "Explica variable objetivo, features, modelo persistido con joblib, patrón Singleton, endpoint /predict, métricas, supuestos y limitaciones."},
-        {"title": "9. Tests, Docker, deploy y CI", "description": "Evidencia pytest + TestClient, Docker multi-stage, docker-compose, GitHub Actions y preparación para deploy PaaS."},
-        {"title": "10. Conclusiones y recomendaciones", "description": "Las recomendaciones se derivan del perfil KYC, los resultados de riesgo, la comparación contra benchmark y la robustez bajo estrés."},
+        {
+            "title": "2. Decisiones metodológicas",
+            "description": (
+                "Los activos se toman de la selección inicial del usuario y sus pesos; el benchmark se define por composición "
+                "geográfica. GARCH se usa para volatilidad condicional, VaR histórico/paramétrico/Monte Carlo para pérdidas de cola "
+                "y ML como apoyo predictivo de retorno acumulado, no como prueba causal."
+            ),
+        },
+        {
+            "title": "3. Arquitectura técnica",
+            "description": (
+                "La solución se organiza en cinco capas: frontend Streamlit, backend FastAPI, contratos Pydantic/servicios, "
+                "persistencia SQLAlchemy/SQLite y capa ML con modelo cargado por Singleton. Docker, CI y deploy evidencian operación técnica."
+            ),
+        },
+        {
+            "title": "4. Resultados numéricos clave",
+            "description": (
+                "Se reportan únicamente métricas disponibles: VaR del portafolio, composición óptima Markowitz, alpha de Jensen, "
+                "performance o predicción ML y pérdida bajo estrés. Si una cifra aparece como N/D o pendiente, no fue calculada en la sesión."
+            ),
+        },
+        {
+            "title": "5. Conclusiones y recomendaciones",
+            "description": (
+                "La recomendación debe derivarse del perfil KYC, del balance retorno-riesgo, de la eficiencia frente al benchmark, "
+                "del comportamiento bajo estrés y de la coherencia de los modelos. No se recomienda invertir solo por una métrica aislada."
+            ),
+        },
     ]
 
     return {

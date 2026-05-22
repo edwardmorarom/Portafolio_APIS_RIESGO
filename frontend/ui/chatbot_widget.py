@@ -14,7 +14,7 @@ _MODULE_HINTS = {
     "var": "var",
     "cvar": "cvar",
     "perfil": "kyc",
-    "riesgo": "kyc",
+    "dashboard riesgo": "dashboard",
     "renta fija": "nelson_siegel",
     "opciones": "black_scholes",
     "perri": "perri",
@@ -40,6 +40,24 @@ def _module_hint(module: str | None) -> str | None:
 
 
 def _ensure_chatbot_state() -> None:
+    chatbot_version = "groq_ready_v1"
+    if st.session_state.get("risk_chatbot_version") != chatbot_version:
+        st.session_state.risk_chatbot_version = chatbot_version
+        st.session_state.risk_chatbot_messages = [
+            {
+                "role": "assistant",
+                "content": (
+                    "Hola. Soy el asistente IA de riesgo del proyecto. "
+                    "Respondere con el proveedor IA configurado en el backend."
+                ),
+            }
+        ]
+        st.session_state.risk_chatbot_followups = [
+            "Que significa VaR?",
+            "Como afecta el horizonte al riesgo?",
+            "Que hace este dashboard?",
+        ]
+
     if "risk_chatbot_open" not in st.session_state:
         st.session_state.risk_chatbot_open = False
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from contextlib import nullcontext
 from html import escape
 import json
 from pathlib import Path
@@ -492,7 +493,7 @@ def render_top_navigation():
 
 
 def render_invisible_filter_panel(
-    filtros_label: str = "Filtros del módulo",
+    filtros_label: str | None = "Filtros del módulo",
     filtros_expanded: bool = False,
 ):
     """
@@ -504,6 +505,9 @@ def render_invisible_filter_panel(
 
     Muestra filtros en un panel compacto para no ocupar espacio cuando no se usan.
     """
+    if filtros_label is None:
+        return "General", nullcontext()
+
     panel = st.expander(f"Mostrar filtros / Ocultar filtros · {filtros_label}", expanded=filtros_expanded)
     return "General", panel
 
