@@ -37,6 +37,10 @@ modo, filtros_panel = setup_dashboard_page(
 client = get_api_client()
 
 with filtros_panel:
+    render_info_card(
+        "Modulo 12 - Machine Learning",
+        "Predice retorno acumulado a horizonte fijo con Ridge, Lasso y Gradient Boosting como apoyo al analisis de riesgo.",
+    )
     render_portfolio_scope_note()
     render_filter_help(
         "Como llenar Machine Learning",

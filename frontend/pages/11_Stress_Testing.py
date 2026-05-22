@@ -44,6 +44,10 @@ benchmark_ticker = active_benchmark()
 horizon_label = active_horizon_label()
 
 with filtros_panel:
+    render_info_card(
+        "Modulo 11 - Stress testing",
+        "Aplica escenarios adversos al portafolio para medir perdida, valor estresado y defensa frente al benchmark.",
+    )
     render_portfolio_scope_note()
     render_filter_help(
         "Como llenar stress testing",

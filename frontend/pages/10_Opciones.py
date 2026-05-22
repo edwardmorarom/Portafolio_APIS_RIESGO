@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -15,6 +17,30 @@ from ui.plot_style import style_plotly_figure
 from ui.portfolio_state import render_portfolio_scope_note
 
 
+def _norm_cdf(value: float) -> float:
+    return 0.5 * (1.0 + math.erf(value / math.sqrt(2.0)))
+
+
+def _black_scholes_price(
+    spot: float,
+    strike: float,
+    time_to_maturity: float,
+    risk_free_rate: float,
+    volatility: float,
+    option_type: str,
+) -> float:
+    if spot <= 0 or strike <= 0 or time_to_maturity <= 0 or volatility <= 0:
+        return 0.0
+
+    sigma_sqrt_t = volatility * math.sqrt(time_to_maturity)
+    d1 = (math.log(spot / strike) + (risk_free_rate + 0.5 * volatility**2) * time_to_maturity) / sigma_sqrt_t
+    d2 = d1 - sigma_sqrt_t
+
+    if option_type == "call":
+        return spot * _norm_cdf(d1) - strike * math.exp(-risk_free_rate * time_to_maturity) * _norm_cdf(d2)
+    return strike * math.exp(-risk_free_rate * time_to_maturity) * _norm_cdf(-d2) - spot * _norm_cdf(-d1)
+
+
 modo, filtros_panel = setup_dashboard_page(
     title="Dashboard Riesgo",
     subtitle="Universidad Santo Tomás",
@@ -27,6 +53,10 @@ modo, filtros_panel = setup_dashboard_page(
 client = get_api_client()
 
 with filtros_panel:
+    render_info_card(
+        "Modulo 10 - Opciones",
+        "Valora opciones europeas con Black-Scholes, muestra Greeks y compara payoff con valor teorico.",
+    )
     render_portfolio_scope_note()
     render_filter_help(
         "Cómo llenar opciones",
@@ -121,9 +151,21 @@ else:
 seccion("Payoff a vencimiento")
 spot_range = np.linspace(max(0.01, spot_price * 0.45), spot_price * 1.65, 120)
 payoff = np.maximum(spot_range - strike_price, 0) if option_type == "call" else np.maximum(strike_price - spot_range, 0)
+theoretical_values = [
+    _black_scholes_price(
+        spot=float(spot),
+        strike=float(strike_price),
+        time_to_maturity=float(time_to_maturity),
+        risk_free_rate=float(risk_free_rate),
+        volatility=float(volatility),
+        option_type=option_type,
+    )
+    for spot in spot_range
+]
 
 fig_payoff = go.Figure()
-fig_payoff.add_trace(go.Scatter(x=spot_range, y=payoff, mode="lines", name=f"Payoff {option_type.upper()}"))
+fig_payoff.add_trace(go.Scatter(x=spot_range, y=payoff, mode="lines", name=f"Payoff {option_type.upper()}", line=dict(width=2.2, dash="dash")))
+fig_payoff.add_trace(go.Scatter(x=spot_range, y=theoretical_values, mode="lines", name="Valor teorico", line=dict(width=2.8)))
 fig_payoff.add_vline(x=strike_price, line_dash="dash", annotation_text="Strike")
 fig_payoff.add_vline(x=spot_price, line_dash="dot", annotation_text="Spot")
 
@@ -132,6 +174,7 @@ st.plotly_chart(
     style_plotly_figure(fig_payoff, modo=modo, title="Payoff a vencimiento", xaxis_title="Precio del subyacente", yaxis_title="Payoff"),
     use_container_width=True,
 )
+plot_card_footer("La linea de valor teorico si cambia con volatilidad, tasa y tiempo; el payoff puro solo depende de spot, strike y tipo.")
 plot_card_footer("El payoff no incluye el costo inicial de la prima; muestra el valor intrínseco al vencimiento.")
 
 seccion("Sensibilidad a volatilidad")

@@ -163,6 +163,21 @@ class ApiClient:
         self._handle_response(response)
         return b""
 
+    def get_bytes(
+        self,
+        path: str,
+        include_api_key: bool = False,
+    ) -> bytes:
+        response = requests.get(
+            self._url(path),
+            headers=self._headers(include_api_key=include_api_key),
+            timeout=self.config.timeout,
+        )
+        if response.ok:
+            return response.content
+        self._handle_response(response)
+        return b""
+
     # ---------- Root / health ----------
     def get_root(self) -> dict[str, Any]:
         url = f"{self.config.base_url.rstrip('/')}/"
@@ -413,11 +428,28 @@ class ApiClient:
         )
 
     def build_executive_summary_pdf(self, payload: dict[str, Any]) -> bytes:
-        return self.post_bytes(
-            "/reports/executive-summary/pdf",
+        try:
+            return self.post_bytes(
+                "/reports/executive-summary/pdf",
+                json_payload=payload,
+                include_api_key=True,
+            )
+        except ApiClientError as exc:
+            if exc.status_code == 405 or "method not allowed" in exc.message.lower():
+                return self.get_bytes(
+                    "/reports/executive-summary/pdf",
+                    include_api_key=True,
+                )
+            raise
+
+    # ---------- Fixed Income ----------
+    def simulate_bond_purchase(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.post(
+            "/fixed-income/bond/purchase",
             json_payload=payload,
             include_api_key=True,
         )
+
     # ---------- Machine Learning ----------
     def predict_ml_return(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self.post(

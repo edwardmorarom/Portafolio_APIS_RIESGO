@@ -7,6 +7,7 @@ from app.api.v1 import (
     capm,
     chatbot,
     decision,
+    fixed_income,
     garch,
     help,
     investor,
@@ -45,11 +46,11 @@ api_router.include_router(returns_stats.router, prefix="/returns-stats", tags=["
 api_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 api_router.include_router(garch.router, prefix="/garch", tags=["GARCH"])
 api_router.include_router(valuation.router, prefix="/valuation", tags=["Valuation"])
+api_router.include_router(fixed_income.router, prefix="/fixed-income", tags=["Fixed Income"])
 api_router.include_router(stress.router, prefix="/stress", tags=["Stress"])
 api_router.include_router(roboadvisor.router, prefix="/roboadvisor", tags=["RoboAdvisor"])
 api_router.include_router(perri.router, prefix="/perri", tags=["Perri"])
 api_router.include_router(persistence.router, prefix="/persistence", tags=["Persistence"])
 api_router.include_router(chatbot.router, prefix="/chatbot", tags=["Chatbot"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
-
 
