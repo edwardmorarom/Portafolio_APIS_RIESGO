@@ -422,12 +422,13 @@ def _validate_and_store_config(
     custom_end: date | None = None,
 ) -> tuple[bool, str | None]:
     client = get_api_client()
+    normalized_confidence = float(confidence_level)
 
     preferences_payload = {
         "tickers": tickers,
         "weights_pct": weights_pct,
         "base_currency": "USD",
-        "confidence_level": float(confidence_level),
+        "confidence_level": normalized_confidence,
         "risk_profile": risk_profile,
         "horizon_type": horizon_type,
         "return_type": "log",
@@ -456,6 +457,8 @@ def _validate_and_store_config(
     st.session_state["portfolio_config"] = global_config
     st.session_state["robo_portfolio"] = assets
     st.session_state["kyc_profile"] = risk_profile
+    st.session_state["confidence_level"] = normalized_confidence
+    st.session_state["var_confidence_level"] = normalized_confidence
     st.session_state.pop("portfolio_persistence_warning", None)
 
     try:
@@ -469,7 +472,7 @@ def _validate_and_store_config(
                 "horizon": horizon_type,
                 "benchmark": global_config["benchmark"],
                 "base_currency": global_config.get("base_currency", "USD"),
-                "confidence_level": float(confidence_level),
+                "confidence_level": normalized_confidence,
             }
         )
     except Exception as exc:
@@ -507,7 +510,9 @@ def _apply_perri_option(
         return
 
     st.success("Portafolio aplicado como configuración global.")
-    st.rerun()
+    if st.session_state.get("portfolio_persistence_warning"):
+        st.warning(st.session_state["portfolio_persistence_warning"])
+    st.switch_page("pages/0_Contextualizacion.py")
 
 
 def _current_config_summary() -> None:
@@ -860,9 +865,9 @@ def render_global_portfolio_config() -> None:
                 confidence_level = st.selectbox(
                     "Nivel de confianza VaR",
                     options=[0.95, 0.975, 0.99],
-                    index=None,
-                    placeholder="Selecciona nivel",
+                    index=0,
                     format_func=lambda value: f"{value:.1%}",
+                    help="Se usa 95% por defecto para que el VaR/CVaR tenga una referencia estándar desde el inicio.",
                 )
 
             benchmark_choice_keys = list(BENCHMARK_OPTIONS.keys())
