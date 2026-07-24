@@ -216,37 +216,37 @@ def build_global_css(modo: str = "General") -> str:
         background: #ffffff;
         border: 1px solid rgba(255, 255, 255, 0.70);
         border-radius: 20px;
-        padding: 0.95rem 0.9rem;
+        padding: 1.05rem 0.95rem;
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
     }
 
     .sidebar-brand-inner {
         display: flex;
         align-items: center;
-        gap: 0.8rem;
+        gap: 0.95rem;
     }
 
     .sidebar-brand-logo {
-        width: 60px;
-        height: 60px;
+        width: 72px;
+        height: 72px;
         border-radius: 50%;
         object-fit: contain;
         flex-shrink: 0;
     }
 
     .sidebar-brand-title {
-        font-size: 1.35rem;
+        font-size: 1.62rem;
         line-height: 1.02;
-        font-weight: 800;
+        font-weight: 950;
         color: var(--accent-main) !important;
         margin: 0;
     }
 
     .sidebar-brand-subtitle {
-        font-size: 0.82rem;
+        font-size: 0.92rem;
         color: #64748b !important;
         margin-top: 0.18rem;
-        font-weight: 600;
+        font-weight: 800;
     }
 
     .sidebar-session {
@@ -1022,8 +1022,8 @@ def build_global_css(modo: str = "General") -> str:
         position: relative;
         overflow: hidden;
         border-radius: 26px;
-        min-height: 620px;
-        padding: 1.35rem;
+        min-height: 650px;
+        padding: 1.55rem;
         background:
             radial-gradient(circle at 16% 18%, rgba(35, 116, 255, 0.48), transparent 24%),
             radial-gradient(circle at 82% 32%, rgba(31, 212, 255, 0.36), transparent 20%),
@@ -1102,20 +1102,42 @@ def build_global_css(modo: str = "General") -> str:
     }
 
     .login-title {
-        font-size: 2.45rem;
+        font-size: 2.85rem;
         line-height: 1.05;
         font-weight: 900;
-        max-width: 560px;
+        max-width: 640px;
     }
 
     .login-subtitle {
         color: #BED3F7 !important;
-        max-width: 620px;
+        max-width: 680px;
+        font-size: 1.02rem;
+        line-height: 1.55;
         margin-top: 0.85rem;
     }
 
     .login-logo {
-        background: rgba(255,255,255,0.92);
+        width: 74px;
+        height: 74px;
+        background: rgba(255,255,255,0.94);
+        border: 1px solid rgba(245, 211, 107, 0.55);
+        box-shadow: 0 10px 24px rgba(245, 211, 107, 0.18);
+    }
+
+    .login-brand {
+        gap: 1.05rem;
+    }
+
+    .login-brand-title {
+        font-size: 1.28rem;
+        font-weight: 950;
+        line-height: 1.02;
+    }
+
+    .login-brand-subtitle {
+        font-size: 0.92rem;
+        font-weight: 850;
+        margin-top: 0.18rem;
     }
 
     .login-feature-grid {

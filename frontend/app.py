@@ -260,7 +260,7 @@ def _login_css() -> str:
         }
 
         .block-container {
-            max-width: 1380px;
+            max-width: 1440px;
             padding-top: 0.9rem;
         }
 
@@ -268,7 +268,7 @@ def _login_css() -> str:
             background: rgba(8, 24, 58, 0.68) !important;
             border: 1px solid rgba(180, 218, 255, 0.18) !important;
             border-radius: 22px !important;
-            padding: 1.1rem !important;
+            padding: 1.35rem !important;
             box-shadow: 0 24px 55px rgba(0, 0, 0, 0.26) !important;
             backdrop-filter: blur(18px);
         }
@@ -338,10 +338,18 @@ def _login_css() -> str:
             background: rgba(8, 24, 58, 0.68);
             border: 1px solid rgba(180, 218, 255, 0.18);
             border-radius: 22px;
-            padding: 1.1rem 1.1rem 0.85rem 1.1rem;
-            margin-bottom: 0.7rem;
+            padding: 1.35rem 1.35rem 1.05rem 1.35rem;
+            margin-bottom: 0.85rem;
             box-shadow: 0 18px 44px rgba(0, 0, 0, 0.20);
             backdrop-filter: blur(18px);
+        }
+
+        .login-card-title {
+            font-size: 1.35rem !important;
+        }
+
+        .login-card-subtitle {
+            font-size: 0.88rem !important;
         }
     </style>
     """
@@ -364,7 +372,7 @@ def _render_login() -> None:
     st.markdown(build_global_css("General"), unsafe_allow_html=True)
     st.markdown(_login_css(), unsafe_allow_html=True)
 
-    left, right = st.columns([1.42, 0.78], gap="large")
+    left, right = st.columns([1.30, 0.90], gap="large")
 
     with left:
         st.markdown(
@@ -379,11 +387,11 @@ def _render_login() -> None:
                         <div class="login-brand-subtitle">Generador de Portafolios de riesgo</div>
                     </div>
                 </div>
-                <div class="login-title" style="position:relative;z-index:1;margin-top:4.2rem;">Welcome back...</div>
-                <div class="login-subtitle" style="position:relative;z-index:1;">
+                <div class="login-title" style="position:relative;z-index:1;margin:6.6rem auto 0 auto;text-align:center;">Welcome back...</div>
+                <div class="login-subtitle" style="position:relative;z-index:1;margin-left:auto;margin-right:auto;text-align:center;">
                     Riesgo, valoración, optimización y automatización Perri en un entorno financiero profesional.
                 </div>
-                <div class="login-trust-row" style="position:relative;z-index:1;">
+                <div class="login-trust-row" style="position:relative;z-index:1;justify-content:center;">
                     <span class="login-trust">FastAPI</span>
                     <span class="login-trust">Streamlit</span>
                     <span class="login-trust">SQLite</span>
