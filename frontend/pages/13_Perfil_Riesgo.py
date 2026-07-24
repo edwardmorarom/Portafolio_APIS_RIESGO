@@ -27,7 +27,7 @@ stored_kyc = config.get("kyc", {}) or st.session_state.get("user_kyc_data", {}) 
 with filtros_panel:
     render_portfolio_scope_note()
     render_filter_help(
-        "Como llenar KYC",
+        "Cómo llenar KYC",
         "Edad, experiencia y tolerancia permiten aproximar el perfil del inversionista. El resultado se usa para sustentar decisiones de riesgo y recomendacion.",
     )
     age = st.number_input("Edad", min_value=18, max_value=100, value=int(stored_kyc.get("age", 30)), step=1, help="Edad del inversionista. Ayuda a aproximar horizonte y tolerancia.")

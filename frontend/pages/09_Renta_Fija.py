@@ -23,7 +23,7 @@ CURVE_YIELD_COL = "Tasa observada"
 
 def _normalize_curve_columns(df: pd.DataFrame) -> pd.DataFrame:
     aliases = {
-        "Vencimiento (aÃ±os)": CURVE_MATURITY_COL,
+        "Vencimiento (años)": CURVE_MATURITY_COL,
         "Vencimiento (anos)": CURVE_MATURITY_COL,
         "Vencimiento": CURVE_MATURITY_COL,
         "maturity": CURVE_MATURITY_COL,
@@ -485,7 +485,7 @@ if module_view == "Compra de bono TES":
     st.stop()
 
 render_info_card(
-    "Modulo 9 - Renta fija",
+    "Módulo 9 - Renta fija",
     "Construye una curva Nelson-Siegel, valora bonos y estima sensibilidad a tasas para instrumentos de deuda.",
 )
 render_portfolio_scope_note()

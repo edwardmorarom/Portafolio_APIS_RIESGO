@@ -60,7 +60,7 @@ def setup_dashboard_page(
     subtitle: str = "Desarrolla Tus Portafolios",
     logo_path: str = "frontend/assets/pred_dachshund_logo.png",
     modo_default: str = "General",
-    filtros_label: str = "Parámetros Del Módulo",
+    filtros_label: str = "Parámetros del módulo",
     filtros_expanded: bool = False,
     page_title: str | None = None,
     page_icon: str | None = None,

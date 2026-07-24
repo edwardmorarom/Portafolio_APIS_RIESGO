@@ -48,14 +48,14 @@ def _ensure_chatbot_state() -> None:
                 "role": "assistant",
                 "content": (
                     "Hola. Soy el asistente IA de riesgo del proyecto. "
-                    "Respondere con el proveedor IA configurado en el backend."
+                    "Responderé con el proveedor IA configurado en el backend."
                 ),
             }
         ]
         st.session_state.risk_chatbot_followups = [
-            "Que significa VaR?",
-            "Como afecta el horizonte al riesgo?",
-            "Que hace este dashboard?",
+            "¿Qué significa VaR?",
+            "¿Cómo afecta el horizonte al riesgo?",
+            "¿Qué hace este dashboard?",
         ]
 
     if "risk_chatbot_open" not in st.session_state:
@@ -74,16 +74,16 @@ def _ensure_chatbot_state() -> None:
 
     if "risk_chatbot_followups" not in st.session_state:
         st.session_state.risk_chatbot_followups = [
-            "Que significa VaR?",
-            "Como interpreto CAPM?",
-            "Que hace Perri?",
+            "¿Qué significa VaR?",
+            "¿Cómo interpreto CAPM?",
+            "¿Qué hace Perri?",
         ]
 
 
 def _message_html(content: str, role: str) -> str:
     clean_content = escape(str(content or "")).replace("\n", "<br>")
     role_class = "user" if role == "user" else "assistant"
-    role_label = "Tu" if role == "user" else "Asistente"
+    role_label = "Tú" if role == "user" else "Asistente"
 
     return (
         f'<div class="risk-chat-message {role_class}">'
@@ -335,7 +335,7 @@ def render_floating_chatbot(
         with st.form("risk_chatbot_form", clear_on_submit=True):
             question = st.text_area(
                 "Pregunta al chatbot",
-                placeholder="Ej: Como interpreto el CVaR de mi portafolio?",
+                placeholder="Ej: ¿Cómo interpreto el CVaR de mi portafolio?",
                 label_visibility="collapsed",
                 max_chars=1000,
             )

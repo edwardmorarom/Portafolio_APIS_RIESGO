@@ -111,7 +111,7 @@ def _persist_user_session_data(
     full_name = str(full_name or "").strip()
 
     if not username or username == "n/d":
-        return False, "No se encontr el username de la sesin. Cierra sesin e ingresa nuevamente."
+        return False, "No se encontró el usuario de la sesión. Cierra sesión e ingresa nuevamente."
 
     if not users_path.exists():
         return False, f"No existe el archivo de usuarios: {users_path}"
@@ -123,7 +123,7 @@ def _persist_user_session_data(
 
     users = payload.get("users", [])
     if not isinstance(users, list):
-        return False, "users.json no tiene una lista vlida de usuarios."
+        return False, "users.json no tiene una lista válida de usuarios."
 
     user_found = None
     for user in users:
@@ -133,7 +133,7 @@ def _persist_user_session_data(
             break
 
     if user_found is None:
-        return False, f"No se encontr el usuario '{username}' en users.json."
+        return False, f"No se encontró el usuario '{username}' en users.json."
 
     if full_name:
         user_found["full_name"] = full_name
@@ -304,7 +304,7 @@ def render_sidebar_session():
                 else:
                     st.write(f"- {ticker}: {format_percent(weight, already_pct=True)}")
     else:
-        st.caption("An no hay portafolio global guardado.")
+        st.caption("Aún no hay portafolio global guardado.")
 
     apply_decimal_display_options()
 
@@ -324,7 +324,7 @@ def render_sidebar_session():
 
     st.sidebar.divider()
 
-    if st.sidebar.button("Cerrar sesin", key="sidebar_logout", use_container_width=True):
+    if st.sidebar.button("Cerrar sesión", key="sidebar_logout", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_role = None
         st.session_state.user_name = None
@@ -339,16 +339,16 @@ def render_sidebar_session():
 
 def render_sidebar_panel(
     modo_default: str = "General",
-    filtros_label: str = "Opciones Del Módulo",
+    filtros_label: str = "Opciones del módulo",
     filtros_expanded: bool = False,
 ):
     st.sidebar.markdown(
-        '<div style="font-size:0.92rem;font-weight:700;color:var(--accent-main);margin:0.15rem 0 0.45rem 0;">Modo De Visualización</div>',
+        '<div style="font-size:0.92rem;font-weight:700;color:var(--accent-main);margin:0.15rem 0 0.45rem 0;">Modo de visualización</div>',
         unsafe_allow_html=True,
     )
 
     modo = st.sidebar.radio(
-        "Modo De Visualización",
+        "Modo de visualización",
         ["General", "Estadístico"],
         index=0 if modo_default == "General" else 1,
         key="sidebar_modo_visualizacion",
@@ -519,7 +519,7 @@ def render_invisible_filter_panel(
 
 def render_filter_panel(
     modo_default: str = "General",
-    filtros_label: str = "Parámetros Del Módulo",
+    filtros_label: str = "Parámetros del módulo",
     filtros_expanded: bool = False,
 ):
     panel = st.expander(filtros_label, expanded=filtros_expanded)

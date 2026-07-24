@@ -290,7 +290,7 @@ portfolio = _build_portfolio(tickers, weights_decimal)
 
 with filtros_panel:
     render_info_card(
-        "Modulo 11 - Stress testing",
+        "Módulo 11 - Stress testing",
         "Aplica escenarios extremos forward-looking al portafolio activo y compara perdida puntual, VaR y sensibilidad por activo.",
     )
     render_portfolio_scope_note()

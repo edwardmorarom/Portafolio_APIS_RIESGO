@@ -74,7 +74,7 @@ client = get_api_client()
 
 with filtros_panel:
     render_info_card(
-        "Modulo 10 - Opciones",
+        "Módulo 10 - Opciones",
         "Valora opciones europeas con Black-Scholes, muestra Greeks y compara payoff con valor teorico.",
     )
     render_portfolio_scope_note()

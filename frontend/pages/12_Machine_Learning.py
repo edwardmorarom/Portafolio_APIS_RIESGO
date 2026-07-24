@@ -164,12 +164,12 @@ default_ticker = tickers[0] if tickers else "PORTFOLIO"
 
 with filtros_panel:
     render_info_card(
-        "Modulo 12 - Machine Learning",
+        "Módulo 12 - Machine Learning",
         "Detecta anomalias en retornos con Isolation Forest y One-Class SVM servidos por un predictor Singleton.",
     )
     render_portfolio_scope_note()
     render_filter_help(
-        "Como leer anomalías",
+        "Cómo leer anomalías",
         "Un retorno anómalo no es automaticamente un error: puede ser un evento extremo, ruptura de mercado, baja liquidez o un dato que debe auditarse.",
     )
 
