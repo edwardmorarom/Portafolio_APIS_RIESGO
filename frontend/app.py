@@ -426,13 +426,14 @@ def _render_login() -> None:
                 <div class="login-quote-card">
                     <div class="login-quote-mark">Lectura P.R.ED</div>
                     <div class="login-quote-text">
-                        “Sé temeroso cuando otros sean avariciosos, sé avaricioso cuando otros sean temerosos”.
+                        “We simply attempt to be fearful when others are greedy and to be greedy only when others are fearful”.
                     </div>
                     <div class="login-quote-source">
-                        Frase atribuida a Warren Buffett. Fuente:
-                        <a href="https://www.bankinter.com/blog/finanzas-personales/frases-warren-buffett" target="_blank" rel="noopener noreferrer">
-                            Blog Bankinter
-                        </a>.
+                        Buffett, W. E. (16 de octubre de 2008). <em>Buy American. I am.</em>
+                        The New York Times.
+                        <a href="https://www.nytimes.com/2008/10/17/opinion/17buffett.html" target="_blank" rel="noopener noreferrer">
+                            nytimes.com
+                        </a>
                     </div>
                 </div>
             </div>
