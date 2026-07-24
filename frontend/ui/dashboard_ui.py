@@ -28,9 +28,6 @@ NAV_ITEMS = [
     ("8 Macro", "pages/08_Macro_Benchmark.py"),
     ("9 Renta fija", "pages/09_Renta_Fija.py"),
     ("10 Opciones", "pages/10_Opciones.py"),
-    ("11 Stress", "pages/11_Stress_Testing.py"),
-    ("12 ML", "pages/12_Machine_Learning.py"),
-    ("13 Perfil", "pages/13_Perfil_Riesgo.py"),
 ]
 
 
@@ -48,9 +45,6 @@ def _navigation_items() -> list[tuple[str, str]]:
         ("8 Macro", "pages/08_Macro_Benchmark.py"),
         ("9 Renta fija", "pages/09_Renta_Fija.py"),
         ("10 Opciones", "pages/10_Opciones.py"),
-        ("11 Stress", "pages/11_Stress_Testing.py"),
-        ("12 ML", "pages/12_Machine_Learning.py"),
-        ("13 Perfil", "pages/13_Perfil_Riesgo.py"),
     ]
     if st.session_state.get("user_role") == "superuser":
         items.append(("Admin Usuarios", "pages/15_Usuarios.py"))
@@ -219,7 +213,7 @@ def render_sidebar_session():
     st.sidebar.divider()
 
     with st.sidebar.expander("Configurar datos personales", expanded=False):
-        st.caption("Estos datos actualizan la sesin actual y se guardan en el registro del usuario.")
+        st.caption("Estos datos actualizan la sesión actual y se guardan en el registro del usuario.")
 
         with st.form("sidebar_personal_data_form"):
             new_full_name = st.text_input(
@@ -238,7 +232,7 @@ def render_sidebar_session():
             )
 
             new_experience = st.number_input(
-                "Experiencia invirtiendo",
+                "Experiencia invirtiendo (años)",
                 min_value=0,
                 max_value=100,
                 value=experience,
@@ -384,9 +378,6 @@ def render_top_navigation():
         ("8 Macro", "pages/08_Macro_Benchmark.py"),
         ("9 Renta fija", "pages/09_Renta_Fija.py"),
         ("10 Opciones", "pages/10_Opciones.py"),
-        ("11 Stress", "pages/11_Stress_Testing.py"),
-        ("12 ML", "pages/12_Machine_Learning.py"),
-        ("13 Perfil", "pages/13_Perfil_Riesgo.py"),
     ]
 
     nav_items = _navigation_items()

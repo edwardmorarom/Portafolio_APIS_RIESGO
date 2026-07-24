@@ -14,12 +14,12 @@ def style_plotly_figure(
     show_ygrid: bool = True,
     legend_orientation: str = "h",
 ) -> go.Figure:
-    font_color = "#D7E3F4"
-    legend_font = "#EAF2FF"
-    axis_title = "#F8FAFC"
-    tick_color = "#C9D8EA"
-    grid_color = "rgba(148, 163, 184, 0.22)"
-    plot_bg = "rgba(8, 15, 28, 0.82)"
+    font_color = "#172033"
+    legend_font = "#172033"
+    axis_title = "#0F172A"
+    tick_color = "#334155"
+    grid_color = "rgba(100, 116, 139, 0.24)"
+    plot_bg = "#FFFFFF"
 
     if title:
         fig.update_layout(
@@ -32,8 +32,8 @@ def style_plotly_figure(
         )
 
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
+        template="plotly_white",
+        paper_bgcolor="#FFFFFF",
         plot_bgcolor=plot_bg,
         font=dict(color=font_color, size=13),
         xaxis_title=xaxis_title,
@@ -46,16 +46,16 @@ def style_plotly_figure(
             y=1.02,
             xanchor="right",
             x=1.0,
-            bgcolor="rgba(8, 15, 28, 0.42)",
-            bordercolor="rgba(148, 163, 184, 0.18)",
+            bgcolor="rgba(255, 255, 255, 0.92)",
+            bordercolor="rgba(148, 163, 184, 0.28)",
             borderwidth=0,
             font=dict(size=11, color=legend_font),
         ),
         hovermode="x unified",
         hoverlabel=dict(
-            bgcolor="#0B1220",
-            bordercolor="rgba(125, 211, 252, 0.32)",
-            font=dict(color="#F8FAFC", size=12),
+            bgcolor="#FFFFFF",
+            bordercolor="rgba(37, 99, 235, 0.32)",
+            font=dict(color="#0F172A", size=12),
         ),
     )
 
@@ -64,7 +64,7 @@ def style_plotly_figure(
         gridcolor=grid_color,
         zeroline=False,
         showline=True,
-        linecolor="rgba(203, 213, 225, 0.52)",
+        linecolor="rgba(71, 85, 105, 0.45)",
         tickfont=dict(color=tick_color, size=12),
         title_font=dict(color=axis_title, size=13, family="Inter, sans-serif"),
     )
@@ -74,7 +74,7 @@ def style_plotly_figure(
         gridcolor=grid_color,
         zeroline=False,
         showline=True,
-        linecolor="rgba(203, 213, 225, 0.52)",
+        linecolor="rgba(71, 85, 105, 0.45)",
         tickfont=dict(color=tick_color, size=12),
         title_font=dict(color=axis_title, size=13, family="Inter, sans-serif"),
     )

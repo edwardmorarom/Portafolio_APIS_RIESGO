@@ -282,9 +282,10 @@ class PortfolioService:
     ) -> tuple[np.ndarray, dict]:
         num_assets = len(tickers)
         target_daily = self._daily_return_from_annual(target_return_annual, return_type=return_type)
+        annual_cov = cov_daily.values * 252.0
 
         def objective(weights: np.ndarray) -> float:
-            return float(weights.T @ cov_daily.values @ weights)
+            return float(weights.T @ annual_cov @ weights)
 
         constraints = [
             {"type": "eq", "fun": lambda x: np.sum(x) - 1.0},
@@ -329,12 +330,27 @@ class PortfolioService:
         allow_short_selling: bool = False,
         points: int = 40,
     ) -> list[dict]:
-        annual_returns = [
-            self._annual_return_from_daily(float(value), return_type=return_type)
-            for value in mean_daily.values
-        ]
-        lower = float(min(annual_returns))
-        upper = float(max(annual_returns))
+        min_var_weights, min_var_metrics = self._optimize_min_variance(
+            tickers=tickers,
+            mean_daily=mean_daily,
+            cov_daily=cov_daily,
+            rf_annual=rf_annual,
+            return_type=return_type,
+            allow_short_selling=allow_short_selling,
+        )
+
+        max_return_weights, max_return_metrics = self._optimize_extreme_return(
+            tickers=tickers,
+            mean_daily=mean_daily,
+            cov_daily=cov_daily,
+            rf_annual=rf_annual,
+            return_type=return_type,
+            allow_short_selling=allow_short_selling,
+            maximize=True,
+        )
+
+        lower = float(min_var_metrics["return"])
+        upper = max(float(max_return_metrics["return"]), lower)
 
         if np.isclose(lower, upper):
             targets = [lower]
@@ -343,6 +359,23 @@ class PortfolioService:
 
         frontier_rows: list[dict] = []
         seen: set[tuple[float, float]] = set()
+
+        def add_row(weights: np.ndarray, metrics: dict, target: float) -> None:
+            key = (round(float(metrics["volatility"]), 8), round(float(metrics["return"]), 8))
+            if key in seen:
+                return
+            seen.add(key)
+            frontier_rows.append(
+                {
+                    "volatility": float(metrics["volatility"]),
+                    "return": float(metrics["return"]),
+                    "sharpe": float(metrics["sharpe"]),
+                    "target_return": float(target),
+                    "weights": self._weights_payload(tickers, weights),
+                }
+            )
+
+        add_row(min_var_weights, min_var_metrics, lower)
 
         for target in targets:
             try:
@@ -358,23 +391,38 @@ class PortfolioService:
             except Exception:
                 continue
 
-            key = (round(float(metrics["volatility"]), 8), round(float(metrics["return"]), 8))
-            if key in seen:
-                continue
-            seen.add(key)
-            frontier_rows.append(
-                {
-                    "volatility": float(metrics["volatility"]),
-                    "return": float(metrics["return"]),
-                    "sharpe": float(metrics["sharpe"]),
-                    "target_return": float(target),
-                    "weights": self._weights_payload(tickers, weights),
-                }
-            )
+            add_row(weights, metrics, float(target))
 
-        return sorted(frontier_rows, key=lambda item: item["volatility"])
+        add_row(max_return_weights, max_return_metrics, upper)
 
-    def _optimize_min_variance(
+        return self._upper_efficient_frontier(frontier_rows)
+
+    def _upper_efficient_frontier(self, rows: list[dict]) -> list[dict]:
+        if not rows:
+            return []
+
+        by_risk: dict[float, dict] = {}
+        for row in rows:
+            risk_key = round(float(row["volatility"]), 10)
+            previous = by_risk.get(risk_key)
+            if previous is None or float(row["return"]) > float(previous["return"]):
+                by_risk[risk_key] = row
+
+        ordered = sorted(by_risk.values(), key=lambda item: (float(item["volatility"]), float(item["return"])))
+        efficient: list[dict] = []
+        best_return = -np.inf
+        ret_values = [float(item["return"]) for item in ordered]
+        tolerance = max(1e-10, (max(ret_values) - min(ret_values)) * 1e-6) if ret_values else 1e-10
+
+        for row in ordered:
+            row_return = float(row["return"])
+            if row_return >= best_return - tolerance:
+                efficient.append(row)
+                best_return = max(best_return, row_return)
+
+        return efficient
+
+    def _optimize_extreme_return(
         self,
         tickers: list[str],
         mean_daily: pd.Series,
@@ -382,11 +430,13 @@ class PortfolioService:
         rf_annual: float,
         return_type: str,
         allow_short_selling: bool = False,
+        maximize: bool = True,
     ) -> tuple[np.ndarray, dict]:
         num_assets = len(tickers)
 
         def objective(weights: np.ndarray) -> float:
-            return float(weights.T @ cov_daily.values @ weights)
+            expected_daily = float(np.sum(mean_daily.values * weights))
+            return -expected_daily if maximize else expected_daily
 
         constraints = [{"type": "eq", "fun": lambda x: np.sum(x) - 1.0}]
         bounds = tuple((-1.0, 1.0) for _ in range(num_assets)) if allow_short_selling else tuple((0.0, 1.0) for _ in range(num_assets))
@@ -398,6 +448,48 @@ class PortfolioService:
             method="SLSQP",
             bounds=bounds,
             constraints=constraints,
+            options={"maxiter": 1000, "ftol": 1e-10},
+        )
+
+        if not result.success:
+            raise ValueError(f"No fue posible calcular el portafolio de retorno extremo: {result.message}")
+
+        weights = np.asarray(result.x, dtype=float)
+        metrics = self._portfolio_metrics(
+            weights=weights,
+            mean_daily=mean_daily,
+            cov_daily=cov_daily,
+            rf_annual=rf_annual,
+            return_type=return_type,
+        )
+        return weights, metrics
+
+    def _optimize_min_variance(
+        self,
+        tickers: list[str],
+        mean_daily: pd.Series,
+        cov_daily: pd.DataFrame,
+        rf_annual: float,
+        return_type: str,
+        allow_short_selling: bool = False,
+    ) -> tuple[np.ndarray, dict]:
+        num_assets = len(tickers)
+        annual_cov = cov_daily.values * 252.0
+
+        def objective(weights: np.ndarray) -> float:
+            return float(weights.T @ annual_cov @ weights)
+
+        constraints = [{"type": "eq", "fun": lambda x: np.sum(x) - 1.0}]
+        bounds = tuple((-1.0, 1.0) for _ in range(num_assets)) if allow_short_selling else tuple((0.0, 1.0) for _ in range(num_assets))
+        init_guess = np.repeat(1.0 / num_assets, num_assets)
+
+        result = minimize(
+            objective,
+            init_guess,
+            method="SLSQP",
+            bounds=bounds,
+            constraints=constraints,
+            options={"maxiter": 1000, "ftol": 1e-12},
         )
 
         if not result.success:

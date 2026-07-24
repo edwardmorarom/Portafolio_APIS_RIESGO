@@ -32,14 +32,12 @@ CONTEXT_MODULE_GROUPS = {
         {"code": "Módulo 3", "title": "GARCH", "description": "ARCH, GARCH, EGARCH, diagnóstico y pronóstico de volatilidad.", "path": "pages/03_Garch.py"},
         {"code": "Módulo 4", "title": "CAPM", "description": "Beta, alpha, retorno esperado y lectura por activo o portafolio.", "path": "pages/04_Capm.py"},
         {"code": "Módulo 5", "title": "VaR/CVaR", "description": "VaR histórico, paramétrico, Monte Carlo, CVaR y Kupiec.", "path": "pages/05_Var_Cvar.py"},
-        {"code": "Módulo 11", "title": "Stress testing", "description": "Escenarios adversos de tasa, mercado y volatilidad.", "path": "pages/11_Stress_Testing.py"},
     ],
     "Optimización y modelos": [
         {"code": "Módulo 6", "title": "Markowitz", "description": "Frontera eficiente, mínimos, Sharpe y comparación Perri.", "path": "pages/06_Markowitz.py"},
         {"code": "Módulo 7", "title": "Señales", "description": "Lectura integrada de señales técnicas por activo.", "path": "pages/07_Señales.py"},
         {"code": "Módulo 9", "title": "Renta fija", "description": "Nelson-Siegel, curva de tasas, duración y convexidad.", "path": "pages/09_Renta_Fija.py"},
         {"code": "Módulo 10", "title": "Opciones", "description": "Black-Scholes, Greeks, payoff y sensibilidad.", "path": "pages/10_Opciones.py"},
-        {"code": "Módulo 12", "title": "Machine Learning", "description": "Predicción de retorno con variables de riesgo y mercado.", "path": "pages/12_Machine_Learning.py"},
     ],
 }
 

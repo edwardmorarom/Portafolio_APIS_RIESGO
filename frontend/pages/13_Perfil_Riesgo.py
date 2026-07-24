@@ -31,8 +31,21 @@ with filtros_panel:
         "Edad, experiencia y tolerancia permiten aproximar el perfil del inversionista. El resultado se usa para sustentar decisiones de riesgo y recomendacion.",
     )
     age = st.number_input("Edad", min_value=18, max_value=100, value=int(stored_kyc.get("age", 30)), step=1, help="Edad del inversionista. Ayuda a aproximar horizonte y tolerancia.")
-    experience = st.number_input("Anos de experiencia invirtiendo", min_value=0, max_value=60, value=int(stored_kyc.get("experience", 2)), step=1, help="Experiencia financiera acumulada del usuario.")
-    tolerance = st.slider("Tolerancia al riesgo", min_value=1, max_value=5, value=int(stored_kyc.get("tolerance", 3)), help="1 es conservador y 5 es agresivo.")
+    experience = st.number_input("Años de experiencia invirtiendo", min_value=0, max_value=60, value=int(stored_kyc.get("experience", 2)), step=1, help="Experiencia financiera acumulada del usuario, medida en años.")
+    stored_tolerance = max(1, min(5, int(stored_kyc.get("tolerance", 3))))
+    tolerance = st.selectbox(
+        "Tolerancia al riesgo",
+        options=[1, 2, 3, 4, 5],
+        index=stored_tolerance - 1,
+        format_func=lambda value: {
+            1: "1 - Conservadora",
+            2: "2 - Baja",
+            3: "3 - Moderada",
+            4: "4 - Alta",
+            5: "5 - Agresiva",
+        }[value],
+        help="Escala de 1 a 5: 1 es conservador y 5 es agresivo.",
+    )
 
 header_dashboard(
     "Perfil de riesgo KYC",
@@ -82,7 +95,7 @@ if profile:
     render_meta_row(
         {
             "Edad": age,
-            "Experiencia": f"{experience} anos",
+            "Experiencia": f"{experience} años",
             "Perfil": profile,
         }
     )

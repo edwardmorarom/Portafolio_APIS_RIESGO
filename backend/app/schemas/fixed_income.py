@@ -74,6 +74,9 @@ class BondPurchaseMetrics(BaseModel):
     theoretical_price: float
     future_value: float
     expected_gain_simple: float
+    total_bond_gain: float
+    seller_commission: float
+    buyer_net_gain: float
     buyer_npv: float
     macaulay_duration: float
     modified_duration: float

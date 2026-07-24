@@ -17,6 +17,24 @@ from ui.plot_style import style_plotly_figure
 from ui.portfolio_state import render_portfolio_scope_note
 
 
+CURVE_MATURITY_COL = "Vencimiento (a\u00f1os)"
+CURVE_YIELD_COL = "Tasa observada"
+
+
+def _normalize_curve_columns(df: pd.DataFrame) -> pd.DataFrame:
+    aliases = {
+        "Vencimiento (aÃ±os)": CURVE_MATURITY_COL,
+        "Vencimiento (anos)": CURVE_MATURITY_COL,
+        "Vencimiento": CURVE_MATURITY_COL,
+        "maturity": CURVE_MATURITY_COL,
+        "maturity_years": CURVE_MATURITY_COL,
+        "Tasa": CURVE_YIELD_COL,
+        "yield": CURVE_YIELD_COL,
+        "yield_rate": CURVE_YIELD_COL,
+    }
+    return pd.DataFrame(df).rename(columns={col: aliases.get(str(col), col) for col in pd.DataFrame(df).columns})
+
+
 def _nelson_siegel_curve(maturities: np.ndarray, tau: float, beta0: float, beta1: float, beta2: float) -> np.ndarray:
     arg = np.maximum(maturities / tau, 1e-9)
     factor1 = (1 - np.exp(-arg)) / arg
@@ -56,10 +74,11 @@ def _coupon_window(issue_date: date, maturity_date: date, settlement_date: date,
     raise ValueError("No hay cupon pendiente para la fecha de negociacion enviada.")
 
 
-def _price_from_cashflows(cashflows: list[dict], periodic_yield: float) -> float:
+def _price_from_cashflows(cashflows: list[dict], periodic_yield: float, frequency: int) -> float:
     return float(
         sum(
-            float(item["cashflow"]) / ((1.0 + periodic_yield) ** int(item["period"]))
+            float(item["cashflow"])
+            / ((1.0 + periodic_yield) ** (float(item["days_from_settlement"]) * frequency / 365.0))
             for item in cashflows
         )
     )
@@ -91,15 +110,18 @@ def _simulate_bond_purchase_locally(payload: dict) -> dict:
 
     cashflows: list[dict] = []
     period = 1
-    for payment_date in _coupon_dates(issue_date, maturity_date, frequency):
+    all_coupon_dates = _coupon_dates(issue_date, maturity_date, frequency)
+    for payment_date in all_coupon_dates:
         if payment_date <= settlement_date:
             continue
+        days_from_settlement = int((payment_date - settlement_date).days)
+        period_exponent = days_from_settlement * frequency / 365.0
         cashflow = coupon_per_period + (face_value if payment_date == maturity_date else 0.0)
-        discount_factor = 1.0 / ((1.0 + market_yield_periodic) ** period)
+        discount_factor = 1.0 / ((1.0 + market_yield_periodic) ** period_exponent)
         cashflows.append(
             {
                 "payment_date": payment_date,
-                "days_from_settlement": int((payment_date - settlement_date).days),
+                "days_from_settlement": days_from_settlement,
                 "period": int(period),
                 "cashflow": float(cashflow),
                 "discount_factor": float(discount_factor),
@@ -114,14 +136,20 @@ def _simulate_bond_purchase_locally(payload: dict) -> dict:
     theoretical_price = float(sum(item["present_value"] for item in cashflows))
     future_value = float(sum(item["cashflow"] for item in cashflows))
     expected_gain_simple = future_value - total_purchase
+    total_bond_days = (maturity_date - issue_date).days
+    seller_holding_days = (settlement_date - issue_date).days
+    seller_proportion = seller_holding_days / total_bond_days if total_bond_days > 0 else 0.0
+    total_bond_gain = coupon_per_period * len(all_coupon_dates)
+    seller_commission = total_bond_gain * seller_proportion
+    buyer_net_gain = expected_gain_simple - seller_commission
     buyer_npv = theoretical_price - total_purchase
     macaulay_duration = float(
-        sum((item["period"] / frequency) * item["present_value"] for item in cashflows) / theoretical_price
+        sum((item["days_from_settlement"] / 365.0) * item["present_value"] for item in cashflows) / theoretical_price
     )
     modified_duration = macaulay_duration / (1.0 + market_yield_periodic)
     yield_down = _periodic_rate(max(market_yield - 0.0001, 0.0), payload["market_yield_type"], frequency)
     yield_up = _periodic_rate(market_yield + 0.0001, payload["market_yield_type"], frequency)
-    dv01 = max(0.0, (_price_from_cashflows(cashflows, yield_down) - _price_from_cashflows(cashflows, yield_up)) / 2.0)
+    dv01 = max(0.0, (_price_from_cashflows(cashflows, yield_down, frequency) - _price_from_cashflows(cashflows, yield_up, frequency)) / 2.0)
     dv01_approx = modified_duration * theoretical_price * 0.0001
     interpretation = (
         "La compra luce favorable frente al yield ingresado: el precio teorico supera el total pagado."
@@ -152,6 +180,9 @@ def _simulate_bond_purchase_locally(payload: dict) -> dict:
             "theoretical_price": float(theoretical_price),
             "future_value": float(future_value),
             "expected_gain_simple": float(expected_gain_simple),
+            "total_bond_gain": float(total_bond_gain),
+            "seller_commission": float(seller_commission),
+            "buyer_net_gain": float(buyer_net_gain),
             "buyer_npv": float(buyer_npv),
             "macaulay_duration": float(macaulay_duration),
             "modified_duration": float(modified_duration),
@@ -341,25 +372,42 @@ def _render_bond_purchase_tab(key_prefix: str) -> None:
     coupon_dates = result["coupon_dates"]
     rates = result["rates"]
 
-    c1, c2, c3, c4 = st.columns(4)
+    seccion("Costo de compra")
+    c1, c2, c3 = st.columns(3)
     with c1:
         tarjeta_kpi("Interes acumulado", format_money(metrics["accrued_interest"]), subtexto=f"{coupon_dates['accrued_days']} dias", help_text="Interes causado desde el ultimo cupon hasta la fecha de negociacion.")
     with c2:
         tarjeta_kpi("Precio sucio", format_money(metrics["dirty_price"]), subtexto="Precio + interes", help_text="Precio limpio monetario mas interes acumulado.")
     with c3:
         tarjeta_kpi("Total compra", format_money(metrics["total_purchase"]), subtexto="Incluye honorarios", help_text="Precio sucio mas honorarios porcentuales y fijos.")
+
+    seccion("Valoracion del bono")
+    c4, c5, c6 = st.columns(3)
     with c4:
         tarjeta_kpi("Precio teorico", format_money(metrics["theoretical_price"]), subtexto="Por yield", help_text="Valor presente de los flujos futuros descontados al yield ingresado.")
-
-    c5, c6, c7, c8 = st.columns(4)
     with c5:
         tarjeta_kpi("Valor futuro", format_money(metrics["future_value"]), subtexto="Cupones + nominal", help_text="Suma simple de flujos restantes sin descuento.")
     with c6:
         tarjeta_kpi("Ganancia esperada", format_money(metrics["expected_gain_simple"]), subtexto="Futuro - total", help_text="Diferencia simple entre flujos futuros y total de compra.")
+
+    seccion("Sensibilidad a tasa")
+    c7, c8, c9 = st.columns(3)
     with c7:
-        tarjeta_kpi("Duracion mod.", format_number(metrics["modified_duration"]), subtexto="Sensibilidad", help_text="Duracion Macaulay ajustada por yield periodico.")
+        tarjeta_kpi("Duracion Macaulay", format_number(metrics["macaulay_duration"]), subtexto="Anios ponderados", help_text="Promedio ponderado del tiempo real hasta recibir los flujos futuros.")
     with c8:
+        tarjeta_kpi("Duracion mod.", format_number(metrics["modified_duration"]), subtexto="Sensibilidad", help_text="Duracion Macaulay ajustada por yield periodico.")
+    with c9:
         tarjeta_kpi("DV01", format_money(metrics["dv01"]), subtexto="1 punto basico", help_text="Cambio aproximado del precio ante 1 punto basico en yield.")
+
+    holding_help = "Reparto alternativo de la ganancia total del bono según el tiempo que cada parte lo tuvo — distinto del interés acumulado de mercado mostrado arriba."
+    seccion("Reparto por tenencia")
+    c10, c11, c12 = st.columns(3)
+    with c10:
+        tarjeta_kpi("Ganancia total", format_money(metrics["total_bond_gain"]), subtexto="Cupones de toda la vida", help_text=holding_help)
+    with c11:
+        tarjeta_kpi("Comision vendedor", format_money(metrics["seller_commission"]), subtexto="Reparto por tiempo", help_text=holding_help)
+    with c12:
+        tarjeta_kpi("Ganancia neta comprador", format_money(metrics["buyer_net_gain"]), subtexto="Ajustada por tenencia", help_text=holding_help)
 
     st.dataframe(
         pd.DataFrame(
@@ -372,6 +420,9 @@ def _render_bond_purchase_tab(key_prefix: str) -> None:
                 {"Metrica": "Precio teorico por yield", "Valor": format_money(metrics["theoretical_price"])},
                 {"Metrica": "VPN comprador", "Valor": format_money(metrics["buyer_npv"])},
                 {"Metrica": "Ganancia esperada simple", "Valor": format_money(metrics["expected_gain_simple"])},
+                {"Metrica": "Ganancia total del bono", "Valor": format_money(metrics["total_bond_gain"])},
+                {"Metrica": "Comision al vendedor por tenencia", "Valor": format_money(metrics["seller_commission"])},
+                {"Metrica": "Ganancia neta comprador ajustada", "Valor": format_money(metrics["buyer_net_gain"])},
                 {"Metrica": "Tasa cupon periodica", "Valor": format_percent(rates["coupon_periodic_rate"])},
                 {"Metrica": "Yield periodico", "Valor": format_percent(rates["market_yield_periodic"])},
                 {"Metrica": "Periodos restantes", "Valor": metrics["remaining_periods"]},
@@ -445,8 +496,8 @@ render_filter_help(
 
 default_curve = pd.DataFrame(
     {
-        "Vencimiento (años)": [1, 2, 5, 10, 20, 30],
-        "Tasa observada": [0.030, 0.034, 0.039, 0.043, 0.047, 0.049],
+        CURVE_MATURITY_COL: [1, 2, 5, 10, 20, 30],
+        CURVE_YIELD_COL: [0.030, 0.034, 0.039, 0.043, 0.047, 0.049],
     }
 )
 curve_source_note = "Curva metodologica local."
@@ -456,8 +507,8 @@ try:
     if treasury_points:
         default_curve = pd.DataFrame(
             {
-                "Vencimiento (aÃ±os)": [float(point["maturity_years"]) for point in treasury_points],
-                "Tasa observada": [float(point["yield_rate"]) for point in treasury_points],
+                CURVE_MATURITY_COL: [float(point["maturity_years"]) for point in treasury_points],
+                CURVE_YIELD_COL: [float(point["yield_rate"]) for point in treasury_points],
             }
         )
         curve_source_note = treasury_payload.get("message", "Curva Treasury cargada desde backend.")
@@ -471,8 +522,8 @@ curve_inputs = st.data_editor(
     use_container_width=True,
     num_rows="dynamic",
     column_config={
-        "Vencimiento (años)": st.column_config.NumberColumn("Vencimiento (años)", min_value=0.25, step=0.25, format="%.2f"),
-        "Tasa observada": st.column_config.NumberColumn("Tasa observada", min_value=0.0, max_value=1.0, step=0.001, format="%.4f"),
+        CURVE_MATURITY_COL: st.column_config.NumberColumn(CURVE_MATURITY_COL, min_value=0.25, step=0.25, format="%.2f"),
+        CURVE_YIELD_COL: st.column_config.NumberColumn(CURVE_YIELD_COL, min_value=0.0, max_value=1.0, step=0.001, format="%.4f"),
     },
     key="fixed_income_curve_editor",
 )
@@ -487,9 +538,19 @@ with b2:
 
 run_analysis = st.button("Calcular renta fija", type="primary", use_container_width=True)
 
-curve_df = pd.DataFrame(curve_inputs).dropna()
-maturities = pd.to_numeric(curve_df["Vencimiento (años)"], errors="coerce").dropna().tolist()
-yields = pd.to_numeric(curve_df["Tasa observada"], errors="coerce").dropna().tolist()
+curve_df = _normalize_curve_columns(pd.DataFrame(curve_inputs))
+if CURVE_MATURITY_COL in curve_df.columns and CURVE_YIELD_COL in curve_df.columns:
+    curve_df = pd.DataFrame(
+        {
+            CURVE_MATURITY_COL: pd.to_numeric(curve_df[CURVE_MATURITY_COL], errors="coerce"),
+            CURVE_YIELD_COL: pd.to_numeric(curve_df[CURVE_YIELD_COL], errors="coerce"),
+        }
+    ).dropna()
+    maturities = curve_df[CURVE_MATURITY_COL].tolist()
+    yields = curve_df[CURVE_YIELD_COL].tolist()
+else:
+    maturities = []
+    yields = []
 
 if not run_analysis:
     nota("Ajusta los parámetros y ejecuta el cálculo para construir la curva y valorar el bono.")

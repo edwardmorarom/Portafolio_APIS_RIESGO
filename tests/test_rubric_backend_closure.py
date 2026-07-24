@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from fastapi.testclient import TestClient
 
@@ -97,6 +98,48 @@ def test_markowitz_frontier_is_qp_and_compares_non_negativity():
     assert len(comparison["with_short_selling"]["frontier"]) >= 3
     assert "zero_weight_assets" in comparison["restricted"]
     assert "cost_of_no_short_constraint" in comparison
+
+    def assert_upper_frontier(points):
+        ordered = sorted(points, key=lambda item: item["volatility"])
+        returns = [item["return"] for item in ordered]
+        assert all(next_ret >= current_ret - 1e-8 for current_ret, next_ret in zip(returns, returns[1:]))
+
+    assert_upper_frontier(result["frontier"])
+    assert_upper_frontier(comparison["restricted"]["frontier"])
+    assert_upper_frontier(comparison["with_short_selling"]["frontier"])
+
+
+def test_markowitz_min_variance_moves_away_from_equal_weights_when_risk_differs():
+    service = PortfolioService(client=None)
+    tickers = ["LOW", "MID", "HIGH"]
+    mean_daily = pd.Series([0.0002, 0.00025, 0.0003], index=tickers)
+    cov_daily = pd.DataFrame(
+        np.diag([0.00002, 0.00020, 0.00080]),
+        index=tickers,
+        columns=tickers,
+    )
+
+    weights, metrics = service._optimize_min_variance(
+        tickers=tickers,
+        mean_daily=mean_daily,
+        cov_daily=cov_daily,
+        rf_annual=0.03,
+        return_type="simple",
+        allow_short_selling=False,
+    )
+
+    equal_weights = np.repeat(1.0 / len(tickers), len(tickers))
+    equal_metrics = service._portfolio_metrics(
+        weights=equal_weights,
+        mean_daily=mean_daily,
+        cov_daily=cov_daily,
+        rf_annual=0.03,
+        return_type="simple",
+    )
+
+    assert not np.allclose(weights, equal_weights, atol=1e-3)
+    assert weights[0] > weights[1] > weights[2]
+    assert metrics["volatility"] < equal_metrics["volatility"]
 
 
 def test_saved_portfolio_endpoints_persist_user_portfolio_contract():

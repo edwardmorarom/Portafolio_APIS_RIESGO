@@ -264,40 +264,49 @@ def _build_qq_figure(qq_df: pd.DataFrame, modo: str) -> go.Figure:
     fig = go.Figure()
 
     if not qq_df.empty:
-        fig.add_trace(
-            go.Scatter(
-                x=qq_df["theoretical"],
-                y=qq_df["sample"],
-                mode="markers",
-                name="Cuantiles observados",
-                marker=dict(size=6, opacity=0.72),
+        valid = pd.DataFrame(
+            {
+                "theoretical": pd.to_numeric(qq_df["theoretical"], errors="coerce"),
+                "sample": pd.to_numeric(qq_df["sample"], errors="coerce"),
+            }
+        ).dropna()
+
+        if not valid.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=valid["theoretical"],
+                    y=valid["sample"],
+                    mode="markers",
+                    name="Cuantiles observados",
+                    marker=dict(size=6, opacity=0.70, color="#4F63FF"),
+                )
             )
-        )
 
-        x_min = float(qq_df["theoretical"].min())
-        x_max = float(qq_df["theoretical"].max())
-        y_min = float(qq_df["sample"].min())
-        y_max = float(qq_df["sample"].max())
+            x_min = float(valid["theoretical"].min())
+            x_max = float(valid["theoretical"].max())
+            sample_mean = float(valid["sample"].mean())
+            sample_std = float(valid["sample"].std(ddof=1))
 
-        ref_min = min(x_min, y_min)
-        ref_max = max(x_max, y_max)
-
-        fig.add_trace(
-            go.Scatter(
-                x=[ref_min, ref_max],
-                y=[ref_min, ref_max],
-                mode="lines",
-                name="Normal teórica",
-                line=dict(width=2.4, dash="dash"),
-            )
-        )
+            if np.isfinite(sample_std) and sample_std > 0:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[x_min, x_max],
+                        y=[
+                            sample_mean + sample_std * x_min,
+                            sample_mean + sample_std * x_max,
+                        ],
+                        mode="lines",
+                        name="Referencia normal",
+                        line=dict(width=2.4, dash="dash", color="#DC2626"),
+                    )
+                )
 
     return style_plotly_figure(
         fig,
         modo=modo,
         title="Q-Q plot de rendimientos",
-        xaxis_title="Cuantiles teóricos normales",
-        yaxis_title="Cuantiles muestrales",
+        xaxis_title="Cuantiles normales esperados",
+        yaxis_title="Rendimientos ordenados",
         show_xgrid=True,
         show_ygrid=True,
     )
@@ -689,18 +698,18 @@ with g2:
 plot_card_header(
     "Q-Q plot",
     (
-        "El Q-Q plot compara los cuantiles observados de los rendimientos contra los cuantiles "
-        "de una distribución normal. Si los puntos se alejan mucho de la línea de referencia, "
-        "hay evidencia visual de colas pesadas, asimetría o no normalidad."
+        "Esta gráfica compara los rendimientos reales contra una referencia normal ajustada a la "
+        "media y volatilidad del activo. Si los puntos se alejan de la línea roja, los rendimientos "
+        "tienen comportamientos menos habituales, como movimientos extremos."
     ),
     modo=modo,
-    caption="Sirve como apoyo visual para evaluar si los rendimientos se comportan parecido a una normal teórica.",
+    caption="Sirve para ver si los rendimientos se comportan parecido a una distribución normal.",
 )
 
 fig_qq = _build_qq_figure(qq_df, modo=modo)
 st.plotly_chart(fig_qq, use_container_width=True)
 
 plot_card_footer(
-    "Cuando los puntos se separan de la línea diagonal, especialmente en las colas, "
-    "los rendimientos no siguen bien una distribución normal."
+    "Lectura simple: si los puntos siguen la línea roja, el comportamiento luce cercano a lo normal. "
+    "Si se abren en los extremos, hay mayor presencia de movimientos atípicos."
 )

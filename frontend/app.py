@@ -27,14 +27,12 @@ MODULE_GROUPS = {
         ("Módulo 3", "GARCH", "ARCH, GARCH, EGARCH, diagnóstico y pronóstico de volatilidad.", "pages/03_Garch.py"),
         ("Módulo 4", "CAPM", "Beta, alpha, retorno esperado y lectura por activo o portafolio.", "pages/04_Capm.py"),
         ("Módulo 5", "VaR/CVaR", "VaR histórico, paramétrico, Monte Carlo, CVaR y Kupiec.", "pages/05_Var_Cvar.py"),
-        ("Módulo 11", "Stress testing", "Escenarios adversos de tasa, mercado y volatilidad.", "pages/11_Stress_Testing.py"),
     ],
     "Optimización y modelos": [
         ("Módulo 6", "Markowitz", "Frontera eficiente, mínimos, Sharpe y comparación Perri.", "pages/06_Markowitz.py"),
         ("Módulo 7", "Señales", "Lectura integrada de señales técnicas por activo.", "pages/07_Señales.py"),
         ("Módulo 9", "Renta fija", "Nelson-Siegel, curva de tasas, duración y convexidad.", "pages/09_Renta_Fija.py"),
         ("Módulo 10", "Opciones", "Black-Scholes, Greeks, payoff y sensibilidad.", "pages/10_Opciones.py"),
-        ("Módulo 12", "Machine Learning", "Detección de anomalías en retornos con Isolation Forest y One-Class SVM.", "pages/12_Machine_Learning.py"),
     ],
 }
 
@@ -50,14 +48,12 @@ MODULE_GROUPS = {
         ("Módulo 3", "GARCH", "ARCH, GARCH, EGARCH, diagnóstico y pronóstico de volatilidad.", "pages/03_Garch.py"),
         ("Módulo 4", "CAPM", "Beta, alpha, retorno esperado y lectura por activo o portafolio.", "pages/04_Capm.py"),
         ("Módulo 5", "VaR/CVaR", "VaR histórico, paramétrico, Monte Carlo, CVaR y Kupiec.", "pages/05_Var_Cvar.py"),
-        ("Módulo 11", "Stress testing", "Escenarios adversos de tasa, mercado y volatilidad.", "pages/11_Stress_Testing.py"),
     ],
     "Optimización y modelos": [
         ("Módulo 6", "Markowitz", "Frontera eficiente, mínimos, Sharpe y comparación Perri.", "pages/06_Markowitz.py"),
         ("Módulo 7", "Señales", "Lectura integrada de señales técnicas por activo.", "pages/07_Señales.py"),
         ("Módulo 9", "Renta fija", "Nelson-Siegel, curva de tasas, duración y convexidad.", "pages/09_Renta_Fija.py"),
         ("Módulo 10", "Opciones", "Black-Scholes, Greeks, payoff y sensibilidad.", "pages/10_Opciones.py"),
-        ("Módulo 12", "Machine Learning", "Detección de anomalías en retornos con Isolation Forest y One-Class SVM.", "pages/12_Machine_Learning.py"),
     ],
 }
 
@@ -282,11 +278,60 @@ def _login_css() -> str:
             color: #D8E6FF !important;
         }
 
-        div[data-testid="stForm"] input {
-            background: rgba(255,255,255,0.08) !important;
-            border: 1px solid rgba(255,255,255,0.24) !important;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
+        div[data-testid="stForm"] input,
+        div[data-testid="stForm"] [data-baseweb="input"] input,
+        div[data-testid="stForm"] [data-baseweb="base-input"] input {
+            background: #FFFFFF !important;
+            border: 1px solid rgba(180, 218, 255, 0.36) !important;
+            border-radius: 12px !important;
+            color: #0F172A !important;
+            -webkit-text-fill-color: #0F172A !important;
+            caret-color: #0F172A !important;
+            opacity: 1 !important;
+        }
+
+        div[data-testid="stForm"] input::placeholder {
+            color: #64748B !important;
+            -webkit-text-fill-color: #64748B !important;
+            opacity: 1 !important;
+        }
+
+        div[data-testid="stExpander"] {
+            background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, #FFF7FA 100%) !important;
+            border: 1px solid rgba(138, 21, 56, 0.44) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 16px 38px rgba(138, 21, 56, 0.22) !important;
+            overflow: hidden !important;
+        }
+
+        div[data-testid="stExpander"] details,
+        div[data-testid="stExpander"] summary {
+            background: transparent !important;
+        }
+
+        div[data-testid="stExpander"] summary {
+            border-left: 6px solid #8A1538 !important;
+            min-height: 52px !important;
+            padding-left: 0.85rem !important;
+        }
+
+        div[data-testid="stExpander"] summary *,
+        div[data-testid="stExpander"] summary p,
+        div[data-testid="stExpander"] summary span,
+        div[data-testid="stExpander"] summary svg {
+            color: #8A1538 !important;
+            -webkit-text-fill-color: #8A1538 !important;
+            stroke: #8A1538 !important;
+            opacity: 1 !important;
+            font-weight: 950 !important;
+        }
+
+        div[data-testid="stExpander"] details > div,
+        div[data-testid="stExpander"] details > div * {
+            background: #FFFFFF !important;
+            color: #0F172A !important;
+            -webkit-text-fill-color: #0F172A !important;
+            opacity: 1 !important;
         }
 
         .login-card-header {
@@ -386,10 +431,22 @@ def _render_login() -> None:
 
                 with col_reg_1:
                     age = st.number_input("Edad", min_value=18, max_value=150, value=30, step=1)
-                    experience = st.number_input("Experiencia invirtiendo", min_value=0, max_value=100, value=1, step=1)
+                    experience = st.number_input("Experiencia invirtiendo (años)", min_value=0, max_value=100, value=1, step=1)
 
                 with col_reg_2:
-                    tolerance = st.slider("Tolerancia al riesgo", min_value=1, max_value=5, value=3)
+                    tolerance = st.selectbox(
+                        "Tolerancia al riesgo",
+                        options=[1, 2, 3, 4, 5],
+                        index=2,
+                        format_func=lambda value: {
+                            1: "1 - Conservadora",
+                            2: "2 - Baja",
+                            3: "3 - Moderada",
+                            4: "4 - Alta",
+                            5: "5 - Agresiva",
+                        }[value],
+                        help="Escala de 1 a 5: 1 es conservadora y 5 es agresiva.",
+                    )
                     investment_objective = st.selectbox(
                         "Objetivo principal",
                         options=[
@@ -407,14 +464,30 @@ def _render_login() -> None:
 
                 st.markdown(
                     """
-                    **Autorización de tratamiento de datos personales (Habeas Data).**
-                    Autorizo el almacenamiento y uso de mis datos personales y financieros declarados
-                    para fines académicos del dashboard, estimación de perfil de riesgo, auditoría interna
-                    y generación de reportes. Entiendo que puedo solicitar revisión o eliminación de mi
-                    registro a un superusuario del sistema.
+                    **Ref. Autorización para el tratamiento y uso de datos personales.**
+
+                    De conformidad con lo previsto en la Ley 1581 de 2012, por la cual se dictan
+                    las disposiciones generales para la protección de datos personales, y el
+                    Decreto 1377 de 2013, que la reglamenta parcialmente, manifiesto que otorgo
+                    mi autorización expresa y clara para que PRED pueda hacer tratamiento y uso
+                    de mis datos personales, los cuales estarán reportados en la base de datos
+                    de la que es responsable esta organización y que han sido recolectados en el
+                    marco del uso académico del presente dashboard.
+
+                    De acuerdo con la normatividad citada, PRED queda autorizado de manera
+                    expresa e inequívoca para mantener y manejar la información suministrada,
+                    solo para finalidades académicas relacionadas con el análisis de riesgo,
+                    estimación de perfil del inversionista, simulación financiera, generación
+                    de reportes y evaluación del funcionamiento del sistema, respetando en todo
+                    caso la normatividad vigente sobre protección de datos personales.
+
+                    No obstante la presente autorización, me reservo el derecho a ejercer en
+                    cualquier momento la posibilidad de conocer, actualizar, rectificar y
+                    solicitar la supresión de mis datos personales en la base de datos de PRED,
+                    cuando así lo estime conveniente.
                     """
                 )
-                accepted_habeas_data = st.checkbox("He leído y acepto la autorización de Habeas Data.")
+                accepted_habeas_data = st.checkbox("He leído y acepto la autorización de tratamiento y uso de datos personales.")
 
                 register_submitted = st.form_submit_button("Crear cuenta", use_container_width=True)
 

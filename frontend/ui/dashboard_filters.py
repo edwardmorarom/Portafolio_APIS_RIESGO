@@ -36,6 +36,26 @@ def chip_toggles(
     if not options:
         return states
 
+    if len(options) == 1:
+        key, label, default_active = options[0]
+        state_key = f"{key_prefix}_{key}"
+        if state_key not in st.session_state:
+            st.session_state[state_key] = bool(default_active)
+
+        active = bool(st.session_state[state_key])
+        clicked = st.button(
+            label,
+            key=f"{state_key}_button",
+            type="primary" if active else "secondary",
+            use_container_width=True,
+        )
+        if clicked:
+            st.session_state[state_key] = not active
+            st.rerun()
+
+        states[key] = bool(st.session_state[state_key])
+        return states
+
     cols = st.columns(len(options), gap="small")
     for col, (key, label, default_active) in zip(cols, options):
         state_key = f"{key_prefix}_{key}"

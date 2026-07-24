@@ -238,11 +238,11 @@ class YieldService:
             )
         return cashflows
 
-    def _price_from_cashflows(self, cashflows: list[dict], periodic_yield: float) -> float:
+    def _price_from_cashflows(self, cashflows: list[dict], periodic_yield: float, frequency: int) -> float:
         return float(
             sum(
                 float(item["cashflow"])
-                / ((1.0 + periodic_yield) ** float(item["period"]))
+                / ((1.0 + periodic_yield) ** (float(item["days_from_settlement"]) * frequency / 365.0))
                 for item in cashflows
             )
         )
@@ -284,20 +284,23 @@ class YieldService:
 
         cashflows = []
         period = 1
-        for payment_date in self._coupon_dates(
+        all_coupon_dates = self._coupon_dates(
             issue_date=request.issue_date,
             maturity_date=request.maturity_date,
             frequency=request.coupon_frequency,
-        ):
+        )
+        for payment_date in all_coupon_dates:
             if payment_date <= request.settlement_date:
                 continue
 
+            days_from_settlement = int((payment_date - request.settlement_date).days)
+            period_exponent = days_from_settlement * request.coupon_frequency / 365.0
             cashflow = coupon_per_period + (request.face_value if payment_date == request.maturity_date else 0.0)
-            discount_factor = 1.0 / ((1.0 + market_yield_periodic) ** period)
+            discount_factor = 1.0 / ((1.0 + market_yield_periodic) ** period_exponent)
             cashflows.append(
                 {
                     "payment_date": payment_date,
-                    "days_from_settlement": int((payment_date - request.settlement_date).days),
+                    "days_from_settlement": days_from_settlement,
                     "period": int(period),
                     "cashflow": float(cashflow),
                     "discount_factor": float(discount_factor),
@@ -312,9 +315,15 @@ class YieldService:
         theoretical_price = float(sum(item["present_value"] for item in cashflows))
         future_value = float(sum(item["cashflow"] for item in cashflows))
         expected_gain_simple = future_value - total_purchase
+        total_bond_days = (request.maturity_date - request.issue_date).days
+        seller_holding_days = (request.settlement_date - request.issue_date).days
+        seller_proportion = seller_holding_days / total_bond_days if total_bond_days > 0 else 0.0
+        total_bond_gain = coupon_per_period * len(all_coupon_dates)
+        seller_commission = total_bond_gain * seller_proportion
+        buyer_net_gain = expected_gain_simple - seller_commission
         buyer_npv = theoretical_price - total_purchase
         macaulay_duration = float(
-            sum((item["period"] / request.coupon_frequency) * item["present_value"] for item in cashflows)
+            sum((item["days_from_settlement"] / 365.0) * item["present_value"] for item in cashflows)
             / theoretical_price
         )
         modified_duration = macaulay_duration / (1.0 + market_yield_periodic)
@@ -329,8 +338,8 @@ class YieldService:
             rate_type=request.market_yield_type,
             frequency=request.coupon_frequency,
         )
-        price_down = self._price_from_cashflows(cashflows, periodic_yield_down)
-        price_up = self._price_from_cashflows(cashflows, periodic_yield_up)
+        price_down = self._price_from_cashflows(cashflows, periodic_yield_down, request.coupon_frequency)
+        price_up = self._price_from_cashflows(cashflows, periodic_yield_up, request.coupon_frequency)
         dv01 = max(0.0, (price_down - price_up) / 2.0)
         dv01_approx = modified_duration * theoretical_price * 0.0001
         interpretation = (
@@ -376,6 +385,9 @@ class YieldService:
                 "theoretical_price": float(theoretical_price),
                 "future_value": float(future_value),
                 "expected_gain_simple": float(expected_gain_simple),
+                "total_bond_gain": float(total_bond_gain),
+                "seller_commission": float(seller_commission),
+                "buyer_net_gain": float(buyer_net_gain),
                 "buyer_npv": float(buyer_npv),
                 "remaining_periods": int(len(cashflows)),
                 "macaulay_duration": float(macaulay_duration),

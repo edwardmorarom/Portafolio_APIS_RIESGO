@@ -14,6 +14,13 @@ from ui.dashboard_ui import (
 )
 
 
+HIDDEN_FOR_ALL_USERS = {
+    "11_Stress_Testing.py",
+    "12_Machine_Learning.py",
+    "13_Perfil_Riesgo.py",
+}
+
+
 def _current_page_name() -> str:
     page_names = {
         "app.py",
@@ -65,6 +72,10 @@ def setup_dashboard_page(
     # --------------------------------
 
     current_page = _current_page_name()
+    if current_page in HIDDEN_FOR_ALL_USERS:
+        st.warning("Este módulo está oculto temporalmente.")
+        st.switch_page("app.py")
+
     if current_page == "15_Usuarios.py" and st.session_state.get("user_role") != "superuser":
         st.warning("Este módulo solo está habilitado para superusuarios.")
         st.switch_page("app.py")

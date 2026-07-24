@@ -324,82 +324,71 @@ def _format_diagnostics_table(payload: dict) -> pd.DataFrame:
     return df
 
 
-def _add_window_buttons(fig: go.Figure, max_x: int | float | None) -> go.Figure:
-    if max_x is None:
-        return fig
-    try:
-        upper = float(max_x)
-    except Exception:
-        return fig
-    if upper <= 4:
-        return fig
+def _chip_choice(
+    options: list[tuple[str, str]],
+    *,
+    key_prefix: str,
+    default: str = "all",
+) -> str:
+    valid_keys = {key for key, _ in options}
+    state_key = f"{key_prefix}_choice"
+    if st.session_state.get(state_key) not in valid_keys:
+        st.session_state[state_key] = default if default in valid_keys else options[0][0]
 
-    buttons = [
-        dict(label="Todo", method="relayout", args=[{"xaxis.autorange": True}]),
-        dict(label="Ult. 5", method="relayout", args=[{"xaxis.range": [max(1, upper - 5), upper]}]),
-        dict(label="Ult. 10", method="relayout", args=[{"xaxis.range": [max(1, upper - 10), upper]}]),
-        dict(label="Ult. 20", method="relayout", args=[{"xaxis.range": [max(1, upper - 20), upper]}]),
-    ]
-    fig.update_layout(
-        updatemenus=[
-            dict(
-                type="buttons",
-                direction="right",
-                buttons=buttons,
-                x=0.0,
-                xanchor="left",
-                y=1.18,
-                yanchor="top",
-                bgcolor="rgba(15, 23, 42, 0.72)",
-                bordercolor="rgba(148, 163, 184, 0.32)",
-                font=dict(size=10),
-                pad=dict(r=4, t=2, b=2, l=4),
+    cols = st.columns(len(options), gap="small")
+    for col, (key, label) in zip(cols, options):
+        active = st.session_state[state_key] == key
+        with col:
+            clicked = st.button(
+                label,
+                key=f"{state_key}_{key}_button",
+                type="primary" if active else "secondary",
+                use_container_width=True,
             )
-        ]
-    )
-    return fig
+            if clicked and not active:
+                st.session_state[state_key] = key
+                st.rerun()
+
+    return str(st.session_state[state_key])
 
 
-def _add_series_buttons(fig: go.Figure, labels: list[str]) -> go.Figure:
-    if len(labels) <= 1:
-        return fig
+def _filter_window(df: pd.DataFrame, x_col: str, window_key: str) -> pd.DataFrame:
+    if df.empty or window_key == "all" or x_col not in df.columns:
+        return df
 
-    buttons = [
-        dict(
-            label="Todas",
-            method="update",
-            args=[{"visible": [True] * len(labels)}],
-        )
-    ]
-    for index, label in enumerate(labels):
-        visible = [False] * len(labels)
-        visible[index] = True
-        buttons.append(
-            dict(
-                label=str(label)[:18],
-                method="update",
-                args=[{"visible": visible}],
-            )
-        )
+    spans = {"last5": 5, "last10": 10, "last20": 20}
+    span = spans.get(window_key)
+    if not span:
+        return df
 
-    fig.update_layout(
-        updatemenus=[
-            dict(
-                type="buttons",
-                direction="right",
-                buttons=buttons,
-                x=0.0,
-                xanchor="left",
-                y=1.18,
-                yanchor="top",
-                bgcolor="rgba(15, 23, 42, 0.72)",
-                bordercolor="rgba(148, 163, 184, 0.32)",
-                font=dict(size=10),
-                pad=dict(r=4, t=2, b=2, l=4),
-            )
-        ]
-    )
-    return fig
+    x_numeric = pd.to_numeric(df[x_col], errors="coerce")
+    upper = x_numeric.max()
+    if pd.isna(upper):
+        return df
+
+    lower = max(1.0, float(upper) - float(span))
+    return df[x_numeric >= lower].copy()
+
+
+def _series_options(labels: list[str]) -> list[tuple[str, str]]:
+    return [("all", "Todas")] + [(f"serie_{index}", label) for index, label in enumerate(labels)]
+
+
+def _selected_series(labels: list[str], choice: str) -> set[str] | None:
+    if choice == "all":
+        return None
+    for key, label in _series_options(labels):
+        if key == choice:
+            return {label}
+    return None
+
+
+WINDOW_OPTIONS: list[tuple[str, str]] = [
+    ("all", "Todo"),
+    ("last5", "Últ. 5"),
+    ("last10", "Últ. 10"),
+    ("last20", "Últ. 20"),
+]
 
 
 def _extract_best_model_series(payload: dict) -> pd.DataFrame:
@@ -450,12 +439,23 @@ def _extract_multi_model_series(payload: dict) -> pd.DataFrame:
     return pd.DataFrame(columns=["x", "y", "model"])
 
 
-def _build_conditional_volatility_figure(payload: dict, modo: str) -> tuple[go.Figure, bool]:
+def _build_conditional_volatility_figure(
+    payload: dict,
+    modo: str,
+    selected_models: set[str] | None = None,
+    window_key: str = "all",
+) -> tuple[go.Figure, bool]:
     series_df = _extract_multi_model_series(payload)
     has_multiple_models = not series_df.empty and series_df["model"].nunique() > 1
 
     if series_df.empty:
         series_df = _extract_best_model_series(payload)
+
+    if not series_df.empty and selected_models:
+        series_df = series_df[series_df["model"].astype(str).isin(selected_models)].copy()
+
+    if not has_multiple_models:
+        series_df = _filter_window(series_df, "x", window_key)
 
     fig = go.Figure()
 
@@ -481,9 +481,6 @@ def _build_conditional_volatility_figure(payload: dict, modo: str) -> tuple[go.F
         show_xgrid=True,
         show_ygrid=True,
     )
-    if not series_df.empty:
-        labels = [str(label) for label in series_df["model"].dropna().unique()]
-        fig = _add_series_buttons(fig, labels) if len(labels) > 1 else _add_window_buttons(fig, series_df["x"].max())
 
     return fig, has_multiple_models
 
@@ -567,8 +564,20 @@ def _extract_ewma_comparison_df(payload: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _build_ewma_comparison_figure(payload: dict, modo: str) -> go.Figure:
+def _build_ewma_comparison_figure(
+    payload: dict,
+    modo: str,
+    selected_series: set[str] | None = None,
+    window_key: str = "all",
+) -> go.Figure:
     df = _extract_ewma_comparison_df(payload)
+
+    has_multiple_series = not df.empty and df["serie"].nunique() > 1
+    if not df.empty and selected_series:
+        df = df[df["serie"].astype(str).isin(selected_series)].copy()
+
+    if not has_multiple_series:
+        df = _filter_window(df, "x", window_key)
 
     fig = go.Figure()
 
@@ -597,9 +606,6 @@ def _build_ewma_comparison_figure(payload: dict, modo: str) -> go.Figure:
         show_xgrid=True,
         show_ygrid=True,
     )
-    if not df.empty:
-        labels = [str(label) for label in df["serie"].dropna().unique()]
-        fig = _add_series_buttons(fig, labels) if len(labels) > 1 else _add_window_buttons(fig, df["x"].max())
 
     return fig
 
@@ -649,8 +655,10 @@ def _build_forecast_figure(
     forecast_df: pd.DataFrame,
     modo: str,
     clean_view: bool,
+    window_key: str = "all",
 ) -> go.Figure:
     fig = go.Figure()
+    forecast_df = _filter_window(forecast_df, "step", window_key)
 
     if not forecast_df.empty:
         x_vals = forecast_df["step"]
@@ -695,8 +703,6 @@ def _build_forecast_figure(
         show_xgrid=not clean_view,
         show_ygrid=not clean_view,
     )
-    if not forecast_df.empty:
-        fig = _add_window_buttons(fig, forecast_df["step"].max())
 
     return fig
 
@@ -1040,28 +1046,22 @@ seccion("Comparación de modelos")
 render_info_card(
     "Comparación de modelos",
     (
-        "La comparación entre ARCH, GARCH y EGARCH permite elegir el modelo que mejor representa la dinámica de volatilidad. "
-        "ARCH responde más a choques recientes, GARCH captura persistencia y EGARCH puede representar efectos asimétricos. "
-        "La distribución t-Student permite errores con colas más pesadas que la normal."
+        "Esta tabla ayuda a escoger el modelo que mejor describe los cambios del riesgo en el tiempo. "
+        "En palabras simples: ARCH reacciona a cambios recientes, GARCH mira también la persistencia y EGARCH permite capturar respuestas distintas ante noticias buenas o malas. "
+        "El mejor modelo se interpreta junto con las gráficas, no solo por una cifra aislada."
     ),
 )
 
-if modo == "General":
-    with st.expander("Ver comparación completa de modelos", expanded=False):
-        st.dataframe(comparison_df, use_container_width=True, hide_index=True)
-else:
-    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+st.dataframe(comparison_df, use_container_width=True, hide_index=True)
 
 seccion("Volatilidad y pronóstico")
 
 render_info_card(
     "EWMA y volatilidad muestral rodante",
     (
-        "EWMA estima la varianza de forma recursiva: σ²t = λ · σ²t-1 + (1 − λ) · r²t-1. "
-        "Con λ=0.94 se replica el estándar RiskMetrics, pero el usuario puede cambiar λ desde el filtro lateral. "
-        "La línea EWMA se compara contra la volatilidad muestral rodante para ver si el modelo reacciona más rápido o más lento "
-        "ante choques recientes. Ventajas: es parsimonioso, no estima muchos parámetros y usa decaimiento constante. "
-        "Limitaciones: no captura asimetría como EGARCH y no impone una varianza incondicional finita como algunos modelos GARCH."
+        "EWMA es una forma de medir riesgo dando más importancia a los movimientos recientes del mercado. "
+        "Si la línea EWMA sube antes que la volatilidad rodante, el activo está reaccionando rápido a cambios recientes. "
+        "Si se mueve más suave, el riesgo reciente no está cambiando tanto o el modelo está dando más peso al historial."
     ),
 )
 
@@ -1070,7 +1070,29 @@ ewma_comparison_df = _extract_ewma_comparison_df(payload)
 if ewma_comparison_df.empty:
     st.info("No fue posible construir la serie EWMA con el backend activo ni con los retornos de mercado disponibles.")
 else:
-    fig_ewma = _build_ewma_comparison_figure(payload, modo=modo)
+    ewma_labels = [str(label) for label in ewma_comparison_df["serie"].dropna().unique()]
+    if len(ewma_labels) > 1:
+        ewma_choice = _chip_choice(
+            _series_options(ewma_labels),
+            key_prefix="garch_ewma_series",
+            default="all",
+        )
+        selected_ewma_series = _selected_series(ewma_labels, ewma_choice)
+        ewma_window = "all"
+    else:
+        selected_ewma_series = None
+        ewma_window = _chip_choice(
+            WINDOW_OPTIONS,
+            key_prefix="garch_ewma_window",
+            default="all",
+        )
+
+    fig_ewma = _build_ewma_comparison_figure(
+        payload,
+        modo=modo,
+        selected_series=selected_ewma_series,
+        window_key=ewma_window,
+    )
     st.plotly_chart(fig_ewma, use_container_width=True)
     plot_card_footer(
         "Lectura: si EWMA sube más rápido que la volatilidad rodante, el modelo está reaccionando con mayor sensibilidad a choques recientes. "
@@ -1080,7 +1102,11 @@ else:
 g1, g2 = st.columns(2, gap="large")
 
 with g1:
-    fig_vol, has_multiple_models = _build_conditional_volatility_figure(payload, modo=modo)
+    conditional_df = _extract_multi_model_series(payload)
+    if conditional_df.empty:
+        conditional_df = _extract_best_model_series(payload)
+    conditional_labels = [str(label) for label in conditional_df["model"].dropna().unique()]
+    has_multiple_models = len(conditional_labels) > 1
     
     # 5. Encabezado mejorado para gráfica de volatilidad
     plot_card_header(
@@ -1091,6 +1117,28 @@ with g1:
         ),
         modo=modo,
         caption="Permite identificar periodos de calma y periodos de volatilidad elevada.",
+    )
+    if has_multiple_models:
+        conditional_choice = _chip_choice(
+            _series_options(conditional_labels),
+            key_prefix="garch_conditional_series",
+            default="all",
+        )
+        selected_conditional_models = _selected_series(conditional_labels, conditional_choice)
+        conditional_window = "all"
+    else:
+        selected_conditional_models = None
+        conditional_window = _chip_choice(
+            WINDOW_OPTIONS,
+            key_prefix="garch_conditional_window",
+            default="all",
+        )
+
+    fig_vol, _ = _build_conditional_volatility_figure(
+        payload,
+        modo=modo,
+        selected_models=selected_conditional_models,
+        window_key=conditional_window,
     )
     st.plotly_chart(fig_vol, use_container_width=True)
     
@@ -1116,11 +1164,17 @@ with g2:
     )
     forecast_df = _extract_forecast_df(payload)
     forecast_df.attrs["forecast_by_model"] = payload.get("forecast_by_model", {})
+    forecast_window = _chip_choice(
+        WINDOW_OPTIONS,
+        key_prefix="garch_forecast_window",
+        default="all",
+    )
 
     fig_forecast = _build_forecast_figure(
         forecast_df,
         modo=modo,
         clean_view=False,
+        window_key=forecast_window,
     )
     st.plotly_chart(fig_forecast, use_container_width=True)
     # Footer mejorado para forecast

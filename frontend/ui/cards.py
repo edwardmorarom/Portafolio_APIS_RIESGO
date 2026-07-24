@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Mapping
 from typing import Any
 
@@ -24,11 +25,27 @@ def render_chip_row(items: list[str]):
 
 
 def render_info_card(title: str, body: str):
+    body_text = str(body or "").strip()
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", body_text) if part.strip()]
+    if not sentences:
+        sentences = [body_text] if body_text else []
+
+    paragraphs = "".join(
+        f'<p class="ui-info-body">{safe_text(sentence)}</p>'
+        for sentence in sentences
+    )
+
     st.markdown(
         f"""
-        <div class="ui-note">
-            <strong>{safe_text(title)}</strong><br>
-            {safe_text(body)}
+        <div class="ui-info-card">
+            <div class="ui-info-accent"></div>
+            <div class="ui-info-content">
+                <div class="ui-info-kicker">Lectura rápida</div>
+                <div class="ui-info-title">{safe_text(title)}</div>
+                <div class="ui-info-copy">
+                    {paragraphs}
+                </div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True,

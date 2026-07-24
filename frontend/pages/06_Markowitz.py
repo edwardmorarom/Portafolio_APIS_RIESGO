@@ -292,6 +292,37 @@ def _frontier_df_from_rows(rows: list[dict] | None) -> pd.DataFrame:
     return out.dropna(subset=["volatility", "return"]).reset_index(drop=True)
 
 
+def _efficient_frontier_line(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty or "volatility" not in df.columns or "return" not in df.columns:
+        return pd.DataFrame(columns=["volatility", "return"])
+
+    clean = df.copy()
+    clean["volatility"] = pd.to_numeric(clean["volatility"], errors="coerce")
+    clean["return"] = pd.to_numeric(clean["return"], errors="coerce")
+    clean = clean.dropna(subset=["volatility", "return"])
+    if clean.empty:
+        return pd.DataFrame(columns=["volatility", "return"])
+
+    risk_key = clean["volatility"].round(10)
+    clean = clean.assign(_risk_key=risk_key)
+    clean = clean.sort_values(["_risk_key", "return"])
+    clean = clean.drop_duplicates(subset=["_risk_key"], keep="last")
+    clean = clean.sort_values(["volatility", "return"]).reset_index(drop=True)
+
+    ret_range = float(clean["return"].max() - clean["return"].min())
+    tolerance = max(1e-10, ret_range * 1e-6)
+    best_return = float("-inf")
+    keep_idx: list[int] = []
+
+    for idx, row in clean.iterrows():
+        current_return = float(row["return"])
+        if current_return >= best_return - tolerance:
+            keep_idx.append(idx)
+            best_return = max(best_return, current_return)
+
+    return clean.loc[keep_idx].drop(columns=["_risk_key"], errors="ignore").reset_index(drop=True)
+
+
 def _extract_simulated_df(payload: dict) -> pd.DataFrame:
     for key in ["simulated_portfolios", "portfolios", "cloud", "nube"]:
         val = payload.get(key)
@@ -669,7 +700,7 @@ def _build_frontier_figure(
 
     if show_frontier:
         if not restricted_frontier_df.empty:
-            restricted_line = restricted_frontier_df.sort_values("volatility").drop_duplicates(subset=["volatility"])
+            restricted_line = _efficient_frontier_line(restricted_frontier_df)
             fig.add_trace(
                 go.Scatter(
                     x=restricted_line["volatility"],
@@ -680,7 +711,7 @@ def _build_frontier_figure(
                 )
             )
         if not short_frontier_df.empty:
-            short_line = short_frontier_df.sort_values("volatility").drop_duplicates(subset=["volatility"])
+            short_line = _efficient_frontier_line(short_frontier_df)
             fig.add_trace(
                 go.Scatter(
                     x=short_line["volatility"],
@@ -691,7 +722,7 @@ def _build_frontier_figure(
                 )
             )
         if restricted_frontier_df.empty and short_frontier_df.empty and not frontier_df.empty:
-            frontier_line = frontier_df.sort_values("volatility").drop_duplicates(subset=["volatility"])
+            frontier_line = _efficient_frontier_line(frontier_df)
             fig.add_trace(
                 go.Scatter(
                     x=frontier_line["volatility"],
@@ -1368,9 +1399,9 @@ with tab3:
     with c1:
         plot_card_header(
             "Portafolio de mínima varianza",
-            "Cartera con menor volatilidad simulada.",
+            "Pesos optimizados por el modelo para buscar la menor volatilidad posible.",
             modo=modo,
-            caption="Ordenado de mayor a menor participación.",
+            caption="No usa tus pesos manuales; los pesos manuales quedan abajo como referencia.",
         )
         st.dataframe(min_var_df, use_container_width=True, hide_index=True)
 
@@ -1453,9 +1484,9 @@ with tab3:
     render_info_card(
         "Lectura composicional",
         (
-            "La composición óptima muestra cómo cambia el peso relativo de cada activo según el criterio elegido. "
-            "Mínima varianza privilegia estabilidad, máximo Sharpe privilegia eficiencia, retorno objetivo busca una meta explícita "
-            "y el perfil arriesgado prioriza una cartera con mayor expectativa de retorno."
+            "Los pesos manuales son solo el punto de partida del usuario. "
+            "El portafolio de mínima varianza se recalcula para buscar la menor volatilidad posible con estos activos. "
+            "Máximo Sharpe busca mejor equilibrio entre retorno y riesgo, y retorno objetivo busca una meta anual concreta."
         ),
     )
 
@@ -1469,25 +1500,22 @@ with tab4:
         )
     else:
         cost_block = short_selling_comparison.get("cost_of_no_short_constraint") or {}
-        methodology = short_selling_comparison.get(
-            "methodology",
-            "Se comparan dos versiones de Markowitz: long-only con w_i >= 0 y short selling con pesos negativos permitidos.",
-        )
 
         render_info_card(
-            "Qué se está comparando",
+            "Comparación simple",
             (
-                f"{methodology} Las dos fronteras aparecen en la pestaña 'Fronteras y correlación' dentro del gráfico "
-                "'Frontera eficiente': línea naranja para long-only y línea azul para short selling."
+                "Long-only significa que ningún activo puede tener peso negativo: el modelo solo compra. "
+                "Short selling permite pesos negativos: el modelo puede vender en corto para intentar mejorar riesgo o retorno. "
+                "En el gráfico, la línea naranja es long-only y la azul es con short selling."
             ),
         )
 
         c1, c2, c3, c4 = st.columns(4)
         with c1:
             tarjeta_kpi(
-                "Costo varianza",
+                "Ahorro de varianza",
                 _format_delta_num(cost_block.get("variance_cost_min_variance"), 6),
-                subtexto="Valor redondeado; puede tener más decimales.",
+                subtexto="Si es mayor que 0, el short reduce riesgo.",
                 help_text=(
                     "Varianza long-only menos varianza short. "
                     f"Valor con más decimales: {_format_full_precision(cost_block.get('variance_cost_min_variance'))}."
@@ -1495,9 +1523,9 @@ with tab4:
             )
         with c2:
             tarjeta_kpi(
-                "Costo Sharpe",
+                "Mejora Sharpe",
                 _format_delta_num(cost_block.get("sharpe_opportunity_cost"), 4),
-                subtexto="Valor redondeado; puede tener más decimales.",
+                subtexto="Si es mayor que 0, el short mejora eficiencia.",
                 help_text=(
                     "Sharpe short menos Sharpe long-only. "
                     f"Valor con más decimales: {_format_full_precision(cost_block.get('sharpe_opportunity_cost'))}."
@@ -1505,9 +1533,9 @@ with tab4:
             )
         with c3:
             tarjeta_kpi(
-                "Gap retorno",
+                "Diferencia retorno",
                 _format_pct(cost_block.get("return_gap_max_sharpe")),
-                subtexto="Valor redondeado; puede tener más decimales.",
+                subtexto="Retorno adicional del mejor Sharpe con short.",
                 help_text=(
                     "Retorno del max Sharpe con short selling menos long-only. "
                     f"Valor decimal completo: {_format_full_precision(cost_block.get('return_gap_max_sharpe'))}."
@@ -1515,9 +1543,9 @@ with tab4:
             )
         with c4:
             tarjeta_kpi(
-                "Gap volatilidad",
+                "Diferencia riesgo",
                 _format_pct(cost_block.get("volatility_gap_min_variance")),
-                subtexto="Valor redondeado; puede tener más decimales.",
+                subtexto="Cambio en la cartera de mínima varianza.",
                 help_text=(
                     "Volatilidad de mínima varianza long-only menos short selling. "
                     f"Valor decimal completo: {_format_full_precision(cost_block.get('volatility_gap_min_variance'))}."
@@ -1574,11 +1602,11 @@ with tab4:
             )
 
         render_info_card(
-            "Lectura para la rúbrica",
+            "Lectura clara",
             (
-                f"Activos con peso cero en la versión B long-only: {', '.join(zero_assets) if zero_assets else 'ninguno'}. "
-                f"Activos con peso negativo en la versión A con short selling: {', '.join(negative_assets) if negative_assets else 'ninguno'}. "
-                "Si el costo de Sharpe o la reducción de varianza del caso short es alto, imponer no negatividad tiene un costo financiero visible; "
-                "si es bajo, la versión long-only es más defendible para un inversionista minorista."
+                f"Activos que el modelo long-only deja en cero: {', '.join(zero_assets) if zero_assets else 'ninguno'}. "
+                f"Activos que el modelo con short selling pone negativos: {', '.join(negative_assets) if negative_assets else 'ninguno'}. "
+                "Si las mejoras son pequeñas, conviene quedarse con long-only porque es más fácil de entender y ejecutar. "
+                "Si las mejoras son grandes, la restricción de no vender en corto está limitando mucho al portafolio."
             ),
         )

@@ -104,3 +104,29 @@ def test_bond_purchase_duration_and_dv01_are_positive():
 
     assert metrics["modified_duration"] > 0
     assert metrics["dv01"] > 0
+
+
+def test_bond_purchase_discount_uses_real_days_from_settlement():
+    payload = {
+        **_tes_payload(),
+        "issue_date": "2019-10-18",
+        "maturity_date": "2034-10-18",
+        "settlement_date": "2026-05-21",
+        "market_yield": 0.09,
+        "clean_price_pct": 98.50,
+        "fees_pct": 0.25,
+    }
+    response = client.post("/api/v1/fixed-income/bond/purchase", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    first_cashflow = data["cashflows"][0]
+    periodic_yield = data["rates"]["market_yield_periodic"]
+    frequency = payload["coupon_frequency"]
+    expected_factor = 1.0 / ((1.0 + periodic_yield) ** (first_cashflow["days_from_settlement"] * frequency / 365.0))
+
+    assert first_cashflow["period"] == 1
+    assert abs(first_cashflow["discount_factor"] - expected_factor) < 1e-12
+    assert "total_bond_gain" in data["metrics"]
+    assert "seller_commission" in data["metrics"]
+    assert "buyer_net_gain" in data["metrics"]

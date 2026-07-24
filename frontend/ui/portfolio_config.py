@@ -53,6 +53,12 @@ PERRI_HORIZON_LABELS = {
     "5y": "5 años",
 }
 
+BENCHMARK_OPTIONS = {
+    "auto": "Automático según composición",
+    "SPY": "S&P 500 - SPY",
+    "ACWI": "MSCI ACWI global - ACWI",
+}
+
 
 def _format_pct(value: Any) -> str:
     return format_percent(value)
@@ -168,6 +174,26 @@ def _country_key(asset: dict[str, Any]) -> str:
 
 def _benchmark_from_assets(assets: list[dict[str, Any]]) -> dict[str, str]:
     return resolve_benchmark(assets)
+
+
+def _manual_benchmark_choice(ticker: str) -> dict[str, str]:
+    ticker = str(ticker or "ACWI").strip().upper()
+    if ticker == "SPY":
+        return {
+            "ticker": "SPY",
+            "name": "S&P 500 ETF",
+            "criterion": "manual_sp500",
+            "reason": "Seleccionado manualmente para comparar contra acciones que cotizan en el S&P 500.",
+            "explanation": "SPY se usa como proxy descargable del S&P 500.",
+        }
+
+    return {
+        "ticker": "ACWI",
+        "name": "MSCI ACWI ETF",
+        "criterion": "manual_global",
+        "reason": "Seleccionado manualmente como benchmark global para portafolios internacionales o mixtos.",
+        "explanation": "ACWI se usa como referencia global para portafolios con renta variable, renta fija o exposición a distintos índices bursátiles.",
+    }
 
 
 def _fallback_assets() -> list[dict[str, Any]]:
@@ -839,10 +865,30 @@ def render_global_portfolio_config() -> None:
                     format_func=lambda value: f"{value:.1%}",
                 )
 
+            benchmark_choice_keys = list(BENCHMARK_OPTIONS.keys())
+            default_benchmark_choice = "auto"
+
+            benchmark_choice = st.selectbox(
+                "Benchmark del portafolio",
+                options=benchmark_choice_keys,
+                index=benchmark_choice_keys.index(default_benchmark_choice),
+                format_func=lambda value: BENCHMARK_OPTIONS[value],
+                help=(
+                    "Automático usa SPY cuando todos los activos son renta variable de Estados Unidos; "
+                    "usa ACWI cuando el portafolio es internacional, mixto o combina renta variable y renta fija."
+                ),
+            )
+
+            selected_benchmark = (
+                manual_benchmark
+                if benchmark_choice == "auto"
+                else _manual_benchmark_choice(benchmark_choice)
+            )
+
             st.info(
-                "Benchmark automático: "
-                f"{manual_benchmark['ticker']} ({manual_benchmark['name']}). "
-                f"{manual_benchmark['reason']}"
+                "Benchmark seleccionado: "
+                f"{selected_benchmark['ticker']} ({selected_benchmark['name']}). "
+                f"{selected_benchmark['reason']}"
             )
 
             custom_start = None
@@ -982,7 +1028,7 @@ def render_global_portfolio_config() -> None:
                 "available": False,
                 "source": "manual",
                 "risk_profile": profile,
-                "benchmark": manual_benchmark,
+                "benchmark": selected_benchmark,
                 "message": "Portafolio creado manualmente por el usuario.",
             }
 
@@ -994,7 +1040,7 @@ def render_global_portfolio_config() -> None:
                 risk_profile=profile,
                 kyc_payload=kyc_payload,
                 perri_reference=manual_reference,
-                benchmark=manual_benchmark,
+                benchmark=selected_benchmark,
                 confidence_level=float(confidence_level),
                 custom_start=custom_start,
                 custom_end=custom_end,
