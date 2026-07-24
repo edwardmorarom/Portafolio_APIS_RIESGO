@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -33,7 +35,7 @@ def _read_secret(key: str, default: str | None = None) -> str | None:
 
 @st.cache_resource
 def get_api_config() -> ApiConfig:
-    base_url = _read_secret("BACKEND_BASE_URL", "http://127.0.0.1:8000")
+    base_url = _read_secret("BACKEND_BASE_URL", "inprocess")
     api_prefix = _read_secret("BACKEND_API_PREFIX", "/api/v1")
     timeout_raw = _read_secret("BACKEND_TIMEOUT_SECONDS", "30")
     internal_api_key = _read_secret("INTERNAL_API_KEY", None)
@@ -44,7 +46,7 @@ def get_api_config() -> ApiConfig:
         timeout = 30
 
     return ApiConfig(
-        base_url=base_url or "http://127.0.0.1:8000",
+        base_url=base_url or "inprocess",
         api_prefix=api_prefix or "/api/v1",
         timeout=timeout,
         internal_api_key=internal_api_key,
@@ -67,6 +69,29 @@ class ApiClientError(Exception):
 class ApiClient:
     def __init__(self, config: ApiConfig | None = None) -> None:
         self.config = config or get_api_config()
+        self._inprocess_client = None
+
+    @property
+    def use_inprocess_backend(self) -> bool:
+        value = (self.config.base_url or "").strip().lower().rstrip("/")
+        return value in {"", "inprocess", "local", "local://backend"}
+
+    def _test_client(self):
+        if self._inprocess_client is not None:
+            return self._inprocess_client
+
+        project_root = Path(__file__).resolve().parents[2]
+        backend_path = project_root / "backend"
+        if str(backend_path) not in sys.path:
+            sys.path.insert(0, str(backend_path))
+
+        from fastapi.testclient import TestClient
+        from app.db.database import init_db
+        from app.main import app as fastapi_app
+
+        init_db()
+        self._inprocess_client = TestClient(fastapi_app)
+        return self._inprocess_client
 
     def _headers(self, include_api_key: bool = False) -> dict[str, str]:
         headers = {
@@ -83,13 +108,21 @@ class ApiClient:
         path = path if path.startswith("/") else f"/{path}"
         return f"{self.config.api_root}{path}"
 
+    def _api_path(self, path: str) -> str:
+        path = path if path.startswith("/") else f"/{path}"
+        return f"{self.config.api_prefix.rstrip('/')}{path}"
+
     def _handle_response(self, response: requests.Response) -> dict[str, Any]:
         try:
             data = response.json()
         except ValueError:
             data = {}
 
-        if response.ok:
+        response_ok = getattr(response, "ok", None)
+        if response_ok is None:
+            response_ok = int(getattr(response, "status_code", 500)) < 400
+
+        if response_ok:
             return data
 
         detail = data.get("detail", {})
@@ -110,12 +143,19 @@ class ApiClient:
         params: dict[str, Any] | None = None,
         include_api_key: bool = False,
     ) -> dict[str, Any]:
-        response = requests.get(
-            self._url(path),
-            params=params or {},
-            headers=self._headers(include_api_key=include_api_key),
-            timeout=self.config.timeout,
-        )
+        if self.use_inprocess_backend:
+            response = self._test_client().get(
+                self._api_path(path),
+                params=params or {},
+                headers=self._headers(include_api_key=include_api_key),
+            )
+        else:
+            response = requests.get(
+                self._url(path),
+                params=params or {},
+                headers=self._headers(include_api_key=include_api_key),
+                timeout=self.config.timeout,
+            )
         return self._handle_response(response)
 
     def post(
@@ -124,12 +164,19 @@ class ApiClient:
         json_payload: dict[str, Any] | None = None,
         include_api_key: bool = False,
     ) -> dict[str, Any]:
-        response = requests.post(
-            self._url(path),
-            json=json_payload or {},
-            headers=self._headers(include_api_key=include_api_key),
-            timeout=self.config.timeout,
-        )
+        if self.use_inprocess_backend:
+            response = self._test_client().post(
+                self._api_path(path),
+                json=json_payload or {},
+                headers=self._headers(include_api_key=include_api_key),
+            )
+        else:
+            response = requests.post(
+                self._url(path),
+                json=json_payload or {},
+                headers=self._headers(include_api_key=include_api_key),
+                timeout=self.config.timeout,
+            )
         return self._handle_response(response)
 
     def post_bytes(
@@ -138,12 +185,19 @@ class ApiClient:
         json_payload: dict[str, Any] | None = None,
         include_api_key: bool = False,
     ) -> bytes:
-        response = requests.post(
-            self._url(path),
-            json=json_payload or {},
-            headers=self._headers(include_api_key=include_api_key),
-            timeout=self.config.timeout,
-        )
+        if self.use_inprocess_backend:
+            response = self._test_client().post(
+                self._api_path(path),
+                json=json_payload or {},
+                headers=self._headers(include_api_key=include_api_key),
+            )
+        else:
+            response = requests.post(
+                self._url(path),
+                json=json_payload or {},
+                headers=self._headers(include_api_key=include_api_key),
+                timeout=self.config.timeout,
+            )
         if response.ok:
             return response.content
         self._handle_response(response)
@@ -154,11 +208,17 @@ class ApiClient:
         path: str,
         include_api_key: bool = False,
     ) -> bytes:
-        response = requests.get(
-            self._url(path),
-            headers=self._headers(include_api_key=include_api_key),
-            timeout=self.config.timeout,
-        )
+        if self.use_inprocess_backend:
+            response = self._test_client().get(
+                self._api_path(path),
+                headers=self._headers(include_api_key=include_api_key),
+            )
+        else:
+            response = requests.get(
+                self._url(path),
+                headers=self._headers(include_api_key=include_api_key),
+                timeout=self.config.timeout,
+            )
         if response.ok:
             return response.content
         self._handle_response(response)
@@ -166,13 +226,19 @@ class ApiClient:
 
     # ---------- Root / health ----------
     def get_root(self) -> dict[str, Any]:
-        url = f"{self.config.base_url.rstrip('/')}/"
-        response = requests.get(url, timeout=self.config.timeout)
+        if self.use_inprocess_backend:
+            response = self._test_client().get("/")
+        else:
+            url = f"{self.config.base_url.rstrip('/')}/"
+            response = requests.get(url, timeout=self.config.timeout)
         return self._handle_response(response)
 
     def get_health(self) -> dict[str, Any]:
-        url = f"{self.config.base_url.rstrip('/')}/health"
-        response = requests.get(url, timeout=self.config.timeout)
+        if self.use_inprocess_backend:
+            response = self._test_client().get("/health")
+        else:
+            url = f"{self.config.base_url.rstrip('/')}/health"
+            response = requests.get(url, timeout=self.config.timeout)
         return self._handle_response(response)
 
     # ---------- Assets ----------

@@ -1,6 +1,14 @@
-﻿# Portafolio Riesgo USTA
+﻿# P.R.ED
 
 Backend FastAPI y dashboard Streamlit para analisis integral de portafolios financieros, teoria del riesgo, valoracion de activos, optimizacion, Machine Learning, RoboAdvisor, KYC, stress testing y automatizacion institucional Perri.
+
+Marca actual del dashboard: P.R.ED - Desarrolla Tus Portafolios.
+
+## Despliegue en Streamlit Community Cloud
+
+Para publicar el sitio gratis en `streamlit.app`, usa la rama `backend` y el archivo principal `frontend/app.py`. El frontend puede consumir la API FastAPI en modo integrado con `BACKEND_BASE_URL="inprocess"`, sin servidor backend adicional.
+
+Guia paso a paso: [`docs/STREAMLIT_CLOUD.md`](docs/STREAMLIT_CLOUD.md).
 
 El proyecto permite consultar activos, precios historicos, rendimientos, indicadores tecnicos, VaR/CVaR, CAPM, Markowitz, GARCH, senales tecnicas, analisis macroeconomico, benchmark, renta fija, opciones, stress testing, Machine Learning y RoboAdvisor con persistencia en SQLite.
 

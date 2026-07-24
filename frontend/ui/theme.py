@@ -1118,8 +1118,8 @@ def build_global_css(modo: str = "General") -> str:
     }
 
     .login-logo {
-        width: 156px;
-        height: 156px;
+        width: 203px;
+        height: 203px;
         background: rgba(255,255,255,0.94);
         border: 1px solid rgba(245, 211, 107, 0.55);
         box-shadow: 0 18px 38px rgba(245, 211, 107, 0.28);
