@@ -1022,8 +1022,8 @@ def build_global_css(modo: str = "General") -> str:
         position: relative;
         overflow: hidden;
         border-radius: 26px;
-        min-height: 650px;
-        padding: 1.55rem;
+        min-height: 80vh;
+        padding: 1.85rem;
         background:
             radial-gradient(circle at 16% 18%, rgba(35, 116, 255, 0.48), transparent 24%),
             radial-gradient(circle at 82% 32%, rgba(31, 212, 255, 0.36), transparent 20%),
@@ -1046,8 +1046,8 @@ def build_global_css(modo: str = "General") -> str:
 
     .login-glow {
         position: absolute;
-        width: 190px;
-        height: 190px;
+        width: 230px;
+        height: 230px;
         border-radius: 999px;
         background: radial-gradient(circle, rgba(61, 220, 255, 0.92), rgba(39, 118, 255, 0.24) 52%, transparent 70%);
         filter: blur(1px);
@@ -1055,8 +1055,8 @@ def build_global_css(modo: str = "General") -> str:
         pointer-events: none;
     }
 
-    .login-glow.one { right: 9%; top: 18%; }
-    .login-glow.two { left: 7%; bottom: 9%; width: 150px; height: 150px; opacity: 0.72; }
+    .login-glow.one { right: 9%; top: 22%; }
+    .login-glow.two { left: 7%; bottom: 9%; width: 175px; height: 175px; opacity: 0.72; }
 
     .login-frame {
         position: relative;
@@ -1102,42 +1102,44 @@ def build_global_css(modo: str = "General") -> str:
     }
 
     .login-title {
-        font-size: 2.85rem;
+        font-size: 3.25rem;
         line-height: 1.05;
-        font-weight: 900;
-        max-width: 640px;
+        font-weight: 950;
+        max-width: 760px;
     }
 
     .login-subtitle {
         color: #BED3F7 !important;
-        max-width: 680px;
-        font-size: 1.02rem;
+        max-width: 800px;
+        font-size: 1.15rem;
         line-height: 1.55;
-        margin-top: 0.85rem;
+        margin-top: 1rem;
+        font-weight: 750;
     }
 
     .login-logo {
-        width: 74px;
-        height: 74px;
+        width: 96px;
+        height: 96px;
         background: rgba(255,255,255,0.94);
         border: 1px solid rgba(245, 211, 107, 0.55);
-        box-shadow: 0 10px 24px rgba(245, 211, 107, 0.18);
+        box-shadow: 0 14px 30px rgba(245, 211, 107, 0.22);
     }
 
     .login-brand {
-        gap: 1.05rem;
+        gap: 1.25rem;
     }
 
     .login-brand-title {
-        font-size: 1.28rem;
+        font-size: 1.75rem;
         font-weight: 950;
         line-height: 1.02;
     }
 
     .login-brand-subtitle {
-        font-size: 0.92rem;
-        font-weight: 850;
-        margin-top: 0.18rem;
+        font-size: 1.08rem;
+        font-weight: 900;
+        margin-top: 0.24rem;
+        max-width: 360px;
     }
 
     .login-feature-grid {

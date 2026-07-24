@@ -260,15 +260,20 @@ def _login_css() -> str:
         }
 
         .block-container {
-            max-width: 1440px;
-            padding-top: 0.9rem;
+            width: min(80vw, 1560px);
+            max-width: min(80vw, 1560px);
+            padding-top: 1.1rem;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         div[data-testid="stForm"] {
             background: rgba(8, 24, 58, 0.68) !important;
             border: 1px solid rgba(180, 218, 255, 0.18) !important;
             border-radius: 22px !important;
-            padding: 1.35rem !important;
+            padding: 1.65rem !important;
             box-shadow: 0 24px 55px rgba(0, 0, 0, 0.26) !important;
             backdrop-filter: blur(18px);
         }
@@ -276,6 +281,8 @@ def _login_css() -> str:
         div[data-testid="stForm"] label,
         div[data-testid="stForm"] p {
             color: #D8E6FF !important;
+            font-size: 0.95rem !important;
+            font-weight: 850 !important;
         }
 
         div[data-testid="stForm"] input,
@@ -288,6 +295,8 @@ def _login_css() -> str:
             -webkit-text-fill-color: #0F172A !important;
             caret-color: #0F172A !important;
             opacity: 1 !important;
+            min-height: 44px !important;
+            font-size: 0.98rem !important;
         }
 
         div[data-testid="stForm"] input::placeholder {
@@ -311,7 +320,7 @@ def _login_css() -> str:
 
         div[data-testid="stExpander"] summary {
             border-left: 6px solid #8A1538 !important;
-            min-height: 52px !important;
+            min-height: 62px !important;
             padding-left: 0.85rem !important;
         }
 
@@ -324,6 +333,7 @@ def _login_css() -> str:
             stroke: #8A1538 !important;
             opacity: 1 !important;
             font-weight: 950 !important;
+            font-size: 0.94rem !important;
         }
 
         div[data-testid="stExpander"] details > div,
@@ -338,18 +348,34 @@ def _login_css() -> str:
             background: rgba(8, 24, 58, 0.68);
             border: 1px solid rgba(180, 218, 255, 0.18);
             border-radius: 22px;
-            padding: 1.35rem 1.35rem 1.05rem 1.35rem;
-            margin-bottom: 0.85rem;
+            padding: 1.65rem 1.65rem 1.35rem 1.65rem;
+            margin-bottom: 1rem;
+            min-height: 128px;
             box-shadow: 0 18px 44px rgba(0, 0, 0, 0.20);
             backdrop-filter: blur(18px);
         }
 
         .login-card-title {
-            font-size: 1.35rem !important;
+            font-size: 1.72rem !important;
+            line-height: 1.08 !important;
         }
 
         .login-card-subtitle {
-            font-size: 0.88rem !important;
+            font-size: 1rem !important;
+            margin-top: 0.45rem !important;
+        }
+
+        [data-testid="stFormSubmitButton"] button {
+            min-height: 52px !important;
+            font-size: 1rem !important;
+            font-weight: 950 !important;
+        }
+
+        @media (max-width: 1100px) {
+            .block-container {
+                width: 94vw;
+                max-width: 94vw;
+            }
         }
     </style>
     """
@@ -372,7 +398,7 @@ def _render_login() -> None:
     st.markdown(build_global_css("General"), unsafe_allow_html=True)
     st.markdown(_login_css(), unsafe_allow_html=True)
 
-    left, right = st.columns([1.30, 0.90], gap="large")
+    left, right = st.columns([1.16, 0.84], gap="large")
 
     with left:
         st.markdown(
