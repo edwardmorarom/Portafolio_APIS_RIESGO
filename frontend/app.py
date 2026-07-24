@@ -423,6 +423,18 @@ def _render_login() -> None:
                     <span class="login-trust">SQLite</span>
                     <span class="login-trust">Perri</span>
                 </div>
+                <div class="login-quote-card">
+                    <div class="login-quote-mark">Lectura P.R.ED</div>
+                    <div class="login-quote-text">
+                        “Sé temeroso cuando otros sean avariciosos, sé avaricioso cuando otros sean temerosos”.
+                    </div>
+                    <div class="login-quote-source">
+                        Frase atribuida a Warren Buffett. Fuente:
+                        <a href="https://www.bankinter.com/blog/finanzas-personales/frases-warren-buffett" target="_blank" rel="noopener noreferrer">
+                            Blog Bankinter
+                        </a>.
+                    </div>
+                </div>
             </div>
             """,
             unsafe_allow_html=True,

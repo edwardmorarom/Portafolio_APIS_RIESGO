@@ -1118,15 +1118,15 @@ def build_global_css(modo: str = "General") -> str:
     }
 
     .login-logo {
-        width: 96px;
-        height: 96px;
+        width: 130px;
+        height: 130px;
         background: rgba(255,255,255,0.94);
         border: 1px solid rgba(245, 211, 107, 0.55);
-        box-shadow: 0 14px 30px rgba(245, 211, 107, 0.22);
+        box-shadow: 0 18px 38px rgba(245, 211, 107, 0.28);
     }
 
     .login-brand {
-        gap: 1.25rem;
+        gap: 1.35rem;
     }
 
     .login-brand-title {
@@ -1140,6 +1140,60 @@ def build_global_css(modo: str = "General") -> str:
         font-weight: 900;
         margin-top: 0.24rem;
         max-width: 360px;
+    }
+
+    .login-quote-card {
+        position: relative;
+        z-index: 1;
+        max-width: 760px;
+        margin: 1.55rem auto 0 auto;
+        padding: 1.05rem 1.25rem;
+        border-radius: 20px;
+        background:
+            linear-gradient(135deg, rgba(255, 236, 163, 0.96) 0%, rgba(225, 172, 54, 0.92) 100%);
+        border: 1px solid rgba(125, 211, 252, 0.78);
+        box-shadow:
+            0 18px 34px rgba(2, 8, 23, 0.22),
+            inset 0 1px 0 rgba(255, 255, 255, 0.52);
+        color: #08224F !important;
+        text-align: center;
+    }
+
+    .login-quote-mark {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 24px;
+        padding: 0.18rem 0.68rem;
+        border-radius: 999px;
+        background: rgba(8, 34, 79, 0.10);
+        border: 1px solid rgba(8, 34, 79, 0.12);
+        color: #08224F !important;
+        font-size: 0.75rem;
+        font-weight: 950;
+        text-transform: uppercase;
+        margin-bottom: 0.55rem;
+    }
+
+    .login-quote-text {
+        color: #08224F !important;
+        font-size: 1.08rem;
+        line-height: 1.42;
+        font-weight: 950;
+    }
+
+    .login-quote-source,
+    .login-quote-source a {
+        color: #0B3A6E !important;
+        font-size: 0.82rem;
+        line-height: 1.35;
+        font-weight: 800;
+        margin-top: 0.55rem;
+    }
+
+    .login-quote-source a {
+        text-decoration: underline;
+        text-underline-offset: 3px;
     }
 
     .login-feature-grid {
