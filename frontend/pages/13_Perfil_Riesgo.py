@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import streamlit as st
 
@@ -12,7 +12,7 @@ from ui.portfolio_state import active_config, render_portfolio_scope_note
 
 modo, filtros_panel = setup_dashboard_page(
     title="Perfil de riesgo",
-    subtitle="Universidad Santo Tomas",
+    subtitle="Desarrolla Tus Portafolios",
     filtros_label="Parametros KYC",
     filtros_expanded=True,
     page_title="Perfil de Riesgo",

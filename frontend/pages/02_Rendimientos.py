@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import math
 import numpy as np
@@ -357,8 +357,8 @@ def _help_badge(text: str):
 assets, help_map, load_error = _fetch_assets_and_help()
 
 modo, filtros_sidebar = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomás",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     modo_default="General",
     filtros_label="Parámetros de Rendimientos",
     filtros_expanded=False,

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import numpy as np
 import pandas as pd
@@ -149,8 +149,8 @@ def _local_anomaly_detection(returns: list[float], ticker: str) -> dict:
 
 
 modo, filtros_panel = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomas",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     filtros_label="Parametros de Machine Learning",
     filtros_expanded=True,
     page_title="Machine Learning",

@@ -14,7 +14,7 @@ from ui.theme import build_global_css, image_to_base64, safe_text
 
 
 USERS_PATH = Path("backend/data/users.json")
-LOGO_PATH = "frontend/assets/escudo_santo_tomas.png"
+LOGO_PATH = "frontend/assets/pred_dachshund_logo.png"
 
 MODULE_GROUPS = {
     "Mercado y contexto": [
@@ -260,8 +260,8 @@ def _login_css() -> str:
         }
 
         .block-container {
-            max-width: 1180px;
-            padding-top: 1.2rem;
+            max-width: 1380px;
+            padding-top: 0.9rem;
         }
 
         div[data-testid="stForm"] {
@@ -351,12 +351,12 @@ def _logo_html() -> str:
     logo_b64 = image_to_base64(LOGO_PATH)
     if not logo_b64:
         return '<div class="login-logo"></div>'
-    return f'<img class="login-logo" src="data:image/png;base64,{logo_b64}" alt="USTA">'
+    return f'<img class="login-logo" src="data:image/png;base64,{logo_b64}" alt="P.R.ED">'
 
 
 def _render_login() -> None:
     st.set_page_config(
-        page_title="Acceso | Portafolio Riesgo USTA",
+        page_title="Acceso | P.R.ED",
         page_icon="🔐",
         layout="wide",
         initial_sidebar_state="collapsed",
@@ -364,7 +364,7 @@ def _render_login() -> None:
     st.markdown(build_global_css("General"), unsafe_allow_html=True)
     st.markdown(_login_css(), unsafe_allow_html=True)
 
-    left, right = st.columns([1.12, 0.88], gap="large")
+    left, right = st.columns([1.42, 0.78], gap="large")
 
     with left:
         st.markdown(
@@ -375,8 +375,8 @@ def _render_login() -> None:
                 <div class="login-brand" style="position:relative;z-index:1;">
                     {_logo_html()}
                     <div>
-                        <div class="login-brand-title">Portafolio Riesgo USTA</div>
-                        <div class="login-brand-subtitle">RoboAdvisor institucional</div>
+                        <div class="login-brand-title">P.R.ED</div>
+                        <div class="login-brand-subtitle">Generador de Portafolios de riesgo</div>
                     </div>
                 </div>
                 <div class="login-title" style="position:relative;z-index:1;margin-top:4.2rem;">Welcome back...</div>
@@ -608,11 +608,11 @@ def _render_session_tab() -> None:
 
 def _render_home() -> None:
     modo, filtros_panel = setup_dashboard_page(
-        title="Dashboard Riesgo",
-        subtitle="Universidad Santo Tomás",
+        title="P.R.ED",
+        subtitle="Desarrolla Tus Portafolios",
         filtros_label="Parámetros generales",
         filtros_expanded=False,
-        page_title="Dashboard Riesgo",
+        page_title="P.R.ED",
         page_icon="📊",
     )
 

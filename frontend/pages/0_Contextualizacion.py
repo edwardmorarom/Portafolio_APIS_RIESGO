@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -584,8 +584,8 @@ def _render_rf_and_benchmark_tab():
 
 
 modo, filtros_sidebar = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomás",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     modo_default="General",
     filtros_label="Parámetros De Contextualización",
     filtros_expanded=False,

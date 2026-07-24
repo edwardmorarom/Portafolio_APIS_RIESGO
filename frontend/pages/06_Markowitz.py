@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -826,8 +826,8 @@ def _module_reading(
 
 
 modo, filtros_sidebar = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomás",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     modo_default="General",
     filtros_label="Parámetros de Optimización",
     filtros_expanded=False,

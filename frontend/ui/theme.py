@@ -1022,8 +1022,8 @@ def build_global_css(modo: str = "General") -> str:
         position: relative;
         overflow: hidden;
         border-radius: 26px;
-        min-height: 560px;
-        padding: 1.15rem;
+        min-height: 620px;
+        padding: 1.35rem;
         background:
             radial-gradient(circle at 16% 18%, rgba(35, 116, 255, 0.48), transparent 24%),
             radial-gradient(circle at 82% 32%, rgba(31, 212, 255, 0.36), transparent 20%),

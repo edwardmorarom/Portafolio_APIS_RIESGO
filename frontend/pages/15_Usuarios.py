@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -57,8 +57,8 @@ def _users_table(users: list[dict]) -> pd.DataFrame:
 
 
 modo, _ = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomás",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     filtros_label=None,
     page_title="Administración de usuarios",
     page_icon="Admin",

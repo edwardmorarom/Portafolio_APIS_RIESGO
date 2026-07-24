@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import html
 import math
@@ -567,8 +567,8 @@ def _inject_signal_styles():
 
 
 modo, filtros_sidebar = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomás",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     modo_default="General",
     filtros_label="Parámetros de Señales",
     filtros_expanded=False,

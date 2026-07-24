@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 BACKEND_URL = "http://127.0.0.1:8000"
 
-APP_TITLE = "Dashboard Riesgo"
-APP_SUBTITLE = "Universidad Santo Tomás"
+APP_TITLE = "P.R.ED"
+APP_SUBTITLE = "Desarrolla Tus Portafolios"
 
-USTA_LOGO = "frontend/assets/escudo_santo_tomas.png"
+APP_LOGO = "frontend/assets/pred_dachshund_logo.png"
 
 COMPANY_LOGOS = {
     "BP.L": "frontend/assets/logos/bp.png",

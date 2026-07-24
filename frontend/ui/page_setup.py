@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import inspect
 from pathlib import Path
@@ -56,9 +56,9 @@ def _has_active_portfolio() -> bool:
 
 
 def setup_dashboard_page(
-    title: str = "Dashboard Riesgo",
-    subtitle: str = "Universidad Santo Tomás",
-    logo_path: str = "frontend/assets/escudo_santo_tomas.png",
+    title: str = "P.R.ED",
+    subtitle: str = "Desarrolla Tus Portafolios",
+    logo_path: str = "frontend/assets/pred_dachshund_logo.png",
     modo_default: str = "General",
     filtros_label: str = "Parámetros Del Módulo",
     filtros_expanded: bool = False,

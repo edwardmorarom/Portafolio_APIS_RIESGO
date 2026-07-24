@@ -115,7 +115,7 @@ def _current_report_payload(mode: str, custom_notes: str = "") -> dict:
 
 modo, filtros_panel = setup_dashboard_page(
     title="Reportes",
-    subtitle="Universidad Santo Tomás",
+    subtitle="Desarrolla Tus Portafolios",
     filtros_label="Parámetros de reporte",
     filtros_expanded=False,
     page_title="Reportes",
@@ -165,7 +165,7 @@ c1, c2, c3 = st.columns(3)
 with c1:
     tarjeta_kpi("Estado", str(report.get("status", "N/D")), subtexto="Preparado para PDF")
 with c2:
-    tarjeta_kpi("Proyecto", "Riesgo USTA", subtexto=str(report.get("project", "N/D")))
+    tarjeta_kpi("Proyecto", "P.R.ED", subtexto=str(report.get("project", "N/D")))
 with c3:
     tarjeta_kpi("Fecha", str(report.get("generated_at", "N/D")), subtexto="Generación")
 

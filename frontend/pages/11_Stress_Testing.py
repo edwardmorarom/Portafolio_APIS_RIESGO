@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -272,8 +272,8 @@ def _run_stress(client, payload: dict) -> dict:
 
 
 modo, filtros_panel = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomas",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     filtros_label="Parametros de stress testing",
     filtros_expanded=True,
     page_title="Stress Testing",

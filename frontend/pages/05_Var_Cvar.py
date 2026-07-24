@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import math
 
@@ -539,8 +539,8 @@ def _build_distribution_figure(
 
 
 modo, filtros_sidebar = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomás",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     modo_default="General",
     filtros_label="Parámetros de Riesgo Extremo",
     filtros_expanded=False,

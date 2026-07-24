@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from datetime import date
 
@@ -458,8 +458,8 @@ def _render_bond_purchase_tab(key_prefix: str) -> None:
 
 
 modo, filtros_panel = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomás",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     filtros_label=None,
     filtros_expanded=False,
     page_title="Renta Fija",

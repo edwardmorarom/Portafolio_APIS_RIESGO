@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import math
 
@@ -62,8 +62,8 @@ def _latest_portfolio_spot(ticker: str) -> float | None:
 
 
 modo, filtros_panel = setup_dashboard_page(
-    title="Dashboard Riesgo",
-    subtitle="Universidad Santo Tomás",
+    title="P.R.ED",
+    subtitle="Desarrolla Tus Portafolios",
     filtros_label="Parámetros de opciones",
     filtros_expanded=True,
     page_title="Opciones",
