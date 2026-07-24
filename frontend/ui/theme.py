@@ -1118,8 +1118,8 @@ def build_global_css(modo: str = "General") -> str:
     }
 
     .login-logo {
-        width: 130px;
-        height: 130px;
+        width: 156px;
+        height: 156px;
         background: rgba(255,255,255,0.94);
         border: 1px solid rgba(245, 211, 107, 0.55);
         box-shadow: 0 18px 38px rgba(245, 211, 107, 0.28);
@@ -1130,13 +1130,13 @@ def build_global_css(modo: str = "General") -> str:
     }
 
     .login-brand-title {
-        font-size: 1.75rem;
+        font-size: 2.45rem;
         font-weight: 950;
         line-height: 1.02;
     }
 
     .login-brand-subtitle {
-        font-size: 1.08rem;
+        font-size: 1.51rem;
         font-weight: 900;
         margin-top: 0.24rem;
         max-width: 360px;
