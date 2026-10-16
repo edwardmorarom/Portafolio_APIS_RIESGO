@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-16T00:33:28.402943+00:00",
+  "generated_at_utc": "2026-10-16T14:09:15.135893+00:00",
   "job": "run_perri_optimization",
   "history_years": 5,
   "rf_annual": 0.04,
@@ -42,8 +42,8 @@
     "horizons": {
       "1y": {
         "horizon_years": 1,
-        "start": "2025-10-15",
-        "end": "2026-10-15",
+        "start": "2025-10-16",
+        "end": "2026-10-16",
         "assets_with_valid_returns": 144,
         "benchmark_ticker": "SPY",
         "benchmark_status": "ok",
@@ -64,14 +64,14 @@
                 "MRK",
                 "TGT",
                 "XOM",
-                "COP"
+                "RY"
               ],
               "max_return": [
                 "INTC",
                 "AMD",
-                "MRK",
                 "TGT",
-                "HUM"
+                "MRK",
+                "ASML"
               ]
             },
             "min_risk": {
@@ -87,14 +87,14 @@
                 "BNDX"
               ],
               "observations": 251,
-              "expected_return_annual": 0.003386465535121256,
-              "volatility_annual": 0.023652424506613694,
-              "sharpe": -1.547982299008749,
+              "expected_return_annual": 0.007275955552590919,
+              "volatility_annual": 0.024019702487780466,
+              "sharpe": -1.362383421029331,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.10789314364508133,
-              "alpha_annual": -0.05012753704225598,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 0.10983570449920334,
+              "alpha_annual": -0.047443276251448896,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -102,7 +102,7 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_fija": 1.0000000000000002
+                "renta_fija": 0.9999999999999999
               },
               "weights": [
                 {
@@ -111,19 +111,19 @@
                 },
                 {
                   "asset": "TIP",
-                  "weight": 0.2943183270647114
+                  "weight": 0.3000813262039535
                 },
                 {
                   "asset": "MUB",
-                  "weight": 0.23919279059355034
+                  "weight": 0.2171987068232389
                 },
                 {
                   "asset": "BNDX",
-                  "weight": 0.10648888234173813
+                  "weight": 0.12271996697280688
                 },
                 {
                   "asset": "GOVT",
-                  "weight": 0.010000000000000155
+                  "weight": 0.010000000000000859
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -138,17 +138,17 @@
                 "MRK",
                 "TGT",
                 "XOM",
-                "COP"
+                "RY"
               ],
               "observations": 251,
-              "expected_return_annual": 0.527451140032751,
-              "volatility_annual": 0.12544260665576887,
-              "sharpe": 3.885849896043547,
+              "expected_return_annual": 0.5333305752751997,
+              "volatility_annual": 0.12047839248016928,
+              "sharpe": 4.094763925044915,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.15045899161672838,
-              "alpha_annual": 0.46860561258026817,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 0.18963700250399795,
+              "alpha_annual": 0.46791706323731885,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -165,19 +165,19 @@
                 },
                 {
                   "asset": "XOM",
-                  "weight": 0.24375079933316715
+                  "weight": 0.28396599886076573
                 },
                 {
                   "asset": "MRK",
-                  "weight": 0.19010311504058675
+                  "weight": 0.16436431816259586
                 },
                 {
                   "asset": "TGT",
-                  "weight": 0.15539170679684342
+                  "weight": 0.1450658942485993
                 },
                 {
-                  "asset": "COP",
-                  "weight": 0.0607543788294027
+                  "asset": "RY",
+                  "weight": 0.05660378872803908
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -190,19 +190,19 @@
               "assets_used": [
                 "INTC",
                 "AMD",
-                "MRK",
                 "TGT",
-                "HUM"
+                "MRK",
+                "ASML"
               ],
               "observations": 251,
-              "expected_return_annual": 1.0200233476020792,
-              "volatility_annual": 0.46168306379226554,
-              "sharpe": 2.12271886161941,
+              "expected_return_annual": 0.9972586785537823,
+              "volatility_annual": 0.4691050842359572,
+              "sharpe": 2.040606061886736,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 2.2243780820241943,
-              "alpha_annual": 0.7014120279391659,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 2.295075417411483,
+              "alpha_annual": 0.6496925075107581,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -214,24 +214,24 @@
               },
               "weights": [
                 {
-                  "asset": "INTC",
-                  "weight": 0.35
-                },
-                {
                   "asset": "AMD",
                   "weight": 0.35
                 },
                 {
-                  "asset": "MRK",
-                  "weight": 0.27999999999999997
+                  "asset": "INTC",
+                  "weight": 0.34999999999999953
                 },
                 {
                   "asset": "TGT",
-                  "weight": 0.01
+                  "weight": 0.28000000000000014
                 },
                 {
-                  "asset": "HUM",
-                  "weight": 0.01
+                  "asset": "ASML",
+                  "weight": 0.01000000000000023
+                },
+                {
+                  "asset": "MRK",
+                  "weight": 0.01000000000000014
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -248,8 +248,8 @@
                 "GOVT",
                 "BNDX",
                 "SPIP",
-                "JNK",
                 "HYG",
+                "JNK",
                 "BND",
                 "AGG"
               ],
@@ -258,24 +258,24 @@
                 "MRK",
                 "TGT",
                 "XOM",
-                "COP",
-                "CVX",
-                "KO",
                 "RY",
-                "INTC",
-                "AMD"
+                "COP",
+                "KO",
+                "CVX",
+                "AMD",
+                "INTC"
               ],
               "max_return": [
                 "INTC",
                 "AMD",
-                "MRK",
                 "TGT",
-                "HUM",
+                "MRK",
                 "ASML",
-                "TXN",
-                "CSCO",
+                "HUM",
                 "COP",
-                "XOM"
+                "TXN",
+                "XOM",
+                "CSCO"
               ]
             },
             "min_risk": {
@@ -290,20 +290,20 @@
                 "GOVT",
                 "BNDX",
                 "SPIP",
-                "JNK",
                 "HYG",
+                "JNK",
                 "BND",
                 "AGG"
               ],
               "observations": 251,
-              "expected_return_annual": 0.003793141363003843,
-              "volatility_annual": 0.023829175741972648,
-              "sharpe": -1.5194339505928227,
+              "expected_return_annual": 0.00780896988325657,
+              "volatility_annual": 0.02419876506367751,
+              "sharpe": -1.330275740602249,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.11000902782889942,
-              "alpha_annual": -0.049985883284799026,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 0.111955287114324,
+              "alpha_annual": -0.04719431006325226,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -316,43 +316,43 @@
               "weights": [
                 {
                   "asset": "BKLN",
-                  "weight": 0.35
+                  "weight": 0.3499999999999998
                 },
                 {
                   "asset": "TIP",
-                  "weight": 0.28253161395025067
+                  "weight": 0.2882982961142845
                 },
                 {
                   "asset": "MUB",
-                  "weight": 0.22371476274868116
+                  "weight": 0.20064050974194603
                 },
                 {
                   "asset": "BNDX",
-                  "weight": 0.08375362330106796
-                },
-                {
-                  "asset": "HYG",
-                  "weight": 0.0100000000000001
-                },
-                {
-                  "asset": "BND",
-                  "weight": 0.010000000000000096
-                },
-                {
-                  "asset": "JNK",
-                  "weight": 0.010000000000000082
-                },
-                {
-                  "asset": "AGG",
-                  "weight": 0.010000000000000047
-                },
-                {
-                  "asset": "GOVT",
-                  "weight": 0.01
+                  "weight": 0.10106119414376943
                 },
                 {
                   "asset": "SPIP",
-                  "weight": 0.01
+                  "weight": 0.010000000000000184
+                },
+                {
+                  "asset": "GOVT",
+                  "weight": 0.01000000000000007
+                },
+                {
+                  "asset": "HYG",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "JNK",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "BND",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "AGG",
+                  "weight": 0.009999999999999995
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -367,22 +367,22 @@
                 "MRK",
                 "TGT",
                 "XOM",
-                "COP",
-                "CVX",
-                "KO",
                 "RY",
-                "INTC",
-                "AMD"
+                "COP",
+                "KO",
+                "CVX",
+                "AMD",
+                "INTC"
               ],
               "observations": 251,
-              "expected_return_annual": 0.5477032243464541,
-              "volatility_annual": 0.1101506280003673,
-              "sharpe": 4.609172308529745,
+              "expected_return_annual": 0.557687935569855,
+              "volatility_annual": 0.10849754474076143,
+              "sharpe": 4.771425351668486,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.32319172417405534,
-              "alpha_annual": 0.46722230363250566,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 0.3220918900346475,
+              "alpha_annual": 0.47452396431626614,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -390,44 +390,44 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_variable": 0.9999999999999998
+                "renta_variable": 1.0000000000000002
               },
               "weights": [
                 {
                   "asset": "TD",
-                  "weight": 0.24152889292719085
+                  "weight": 0.2765363290725312
                 },
                 {
                   "asset": "KO",
-                  "weight": 0.16813385504580977
+                  "weight": 0.16125168405538567
                 },
                 {
                   "asset": "XOM",
-                  "weight": 0.1471392983543394
+                  "weight": 0.1380978031794056
                 },
                 {
                   "asset": "MRK",
-                  "weight": 0.12094328670806137
+                  "weight": 0.11242531218288072
                 },
                 {
                   "asset": "TGT",
-                  "weight": 0.09429536368737605
+                  "weight": 0.09282395662468704
                 },
                 {
                   "asset": "CVX",
-                  "weight": 0.0881495169817494
-                },
-                {
-                  "asset": "AMD",
-                  "weight": 0.05602761978879894
-                },
-                {
-                  "asset": "INTC",
-                  "weight": 0.03800516579166499
+                  "weight": 0.07157568169621797
                 },
                 {
                   "asset": "COP",
-                  "weight": 0.035777000715009256
+                  "weight": 0.05212473013044214
+                },
+                {
+                  "asset": "AMD",
+                  "weight": 0.04968550542936452
+                },
+                {
+                  "asset": "INTC",
+                  "weight": 0.0354789976290853
                 },
                 {
                   "asset": "RY",
@@ -444,24 +444,24 @@
               "assets_used": [
                 "INTC",
                 "AMD",
-                "MRK",
                 "TGT",
-                "HUM",
+                "MRK",
                 "ASML",
-                "TXN",
-                "CSCO",
+                "HUM",
                 "COP",
-                "XOM"
+                "TXN",
+                "XOM",
+                "CSCO"
               ],
               "observations": 251,
-              "expected_return_annual": 1.0168342199928617,
-              "volatility_annual": 0.465652115466561,
-              "sharpe": 2.0977768328489623,
+              "expected_return_annual": 0.9929226592199917,
+              "volatility_annual": 0.4696034898651187,
+              "sharpe": 2.0292069368856134,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 2.2517858113291074,
-              "alpha_annual": 0.6947899840949274,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 2.2962552852691003,
+              "alpha_annual": 0.6451983724843191,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -469,48 +469,48 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_variable": 1.0
+                "renta_variable": 0.9999999999999999
               },
               "weights": [
                 {
-                  "asset": "AMD",
-                  "weight": 0.34999999999999953
-                },
-                {
                   "asset": "INTC",
-                  "weight": 0.3499999999999987
+                  "weight": 0.34999999999999837
                 },
                 {
-                  "asset": "MRK",
-                  "weight": 0.2300000000000018
-                },
-                {
-                  "asset": "XOM",
-                  "weight": 0.010000000000000103
-                },
-                {
-                  "asset": "CSCO",
-                  "weight": 0.010000000000000004
+                  "asset": "AMD",
+                  "weight": 0.34999999999999676
                 },
                 {
                   "asset": "TGT",
-                  "weight": 0.009999999999999988
+                  "weight": 0.23000000000000065
                 },
                 {
-                  "asset": "HUM",
-                  "weight": 0.009999999999999986
-                },
-                {
-                  "asset": "ASML",
-                  "weight": 0.009999999999999986
-                },
-                {
-                  "asset": "TXN",
-                  "weight": 0.009999999999999986
+                  "asset": "XOM",
+                  "weight": 0.01000000000000088
                 },
                 {
                   "asset": "COP",
-                  "weight": 0.009999999999999986
+                  "weight": 0.010000000000000835
+                },
+                {
+                  "asset": "TXN",
+                  "weight": 0.010000000000000711
+                },
+                {
+                  "asset": "HUM",
+                  "weight": 0.010000000000000588
+                },
+                {
+                  "asset": "CSCO",
+                  "weight": 0.01000000000000048
+                },
+                {
+                  "asset": "ASML",
+                  "weight": 0.010000000000000436
+                },
+                {
+                  "asset": "MRK",
+                  "weight": 0.010000000000000307
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -527,8 +527,8 @@
                 "GOVT",
                 "BNDX",
                 "SPIP",
-                "JNK",
                 "HYG",
+                "JNK",
                 "BND",
                 "AGG",
                 "VCIT",
@@ -542,34 +542,34 @@
                 "MRK",
                 "TGT",
                 "XOM",
-                "COP",
-                "CVX",
-                "KO",
                 "RY",
-                "INTC",
+                "COP",
+                "KO",
+                "CVX",
                 "AMD",
-                "CSCO",
+                "INTC",
                 "HSBC",
                 "JNJ",
-                "EOG",
-                "AMGN"
+                "AMGN",
+                "CB",
+                "EOG"
               ],
               "max_return": [
                 "INTC",
                 "AMD",
-                "MRK",
                 "TGT",
-                "HUM",
+                "MRK",
                 "ASML",
-                "TXN",
-                "CSCO",
+                "HUM",
                 "COP",
+                "TXN",
                 "XOM",
-                "SLB",
-                "BHP",
-                "CVX",
+                "CSCO",
                 "LLY",
-                "DE"
+                "BHP",
+                "SLB",
+                "TD",
+                "AMGN"
               ]
             },
             "min_risk": {
@@ -584,8 +584,8 @@
                 "GOVT",
                 "BNDX",
                 "SPIP",
-                "JNK",
                 "HYG",
+                "JNK",
                 "BND",
                 "AGG",
                 "VCIT",
@@ -595,14 +595,14 @@
                 "TLT"
               ],
               "observations": 251,
-              "expected_return_annual": 0.0026609514862198365,
-              "volatility_annual": 0.024879986882790524,
-              "sharpe": -1.5007664067382434,
+              "expected_return_annual": 0.006841789939283037,
+              "volatility_annual": 0.025271471411328933,
+              "sharpe": -1.3120807063831073,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.11470162437134523,
-              "alpha_annual": -0.05170583768142883,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 0.1167556904226562,
+              "alpha_annual": -0.04880479856859377,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -619,50 +619,50 @@
                 },
                 {
                   "asset": "TIP",
-                  "weight": 0.2575193305916439
+                  "weight": 0.2641794359875148
                 },
                 {
                   "asset": "MUB",
-                  "weight": 0.2272297518771473
+                  "weight": 0.20230280529326317
                 },
                 {
                   "asset": "BNDX",
-                  "weight": 0.05525091753120852
-                },
-                {
-                  "asset": "SPIP",
-                  "weight": 0.010000000000000151
-                },
-                {
-                  "asset": "LQD",
-                  "weight": 0.010000000000000052
-                },
-                {
-                  "asset": "VCIT",
-                  "weight": 0.010000000000000042
-                },
-                {
-                  "asset": "JNK",
-                  "weight": 0.010000000000000033
-                },
-                {
-                  "asset": "IEF",
-                  "weight": 0.010000000000000033
-                },
-                {
-                  "asset": "EMB",
-                  "weight": 0.010000000000000018
+                  "weight": 0.07351775871922156
                 },
                 {
                   "asset": "GOVT",
-                  "weight": 0.010000000000000004
+                  "weight": 0.010000000000000314
+                },
+                {
+                  "asset": "LQD",
+                  "weight": 0.010000000000000038
+                },
+                {
+                  "asset": "VCIT",
+                  "weight": 0.010000000000000031
+                },
+                {
+                  "asset": "TLT",
+                  "weight": 0.01000000000000003
                 },
                 {
                   "asset": "HYG",
-                  "weight": 0.010000000000000002
+                  "weight": 0.010000000000000026
+                },
+                {
+                  "asset": "IEF",
+                  "weight": 0.010000000000000018
+                },
+                {
+                  "asset": "JNK",
+                  "weight": 0.010000000000000016
                 },
                 {
                   "asset": "BND",
+                  "weight": 0.010000000000000007
+                },
+                {
+                  "asset": "SPIP",
                   "weight": 0.010000000000000002
                 },
                 {
@@ -670,7 +670,7 @@
                   "weight": 0.010000000000000002
                 },
                 {
-                  "asset": "TLT",
+                  "asset": "EMB",
                   "weight": 0.010000000000000002
                 }
               ],
@@ -686,27 +686,27 @@
                 "MRK",
                 "TGT",
                 "XOM",
-                "COP",
-                "CVX",
-                "KO",
                 "RY",
-                "INTC",
+                "COP",
+                "KO",
+                "CVX",
                 "AMD",
-                "CSCO",
+                "INTC",
                 "HSBC",
                 "JNJ",
-                "EOG",
-                "AMGN"
+                "AMGN",
+                "CB",
+                "EOG"
               ],
               "observations": 251,
-              "expected_return_annual": 0.522651333257689,
-              "volatility_annual": 0.10293107954726279,
-              "sharpe": 4.689072876536482,
+              "expected_return_annual": 0.5214334632648777,
+              "volatility_annual": 0.09504524832075378,
+              "sharpe": 5.065308069269923,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.31687324439522946,
-              "alpha_annual": 0.44296182476078605,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 0.27454726645306515,
+              "alpha_annual": 0.4446410115342343,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -719,63 +719,63 @@
               "weights": [
                 {
                   "asset": "TD",
-                  "weight": 0.20425801824852297
+                  "weight": 0.1999867662808995
                 },
                 {
-                  "asset": "KO",
-                  "weight": 0.14539820471010906
+                  "asset": "CB",
+                  "weight": 0.17706351065628215
                 },
                 {
                   "asset": "XOM",
-                  "weight": 0.11925773758574519
-                },
-                {
-                  "asset": "CVX",
-                  "weight": 0.08940024849942424
-                },
-                {
-                  "asset": "JNJ",
-                  "weight": 0.08910198115591315
+                  "weight": 0.12049046785265088
                 },
                 {
                   "asset": "TGT",
-                  "weight": 0.08265503858449492
+                  "weight": 0.08425104439218019
+                },
+                {
+                  "asset": "KO",
+                  "weight": 0.0781482766266552
+                },
+                {
+                  "asset": "CVX",
+                  "weight": 0.06547943216400523
                 },
                 {
                   "asset": "MRK",
-                  "weight": 0.07272218956292048
+                  "weight": 0.06300687119616939
                 },
                 {
                   "asset": "AMD",
-                  "weight": 0.050692005359791265
+                  "weight": 0.0586509290205503
                 },
                 {
-                  "asset": "CSCO",
-                  "weight": 0.03446986155726259
+                  "asset": "JNJ",
+                  "weight": 0.04671926542870535
                 },
                 {
                   "asset": "INTC",
-                  "weight": 0.03381177519392196
-                },
-                {
-                  "asset": "COP",
-                  "weight": 0.028465159438172263
+                  "weight": 0.03458185738984579
                 },
                 {
                   "asset": "AMGN",
-                  "weight": 0.019767780103721665
+                  "weight": 0.022120195654333808
                 },
                 {
-                  "asset": "EOG",
-                  "weight": 0.010000000000000276
-                },
-                {
-                  "asset": "HSBC",
-                  "weight": 0.01000000000000003
+                  "asset": "COP",
+                  "weight": 0.019501383337722382
                 },
                 {
                   "asset": "RY",
-                  "weight": 0.01
+                  "weight": 0.009999999999999985
+                },
+                {
+                  "asset": "HSBC",
+                  "weight": 0.009999999999999985
+                },
+                {
+                  "asset": "EOG",
+                  "weight": 0.009999999999999985
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -788,29 +788,29 @@
               "assets_used": [
                 "INTC",
                 "AMD",
-                "MRK",
                 "TGT",
-                "HUM",
+                "MRK",
                 "ASML",
-                "TXN",
-                "CSCO",
+                "HUM",
                 "COP",
+                "TXN",
                 "XOM",
-                "SLB",
-                "BHP",
-                "CVX",
+                "CSCO",
                 "LLY",
-                "DE"
+                "BHP",
+                "SLB",
+                "TD",
+                "AMGN"
               ],
               "observations": 251,
-              "expected_return_annual": 1.008160034116053,
-              "volatility_annual": 0.4669013567930389,
-              "sharpe": 2.073585822851238,
+              "expected_return_annual": 0.984900742343848,
+              "volatility_annual": 0.4707358994828587,
+              "sharpe": 2.007284218989666,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 2.2685570724441795,
-              "alpha_annual": 0.6840151377101578,
-              "benchmark_return_annual": 0.1652535807264276,
+              "beta": 2.3164419816404225,
+              "alpha_annual": 0.6344712090346494,
+              "benchmark_return_annual": 0.1740113569731469,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -818,68 +818,68 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_variable": 1.0000000000000002
+                "renta_variable": 1.0000000000000004
               },
               "weights": [
                 {
-                  "asset": "INTC",
-                  "weight": 0.34999999999999953
-                },
-                {
                   "asset": "AMD",
-                  "weight": 0.34999999999999953
+                  "weight": 0.34999999999999754
                 },
                 {
-                  "asset": "MRK",
-                  "weight": 0.18000000000000102
+                  "asset": "INTC",
+                  "weight": 0.34999999999999626
                 },
                 {
                   "asset": "TGT",
-                  "weight": 0.009999999999999986
-                },
-                {
-                  "asset": "HUM",
-                  "weight": 0.009999999999999986
-                },
-                {
-                  "asset": "ASML",
-                  "weight": 0.009999999999999986
-                },
-                {
-                  "asset": "TXN",
-                  "weight": 0.009999999999999986
-                },
-                {
-                  "asset": "CSCO",
-                  "weight": 0.009999999999999986
-                },
-                {
-                  "asset": "COP",
-                  "weight": 0.009999999999999986
-                },
-                {
-                  "asset": "XOM",
-                  "weight": 0.009999999999999986
+                  "weight": 0.17999999999999808
                 },
                 {
                   "asset": "SLB",
-                  "weight": 0.009999999999999986
+                  "weight": 0.010000000000000916
                 },
                 {
-                  "asset": "BHP",
-                  "weight": 0.009999999999999986
+                  "asset": "XOM",
+                  "weight": 0.0100000000000009
                 },
                 {
-                  "asset": "CVX",
-                  "weight": 0.009999999999999986
+                  "asset": "CSCO",
+                  "weight": 0.010000000000000876
                 },
                 {
                   "asset": "LLY",
-                  "weight": 0.009999999999999986
+                  "weight": 0.010000000000000798
                 },
                 {
-                  "asset": "DE",
-                  "weight": 0.009999999999999986
+                  "asset": "ASML",
+                  "weight": 0.010000000000000774
+                },
+                {
+                  "asset": "HUM",
+                  "weight": 0.010000000000000769
+                },
+                {
+                  "asset": "BHP",
+                  "weight": 0.01000000000000072
+                },
+                {
+                  "asset": "AMGN",
+                  "weight": 0.010000000000000685
+                },
+                {
+                  "asset": "TXN",
+                  "weight": 0.010000000000000639
+                },
+                {
+                  "asset": "COP",
+                  "weight": 0.010000000000000625
+                },
+                {
+                  "asset": "TD",
+                  "weight": 0.010000000000000451
+                },
+                {
+                  "asset": "MRK",
+                  "weight": 0.009999999999999993
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -889,8 +889,8 @@
       },
       "3y": {
         "horizon_years": 3,
-        "start": "2023-10-16",
-        "end": "2026-10-15",
+        "start": "2023-10-17",
+        "end": "2026-10-16",
         "assets_with_valid_returns": 144,
         "benchmark_ticker": "SPY",
         "benchmark_status": "ok",
@@ -909,9 +909,9 @@
               "max_sharpe": [
                 "RY",
                 "WELL",
-                "TSM",
+                "GE",
                 "HSBC",
-                "GE"
+                "TSM"
               ],
               "max_return": [
                 "AMD",
@@ -934,14 +934,14 @@
                 "SPIP"
               ],
               "observations": 752,
-              "expected_return_annual": 0.04697842129399873,
-              "volatility_annual": 0.027016599976164037,
-              "sharpe": 0.25830124072442817,
+              "expected_return_annual": 0.04968261630115139,
+              "volatility_annual": 0.026990559845651626,
+              "sharpe": 0.35874084704142684,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.08250004174991415,
-              "alpha_annual": -0.007391242166555637,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 0.08251684150416236,
+              "alpha_annual": -0.004744133114150138,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -954,23 +954,23 @@
               "weights": [
                 {
                   "asset": "BKLN",
-                  "weight": 0.3499999999999999
+                  "weight": 0.35
                 },
                 {
                   "asset": "BNDX",
-                  "weight": 0.3499999999999999
+                  "weight": 0.35
                 },
                 {
                   "asset": "MUB",
-                  "weight": 0.22083216253926732
+                  "weight": 0.21734956408032013
                 },
                 {
                   "asset": "TIP",
-                  "weight": 0.0691678374607329
+                  "weight": 0.07265043591968004
                 },
                 {
                   "asset": "SPIP",
-                  "weight": 0.009999999999999998
+                  "weight": 0.01
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -983,19 +983,19 @@
               "assets_used": [
                 "RY",
                 "WELL",
-                "TSM",
+                "GE",
                 "HSBC",
-                "GE"
+                "TSM"
               ],
               "observations": 752,
-              "expected_return_annual": 0.4027892979352037,
-              "volatility_annual": 0.15389282697189083,
-              "sharpe": 2.3574152549778598,
+              "expected_return_annual": 0.403818994770701,
+              "volatility_annual": 0.1527462772238132,
+              "sharpe": 2.381851796215047,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.7297589668990091,
-              "alpha_annual": 0.23568159545126524,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 0.7187954786361951,
+              "alpha_annual": 0.2381491065138532,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -1012,19 +1012,19 @@
                 },
                 {
                   "asset": "RY",
-                  "weight": 0.30080006819800464
+                  "weight": 0.3119754964574914
                 },
                 {
                   "asset": "TSM",
-                  "weight": 0.1491030914765478
+                  "weight": 0.13764364232333232
                 },
                 {
                   "asset": "HSBC",
-                  "weight": 0.12670448578150484
+                  "weight": 0.12295429631932128
                 },
                 {
                   "asset": "GE",
-                  "weight": 0.07339235454394277
+                  "weight": 0.07742656489985517
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1042,14 +1042,14 @@
                 "INTC"
               ],
               "observations": 752,
-              "expected_return_annual": 0.6621805894291357,
-              "volatility_annual": 0.4187641076344043,
-              "sharpe": 1.4857543377913398,
+              "expected_return_annual": 0.6578225835376421,
+              "volatility_annual": 0.4188439334031587,
+              "sharpe": 1.4750663296415858,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 2.037873421936922,
-              "alpha_annual": 0.2672285842263949,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 2.0373152434967117,
+              "alpha_annual": 0.26163061154585826,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -1061,24 +1061,24 @@
               },
               "weights": [
                 {
-                  "asset": "AMD",
-                  "weight": 0.3499999999999999
+                  "asset": "NVDA",
+                  "weight": 0.3499999999999998
                 },
                 {
-                  "asset": "NVDA",
-                  "weight": 0.3499999999999999
+                  "asset": "AMD",
+                  "weight": 0.3499999999999996
                 },
                 {
                   "asset": "TSM",
-                  "weight": 0.2800000000000001
-                },
-                {
-                  "asset": "INTC",
-                  "weight": 0.010000000000000016
+                  "weight": 0.2800000000000007
                 },
                 {
                   "asset": "AVGO",
-                  "weight": 0.009999999999999998
+                  "weight": 0.009999999999999997
+                },
+                {
+                  "asset": "INTC",
+                  "weight": 0.009999999999999995
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1103,9 +1103,9 @@
               "max_sharpe": [
                 "RY",
                 "WELL",
-                "TSM",
-                "HSBC",
                 "GE",
+                "HSBC",
+                "TSM",
                 "C",
                 "RTX",
                 "TD",
@@ -1143,14 +1143,14 @@
                 "AGG"
               ],
               "observations": 752,
-              "expected_return_annual": 0.04811417172417491,
-              "volatility_annual": 0.027304360141122225,
-              "sharpe": 0.29717494503577163,
+              "expected_return_annual": 0.0508160934520565,
+              "volatility_annual": 0.0272737283477864,
+              "sharpe": 0.396575536506521,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.08617762988352601,
-              "alpha_annual": -0.006896045397997291,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 0.08618363222490165,
+              "alpha_annual": -0.004251735649793496,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -1158,48 +1158,48 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_fija": 1.0000000000000002
+                "renta_fija": 1.0
               },
               "weights": [
-                {
-                  "asset": "BNDX",
-                  "weight": 0.35
-                },
                 {
                   "asset": "BKLN",
                   "weight": 0.3499999999999999
                 },
                 {
+                  "asset": "BNDX",
+                  "weight": 0.3499999999999999
+                },
+                {
                   "asset": "MUB",
-                  "weight": 0.19540738281254016
+                  "weight": 0.19118025344719403
                 },
                 {
                   "asset": "TIP",
-                  "weight": 0.04459261718745985
-                },
-                {
-                  "asset": "HYG",
-                  "weight": 0.010000000000000068
-                },
-                {
-                  "asset": "JNK",
-                  "weight": 0.010000000000000044
-                },
-                {
-                  "asset": "BND",
-                  "weight": 0.010000000000000024
+                  "weight": 0.04881974655280602
                 },
                 {
                   "asset": "SPIP",
-                  "weight": 0.01
+                  "weight": 0.010000000000000108
                 },
                 {
                   "asset": "GOVT",
-                  "weight": 0.01
+                  "weight": 0.010000000000000037
+                },
+                {
+                  "asset": "HYG",
+                  "weight": 0.009999999999999998
+                },
+                {
+                  "asset": "BND",
+                  "weight": 0.009999999999999998
+                },
+                {
+                  "asset": "JNK",
+                  "weight": 0.009999999999999998
                 },
                 {
                   "asset": "AGG",
-                  "weight": 0.01
+                  "weight": 0.009999999999999998
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1212,9 +1212,9 @@
               "assets_used": [
                 "RY",
                 "WELL",
-                "TSM",
-                "HSBC",
                 "GE",
+                "HSBC",
+                "TSM",
                 "C",
                 "RTX",
                 "TD",
@@ -1222,14 +1222,14 @@
                 "GS"
               ],
               "observations": 752,
-              "expected_return_annual": 0.3975692812259485,
-              "volatility_annual": 0.14390751646134636,
-              "sharpe": 2.484715809281524,
+              "expected_return_annual": 0.3989081236405191,
+              "volatility_annual": 0.14262582948209138,
+              "sharpe": 2.5164314552546383,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.6897900931387912,
-              "alpha_annual": 0.23742326327754926,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 0.6843452729865915,
+              "alpha_annual": 0.23926130261640532,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -1242,43 +1242,43 @@
               "weights": [
                 {
                   "asset": "WELL",
-                  "weight": 0.33046450227188595
+                  "weight": 0.3171124779694339
                 },
                 {
                   "asset": "RTX",
-                  "weight": 0.1733302163064478
+                  "weight": 0.17607634832726088
                 },
                 {
                   "asset": "RY",
-                  "weight": 0.15521921011763262
+                  "weight": 0.17558032636457493
                 },
                 {
                   "asset": "TSM",
-                  "weight": 0.10418922567252133
+                  "weight": 0.08913533381433145
                 },
                 {
                   "asset": "TD",
-                  "weight": 0.0770356195458422
+                  "weight": 0.0799792009999745
                 },
                 {
                   "asset": "HSBC",
-                  "weight": 0.07518042483743131
+                  "weight": 0.07380129737246832
                 },
                 {
                   "asset": "NVDA",
-                  "weight": 0.05045579618763398
+                  "weight": 0.05696576622144049
                 },
                 {
                   "asset": "C",
-                  "weight": 0.01412500506060446
+                  "weight": 0.011349248930515527
                 },
                 {
                   "asset": "GS",
-                  "weight": 0.010000000000000179
+                  "weight": 0.010000000000000037
                 },
                 {
                   "asset": "GE",
-                  "weight": 0.010000000000000092
+                  "weight": 0.01
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1301,14 +1301,14 @@
                 "CAT"
               ],
               "observations": 752,
-              "expected_return_annual": 0.6532736807310723,
-              "volatility_annual": 0.41080328708474995,
-              "sharpe": 1.49286458996749,
+              "expected_return_annual": 0.6497543979979413,
+              "volatility_annual": 0.4108458647718858,
+              "sharpe": 1.4841439339702145,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 2.0211253979122237,
-              "alpha_annual": 0.26123880700801866,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 2.0205645996193335,
+              "alpha_annual": 0.25649100806721103,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -1316,48 +1316,48 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_variable": 1.0000000000000002
+                "renta_variable": 1.0
               },
               "weights": [
                 {
                   "asset": "AMD",
-                  "weight": 0.34999999999999987
+                  "weight": 0.34999999999999976
                 },
                 {
                   "asset": "NVDA",
-                  "weight": 0.3499999999999997
+                  "weight": 0.34999999999999937
                 },
                 {
                   "asset": "TSM",
-                  "weight": 0.22999999999999934
-                },
-                {
-                  "asset": "C",
-                  "weight": 0.010000000000000358
-                },
-                {
-                  "asset": "GE",
-                  "weight": 0.010000000000000233
-                },
-                {
-                  "asset": "GS",
-                  "weight": 0.010000000000000191
+                  "weight": 0.23000000000000037
                 },
                 {
                   "asset": "CAT",
-                  "weight": 0.010000000000000127
+                  "weight": 0.010000000000000224
                 },
                 {
-                  "asset": "ASML",
-                  "weight": 0.01
-                },
-                {
-                  "asset": "AVGO",
-                  "weight": 0.009999999999999997
+                  "asset": "GE",
+                  "weight": 0.010000000000000217
                 },
                 {
                   "asset": "INTC",
-                  "weight": 0.009999999999999997
+                  "weight": 0.010000000000000129
+                },
+                {
+                  "asset": "AVGO",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "C",
+                  "weight": 0.009999999999999993
+                },
+                {
+                  "asset": "ASML",
+                  "weight": 0.009999999999999993
+                },
+                {
+                  "asset": "GS",
+                  "weight": 0.009999999999999993
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1387,9 +1387,9 @@
               "max_sharpe": [
                 "RY",
                 "WELL",
-                "TSM",
-                "HSBC",
                 "GE",
+                "HSBC",
+                "TSM",
                 "C",
                 "RTX",
                 "TD",
@@ -1398,7 +1398,7 @@
                 "JPM",
                 "PM",
                 "AMD",
-                "CAT",
+                "WMT",
                 "KO"
               ],
               "max_return": [
@@ -1416,7 +1416,7 @@
                 "WELL",
                 "RTX",
                 "GOOGL",
-                "META"
+                "MS"
               ]
             },
             "min_risk": {
@@ -1442,14 +1442,14 @@
                 "TLT"
               ],
               "observations": 752,
-              "expected_return_annual": 0.048970610529452605,
-              "volatility_annual": 0.028809692890373866,
-              "sharpe": 0.31137473639817725,
+              "expected_return_annual": 0.05177933011491152,
+              "volatility_annual": 0.028778250786639543,
+              "sharpe": 0.40931362375854125,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.09063072327194849,
-              "alpha_annual": -0.006815235937781293,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 0.09062739406243361,
+              "alpha_annual": -0.004065419641228446,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -1461,64 +1461,64 @@
               },
               "weights": [
                 {
-                  "asset": "BNDX",
-                  "weight": 0.35
+                  "asset": "BKLN",
+                  "weight": 0.3499999999999998
                 },
                 {
-                  "asset": "BKLN",
-                  "weight": 0.34999999999999976
+                  "asset": "BNDX",
+                  "weight": 0.3499999999999998
                 },
                 {
                   "asset": "MUB",
-                  "weight": 0.1797007512530914
+                  "weight": 0.17448744673939615
                 },
                 {
                   "asset": "TIP",
-                  "weight": 0.010299248746908504
-                },
-                {
-                  "asset": "AGG",
-                  "weight": 0.010000000000000104
-                },
-                {
-                  "asset": "GOVT",
-                  "weight": 0.010000000000000064
-                },
-                {
-                  "asset": "SPIP",
-                  "weight": 0.010000000000000057
-                },
-                {
-                  "asset": "BND",
-                  "weight": 0.01000000000000004
-                },
-                {
-                  "asset": "VCIT",
-                  "weight": 0.010000000000000026
-                },
-                {
-                  "asset": "LQD",
-                  "weight": 0.010000000000000023
-                },
-                {
-                  "asset": "HYG",
-                  "weight": 0.01000000000000001
-                },
-                {
-                  "asset": "JNK",
-                  "weight": 0.01
-                },
-                {
-                  "asset": "IEF",
-                  "weight": 0.01
-                },
-                {
-                  "asset": "EMB",
-                  "weight": 0.01
+                  "weight": 0.015512553260604106
                 },
                 {
                   "asset": "TLT",
-                  "weight": 0.01
+                  "weight": 0.01000000000000013
+                },
+                {
+                  "asset": "LQD",
+                  "weight": 0.010000000000000042
+                },
+                {
+                  "asset": "EMB",
+                  "weight": 0.010000000000000042
+                },
+                {
+                  "asset": "IEF",
+                  "weight": 0.010000000000000016
+                },
+                {
+                  "asset": "SPIP",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "HYG",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "BND",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "JNK",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "GOVT",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "AGG",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "VCIT",
+                  "weight": 0.009999999999999995
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1531,9 +1531,9 @@
               "assets_used": [
                 "RY",
                 "WELL",
-                "TSM",
-                "HSBC",
                 "GE",
+                "HSBC",
+                "TSM",
                 "C",
                 "RTX",
                 "TD",
@@ -1542,18 +1542,18 @@
                 "JPM",
                 "PM",
                 "AMD",
-                "CAT",
+                "WMT",
                 "KO"
               ],
               "observations": 752,
-              "expected_return_annual": 0.3708528594661257,
-              "volatility_annual": 0.1220711402827974,
-              "sharpe": 2.7103282454776116,
+              "expected_return_annual": 0.3696037001226185,
+              "volatility_annual": 0.11997072124455545,
+              "sharpe": 2.7473678302786455,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.5752441630434468,
-              "alpha_annual": 0.23065818252717502,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 0.5720082789953789,
+              "alpha_annual": 0.22959720503484968,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -1566,63 +1566,63 @@
               "weights": [
                 {
                   "asset": "KO",
-                  "weight": 0.2178979301555933
+                  "weight": 0.19082028008080065
                 },
                 {
                   "asset": "WELL",
-                  "weight": 0.16539962852743587
+                  "weight": 0.15103235680693167
                 },
                 {
                   "asset": "PM",
-                  "weight": 0.12783696404882558
+                  "weight": 0.11200953219029432
                 },
                 {
                   "asset": "RTX",
-                  "weight": 0.11187561138225229
+                  "weight": 0.11069683209438486
                 },
                 {
                   "asset": "TSM",
-                  "weight": 0.08568767770088759
-                },
-                {
-                  "asset": "TD",
-                  "weight": 0.06376165427649387
+                  "weight": 0.07620571054657536
                 },
                 {
                   "asset": "RY",
-                  "weight": 0.0607551840925207
+                  "weight": 0.07560605229521657
+                },
+                {
+                  "asset": "TD",
+                  "weight": 0.07174267977934129
+                },
+                {
+                  "asset": "WMT",
+                  "weight": 0.05850314975884584
                 },
                 {
                   "asset": "NVDA",
-                  "weight": 0.05114131205840498
+                  "weight": 0.053425533104291933
                 },
                 {
                   "asset": "HSBC",
-                  "weight": 0.03964859416750521
+                  "weight": 0.03800744315652598
                 },
                 {
                   "asset": "AMD",
-                  "weight": 0.024217103465848443
-                },
-                {
-                  "asset": "C",
-                  "weight": 0.011778340124232019
-                },
-                {
-                  "asset": "GS",
-                  "weight": 0.010000000000000106
+                  "weight": 0.02195043018679159
                 },
                 {
                   "asset": "GE",
-                  "weight": 0.010000000000000021
+                  "weight": 0.010000000000000002
                 },
                 {
                   "asset": "JPM",
-                  "weight": 0.010000000000000014
+                  "weight": 0.010000000000000002
                 },
                 {
-                  "asset": "CAT",
-                  "weight": 0.010000000000000005
+                  "asset": "C",
+                  "weight": 0.01
+                },
+                {
+                  "asset": "GS",
+                  "weight": 0.01
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1647,17 +1647,17 @@
                 "WELL",
                 "RTX",
                 "GOOGL",
-                "META"
+                "MS"
               ],
               "observations": 752,
-              "expected_return_annual": 0.6408863999023975,
-              "volatility_annual": 0.3986428118971375,
-              "sharpe": 1.5073303267222717,
+              "expected_return_annual": 0.6379714977789108,
+              "volatility_annual": 0.3982549460083524,
+              "sharpe": 1.5014791499070796,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 1.9775144242223501,
-              "alpha_annual": 0.25644758312450555,
-              "benchmark_return_annual": 0.21417765077154421,
+              "beta": 1.9755435886391834,
+              "alpha_annual": 0.2525793112533834,
+              "benchmark_return_annual": 0.21483399936695108,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -1665,68 +1665,68 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_variable": 1.0
+                "renta_variable": 1.0000000000000002
               },
               "weights": [
                 {
-                  "asset": "AMD",
-                  "weight": 0.35
+                  "asset": "NVDA",
+                  "weight": 0.34999999999999887
                 },
                 {
-                  "asset": "NVDA",
-                  "weight": 0.35
+                  "asset": "AMD",
+                  "weight": 0.3499999999999986
                 },
                 {
                   "asset": "TSM",
-                  "weight": 0.17999999999999777
+                  "weight": 0.179999999999999
                 },
                 {
                   "asset": "INTC",
-                  "weight": 0.010000000000001091
-                },
-                {
-                  "asset": "GE",
-                  "weight": 0.010000000000000503
-                },
-                {
-                  "asset": "AVGO",
-                  "weight": 0.010000000000000422
-                },
-                {
-                  "asset": "GOOGL",
-                  "weight": 0.010000000000000323
-                },
-                {
-                  "asset": "RTX",
-                  "weight": 0.010000000000000014
-                },
-                {
-                  "asset": "C",
-                  "weight": 0.01
-                },
-                {
-                  "asset": "ASML",
-                  "weight": 0.01
-                },
-                {
-                  "asset": "GS",
-                  "weight": 0.01
+                  "weight": 0.010000000000001449
                 },
                 {
                   "asset": "CAT",
-                  "weight": 0.01
+                  "weight": 0.010000000000000462
+                },
+                {
+                  "asset": "ASML",
+                  "weight": 0.010000000000000382
                 },
                 {
                   "asset": "HSBC",
-                  "weight": 0.01
+                  "weight": 0.010000000000000382
+                },
+                {
+                  "asset": "RTX",
+                  "weight": 0.010000000000000378
+                },
+                {
+                  "asset": "GOOGL",
+                  "weight": 0.010000000000000299
+                },
+                {
+                  "asset": "C",
+                  "weight": 0.010000000000000201
+                },
+                {
+                  "asset": "MS",
+                  "weight": 0.010000000000000092
                 },
                 {
                   "asset": "WELL",
-                  "weight": 0.01
+                  "weight": 0.010000000000000012
                 },
                 {
-                  "asset": "META",
-                  "weight": 0.01
+                  "asset": "AVGO",
+                  "weight": 0.009999999999999993
+                },
+                {
+                  "asset": "GE",
+                  "weight": 0.009999999999999992
+                },
+                {
+                  "asset": "GS",
+                  "weight": 0.009999999999999992
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1736,8 +1736,8 @@
       },
       "5y": {
         "horizon_years": 5,
-        "start": "2021-10-16",
-        "end": "2026-10-15",
+        "start": "2021-10-17",
+        "end": "2026-10-16",
         "assets_with_valid_returns": 144,
         "benchmark_ticker": "SPY",
         "benchmark_status": "ok",
@@ -1755,9 +1755,9 @@
               ],
               "max_sharpe": [
                 "HSBC",
-                "NVDA",
                 "LLY",
                 "GE",
+                "NVDA",
                 "AVGO"
               ],
               "max_return": [
@@ -1780,15 +1780,15 @@
                 "GOVT",
                 "BND"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.02040387498215756,
-              "volatility_annual": 0.03394194406063316,
-              "sharpe": -0.5773424463500483,
+              "observations": 1254,
+              "expected_return_annual": 0.02122288174730884,
+              "volatility_annual": 0.0339896149574314,
+              "sharpe": -0.5524369215775945,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.09501961742121005,
-              "alpha_annual": -0.02884277294174773,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 0.09509109914043576,
+              "alpha_annual": -0.028056863632627365,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -1800,24 +1800,24 @@
               },
               "weights": [
                 {
-                  "asset": "BKLN",
-                  "weight": 0.35
+                  "asset": "MUB",
+                  "weight": 0.35000000000000014
                 },
                 {
-                  "asset": "MUB",
-                  "weight": 0.3499999999999998
+                  "asset": "BKLN",
+                  "weight": 0.35000000000000014
                 },
                 {
                   "asset": "BNDX",
-                  "weight": 0.28000000000000025
-                },
-                {
-                  "asset": "GOVT",
-                  "weight": 0.01
+                  "weight": 0.2799999999999997
                 },
                 {
                   "asset": "BND",
-                  "weight": 0.01
+                  "weight": 0.010000000000000028
+                },
+                {
+                  "asset": "GOVT",
+                  "weight": 0.010000000000000016
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1829,20 +1829,20 @@
               "selection_mode": "exact",
               "assets_used": [
                 "HSBC",
-                "NVDA",
                 "LLY",
                 "GE",
+                "NVDA",
                 "AVGO"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.39800982769706783,
-              "volatility_annual": 0.2150023301226789,
-              "sharpe": 1.6651439428251305,
+              "observations": 1254,
+              "expected_return_annual": 0.4004005339075096,
+              "volatility_annual": 0.21391200746589006,
+              "sharpe": 1.6848074036469334,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.9619172514075132,
-              "alpha_annual": 0.2644027347925814,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 0.9512638153739286,
+              "alpha_annual": 0.2675686487404261,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -1855,23 +1855,23 @@
               "weights": [
                 {
                   "asset": "HSBC",
-                  "weight": 0.3316660363380906
+                  "weight": 0.3288848177367013
                 },
                 {
                   "asset": "LLY",
-                  "weight": 0.32426229318871685
+                  "weight": 0.32842705705646247
                 },
                 {
                   "asset": "GE",
-                  "weight": 0.1332150673413255
+                  "weight": 0.14347961808876952
                 },
                 {
                   "asset": "AVGO",
-                  "weight": 0.11572080028251387
+                  "weight": 0.10968991438011737
                 },
                 {
                   "asset": "NVDA",
-                  "weight": 0.09513580284935311
+                  "weight": 0.0895185927379494
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1888,15 +1888,15 @@
                 "LLY",
                 "GE"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.5280894791079199,
-              "volatility_annual": 0.4304541441216386,
-              "sharpe": 1.133894250463981,
+              "observations": 1254,
+              "expected_return_annual": 0.5221097803145182,
+              "volatility_annual": 0.43040106027726655,
+              "sharpe": 1.1201407821903149,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 1.951078685493568,
-              "alpha_annual": 0.29822407903351467,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 1.9509285465073902,
+              "alpha_annual": 0.29172266385790374,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 5,
@@ -1909,23 +1909,23 @@
               "weights": [
                 {
                   "asset": "NVDA",
-                  "weight": 0.34999999999999976
+                  "weight": 0.34999999999999987
                 },
                 {
                   "asset": "AVGO",
-                  "weight": 0.34999999999999976
+                  "weight": 0.3499999999999989
                 },
                 {
                   "asset": "AMD",
-                  "weight": 0.2800000000000006
+                  "weight": 0.28000000000000047
                 },
                 {
                   "asset": "LLY",
-                  "weight": 0.009999999999999995
+                  "weight": 0.01000000000000037
                 },
                 {
                   "asset": "GE",
-                  "weight": 0.009999999999999993
+                  "weight": 0.010000000000000307
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -1949,15 +1949,15 @@
               ],
               "max_sharpe": [
                 "HSBC",
-                "NVDA",
                 "LLY",
                 "GE",
+                "NVDA",
                 "AVGO",
                 "ABBV",
-                "CAT",
                 "WELL",
+                "CAT",
                 "XOM",
-                "TSM"
+                "WMT"
               ],
               "max_return": [
                 "NVDA",
@@ -1968,8 +1968,8 @@
                 "TSM",
                 "CAT",
                 "HSBC",
-                "INTC",
-                "XOM"
+                "XOM",
+                "INTC"
               ]
             },
             "min_risk": {
@@ -1989,15 +1989,15 @@
                 "VCIT",
                 "HYG"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.020641845180245928,
-              "volatility_annual": 0.03449135936854237,
-              "sharpe": -0.5612465027229271,
+              "observations": 1254,
+              "expected_return_annual": 0.02149553486184686,
+              "volatility_annual": 0.03453953959638247,
+              "sharpe": -0.5357473016256192,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.09936499031666148,
-              "alpha_annual": -0.029027664194302836,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 0.09943646529680465,
+              "alpha_annual": -0.028208265891075855,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -2014,38 +2014,38 @@
                 },
                 {
                   "asset": "BKLN",
-                  "weight": 0.3499999999999998
+                  "weight": 0.3499999999999997
                 },
                 {
                   "asset": "BNDX",
-                  "weight": 0.2300000000000001
-                },
-                {
-                  "asset": "AGG",
-                  "weight": 0.01000000000000025
-                },
-                {
-                  "asset": "SPIP",
-                  "weight": 0.010000000000000068
-                },
-                {
-                  "asset": "BND",
-                  "weight": 0.01000000000000001
-                },
-                {
-                  "asset": "HYG",
-                  "weight": 0.009999999999999998
-                },
-                {
-                  "asset": "GOVT",
-                  "weight": 0.009999999999999995
+                  "weight": 0.23000000000000023
                 },
                 {
                   "asset": "TIP",
-                  "weight": 0.009999999999999995
+                  "weight": 0.010000000000000116
+                },
+                {
+                  "asset": "GOVT",
+                  "weight": 0.010000000000000097
                 },
                 {
                   "asset": "VCIT",
+                  "weight": 0.010000000000000035
+                },
+                {
+                  "asset": "BND",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "AGG",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "SPIP",
+                  "weight": 0.009999999999999995
+                },
+                {
+                  "asset": "HYG",
                   "weight": 0.009999999999999995
                 }
               ],
@@ -2058,25 +2058,25 @@
               "selection_mode": "exact",
               "assets_used": [
                 "HSBC",
-                "NVDA",
                 "LLY",
                 "GE",
+                "NVDA",
                 "AVGO",
                 "ABBV",
-                "CAT",
                 "WELL",
+                "CAT",
                 "XOM",
-                "TSM"
+                "WMT"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.3416486554490667,
-              "volatility_annual": 0.16003839348171814,
-              "sharpe": 1.8848518089099995,
+              "observations": 1254,
+              "expected_return_annual": 0.33342445182239505,
+              "volatility_annual": 0.15248829370467248,
+              "sharpe": 1.9242424758891776,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.7254251734490604,
-              "alpha_annual": 0.23105532581812566,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 0.6974620981076468,
+              "alpha_annual": 0.2253605558205575,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -2089,43 +2089,43 @@
               "weights": [
                 {
                   "asset": "XOM",
-                  "weight": 0.1863670551528332
-                },
-                {
-                  "asset": "ABBV",
-                  "weight": 0.1720578622631879
+                  "weight": 0.16599708226200743
                 },
                 {
                   "asset": "LLY",
-                  "weight": 0.15987642455355414
+                  "weight": 0.1470117803654971
+                },
+                {
+                  "asset": "ABBV",
+                  "weight": 0.1467531397246053
                 },
                 {
                   "asset": "HSBC",
-                  "weight": 0.14782301005722726
+                  "weight": 0.141775058763222
+                },
+                {
+                  "asset": "WMT",
+                  "weight": 0.10710392006788073
                 },
                 {
                   "asset": "WELL",
-                  "weight": 0.12800292146812225
+                  "weight": 0.10618944316641024
                 },
                 {
                   "asset": "AVGO",
-                  "weight": 0.0784940404142112
+                  "weight": 0.07222712635876319
                 },
                 {
                   "asset": "NVDA",
-                  "weight": 0.06951554257614184
+                  "weight": 0.06509255696834813
                 },
                 {
                   "asset": "GE",
-                  "weight": 0.03786314351472218
+                  "weight": 0.037849892323265924
                 },
                 {
                   "asset": "CAT",
-                  "weight": 0.010000000000000038
-                },
-                {
-                  "asset": "TSM",
-                  "weight": 0.009999999999999998
+                  "weight": 0.010000000000000023
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -2144,18 +2144,18 @@
                 "TSM",
                 "CAT",
                 "HSBC",
-                "INTC",
-                "XOM"
+                "XOM",
+                "INTC"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.5197654561118286,
-              "volatility_annual": 0.4145185286645136,
-              "sharpe": 1.157404127766076,
+              "observations": 1254,
+              "expected_return_annual": 0.5140746376507351,
+              "volatility_annual": 0.41446440952728675,
+              "sharpe": 1.1438247211417651,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 1.8943302509535695,
-              "alpha_annual": 0.2954224187733,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 1.8941703614058623,
+              "alpha_annual": 0.28922643609499504,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 10,
@@ -2167,44 +2167,44 @@
               },
               "weights": [
                 {
-                  "asset": "AVGO",
-                  "weight": 0.35
+                  "asset": "NVDA",
+                  "weight": 0.3500000000000001
                 },
                 {
-                  "asset": "NVDA",
-                  "weight": 0.3499999999999994
+                  "asset": "AVGO",
+                  "weight": 0.3500000000000001
                 },
                 {
                   "asset": "AMD",
-                  "weight": 0.22999999999999982
-                },
-                {
-                  "asset": "CAT",
-                  "weight": 0.010000000000000389
-                },
-                {
-                  "asset": "GE",
-                  "weight": 0.010000000000000338
-                },
-                {
-                  "asset": "TSM",
-                  "weight": 0.010000000000000089
-                },
-                {
-                  "asset": "INTC",
-                  "weight": 0.010000000000000007
+                  "weight": 0.22999999999999932
                 },
                 {
                   "asset": "LLY",
-                  "weight": 0.01
+                  "weight": 0.010000000000000401
                 },
                 {
                   "asset": "HSBC",
-                  "weight": 0.01
+                  "weight": 0.01000000000000008
+                },
+                {
+                  "asset": "GE",
+                  "weight": 0.010000000000000004
+                },
+                {
+                  "asset": "TSM",
+                  "weight": 0.010000000000000004
+                },
+                {
+                  "asset": "CAT",
+                  "weight": 0.010000000000000004
                 },
                 {
                   "asset": "XOM",
-                  "weight": 0.01
+                  "weight": 0.010000000000000004
+                },
+                {
+                  "asset": "INTC",
+                  "weight": 0.010000000000000004
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -2233,17 +2233,17 @@
               ],
               "max_sharpe": [
                 "HSBC",
-                "NVDA",
                 "LLY",
                 "GE",
+                "NVDA",
                 "AVGO",
                 "ABBV",
-                "CAT",
                 "WELL",
+                "CAT",
                 "XOM",
-                "TSM",
                 "WMT",
                 "GILD",
+                "TSM",
                 "PM",
                 "AMD",
                 "PGR"
@@ -2257,10 +2257,10 @@
                 "TSM",
                 "CAT",
                 "HSBC",
-                "INTC",
                 "XOM",
-                "META",
+                "INTC",
                 "WELL",
+                "META",
                 "ABBV",
                 "ASML",
                 "VRTX"
@@ -2288,15 +2288,15 @@
                 "EMB",
                 "TLT"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.020038525619627323,
-              "volatility_annual": 0.03641966112077169,
-              "sharpe": -0.548096104304161,
+              "observations": 1254,
+              "expected_return_annual": 0.0209512704446995,
+              "volatility_annual": 0.03646970188404787,
+              "sharpe": -0.5223165688566421,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.1066654766870469,
-              "alpha_annual": -0.030341416284248322,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 0.10673961350418036,
+              "alpha_annual": -0.029465229566608016,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -2304,7 +2304,7 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_fija": 1.0000000000000002
+                "renta_fija": 0.9999999999999998
               },
               "weights": [
                 {
@@ -2317,34 +2317,38 @@
                 },
                 {
                   "asset": "BNDX",
-                  "weight": 0.1799999999999997
-                },
-                {
-                  "asset": "SPIP",
-                  "weight": 0.010000000000000293
-                },
-                {
-                  "asset": "TIP",
-                  "weight": 0.010000000000000167
-                },
-                {
-                  "asset": "GOVT",
-                  "weight": 0.01000000000000011
+                  "weight": 0.18000000000000016
                 },
                 {
                   "asset": "IEF",
-                  "weight": 0.01000000000000007
+                  "weight": 0.010000000000000066
                 },
                 {
-                  "asset": "BND",
+                  "asset": "SPIP",
+                  "weight": 0.010000000000000044
+                },
+                {
+                  "asset": "EMB",
+                  "weight": 0.010000000000000042
+                },
+                {
+                  "asset": "TLT",
                   "weight": 0.010000000000000035
                 },
                 {
-                  "asset": "LQD",
-                  "weight": 0.010000000000000002
+                  "asset": "BND",
+                  "weight": 0.01000000000000001
+                },
+                {
+                  "asset": "GOVT",
+                  "weight": 0.009999999999999997
                 },
                 {
                   "asset": "AGG",
+                  "weight": 0.009999999999999997
+                },
+                {
+                  "asset": "TIP",
                   "weight": 0.009999999999999997
                 },
                 {
@@ -2360,11 +2364,7 @@
                   "weight": 0.009999999999999997
                 },
                 {
-                  "asset": "EMB",
-                  "weight": 0.009999999999999997
-                },
-                {
-                  "asset": "TLT",
+                  "asset": "LQD",
                   "weight": 0.009999999999999997
                 }
               ],
@@ -2377,30 +2377,30 @@
               "selection_mode": "exact",
               "assets_used": [
                 "HSBC",
-                "NVDA",
                 "LLY",
                 "GE",
+                "NVDA",
                 "AVGO",
                 "ABBV",
-                "CAT",
                 "WELL",
+                "CAT",
                 "XOM",
-                "TSM",
                 "WMT",
                 "GILD",
+                "TSM",
                 "PM",
                 "AMD",
                 "PGR"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.32073639924343583,
-              "volatility_annual": 0.14507441946213265,
-              "sharpe": 1.9351199217909931,
+              "observations": 1254,
+              "expected_return_annual": 0.3220612945157832,
+              "volatility_annual": 0.1447316350086973,
+              "sharpe": 1.9488572384249887,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 0.6752262993916712,
-              "alpha_annual": 0.21502807470073382,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 0.6721561868601127,
+              "alpha_annual": 0.21646695050258724,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -2408,68 +2408,68 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_variable": 0.9999999999999999
+                "renta_variable": 1.0000000000000004
               },
               "weights": [
                 {
                   "asset": "XOM",
-                  "weight": 0.14212767047179078
+                  "weight": 0.13775352546683714
                 },
                 {
                   "asset": "LLY",
-                  "weight": 0.12498111702413643
+                  "weight": 0.1291534534602663
                 },
                 {
                   "asset": "HSBC",
-                  "weight": 0.11684368485012317
+                  "weight": 0.11803658129968127
                 },
                 {
                   "asset": "ABBV",
-                  "weight": 0.10749626839230594
+                  "weight": 0.10541640779508583
                 },
                 {
                   "asset": "PM",
-                  "weight": 0.08300863996275105
+                  "weight": 0.07580555941597994
                 },
                 {
                   "asset": "WMT",
-                  "weight": 0.0688233188583773
-                },
-                {
-                  "asset": "AVGO",
-                  "weight": 0.06776313646958934
+                  "weight": 0.07391380399938906
                 },
                 {
                   "asset": "WELL",
-                  "weight": 0.06762556642417732
+                  "weight": 0.06764812791827976
                 },
                 {
-                  "asset": "NVDA",
-                  "weight": 0.06179858219833826
+                  "asset": "AVGO",
+                  "weight": 0.06435814913916477
                 },
                 {
                   "asset": "PGR",
-                  "weight": 0.05995849411466215
+                  "weight": 0.06087938777171664
+                },
+                {
+                  "asset": "NVDA",
+                  "weight": 0.05856558257405965
                 },
                 {
                   "asset": "GILD",
-                  "weight": 0.04963409530530791
+                  "weight": 0.05180494618416954
                 },
                 {
                   "asset": "GE",
-                  "weight": 0.019939425928440314
-                },
-                {
-                  "asset": "CAT",
-                  "weight": 0.010000000000000049
-                },
-                {
-                  "asset": "TSM",
-                  "weight": 0.010000000000000037
+                  "weight": 0.026664474975370143
                 },
                 {
                   "asset": "AMD",
-                  "weight": 0.010000000000000007
+                  "weight": 0.010000000000000113
+                },
+                {
+                  "asset": "CAT",
+                  "weight": 0.010000000000000012
+                },
+                {
+                  "asset": "TSM",
+                  "weight": 0.01000000000000001
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -2488,23 +2488,23 @@
                 "TSM",
                 "CAT",
                 "HSBC",
-                "INTC",
                 "XOM",
-                "META",
+                "INTC",
                 "WELL",
+                "META",
                 "ABBV",
                 "ASML",
                 "VRTX"
               ],
-              "observations": 1253,
-              "expected_return_annual": 0.5083971547732717,
-              "volatility_annual": 0.39732678738736177,
-              "sharpe": 1.178871321144079,
+              "observations": 1254,
+              "expected_return_annual": 0.5032979681888756,
+              "volatility_annual": 0.3972622855871321,
+              "sharpe": 1.1662269110296901,
               "benchmark_ticker": "SPY",
               "benchmark_status": "ok",
-              "beta": 1.8327483521818184,
-              "alpha_annual": 0.2900468392734744,
-              "benchmark_return_annual": 0.13731304097885455,
+              "beta": 1.8325925798534743,
+              "alpha_annual": 0.2844590160690219,
+              "benchmark_return_annual": 0.13758794949074427,
               "constraints": {
                 "long_only": true,
                 "exact_assets": 15,
@@ -2512,68 +2512,68 @@
                 "max_weight_per_asset": 0.35
               },
               "weight_distribution_by_asset_type": {
-                "renta_variable": 1.0000000000000002
+                "renta_variable": 0.9999999999999994
               },
               "weights": [
                 {
                   "asset": "NVDA",
-                  "weight": 0.3499999999999992
+                  "weight": 0.3499999999999985
                 },
                 {
                   "asset": "AVGO",
-                  "weight": 0.34999999999999903
+                  "weight": 0.34999999999999754
                 },
                 {
                   "asset": "AMD",
-                  "weight": 0.18000000000000121
-                },
-                {
-                  "asset": "VRTX",
-                  "weight": 0.010000000000000533
+                  "weight": 0.17999999999999652
                 },
                 {
                   "asset": "GE",
-                  "weight": 0.010000000000000057
-                },
-                {
-                  "asset": "ASML",
-                  "weight": 0.009999999999999995
-                },
-                {
-                  "asset": "META",
-                  "weight": 0.009999999999999985
-                },
-                {
-                  "asset": "LLY",
-                  "weight": 0.009999999999999978
-                },
-                {
-                  "asset": "TSM",
-                  "weight": 0.009999999999999978
-                },
-                {
-                  "asset": "CAT",
-                  "weight": 0.009999999999999978
-                },
-                {
-                  "asset": "HSBC",
-                  "weight": 0.009999999999999978
-                },
-                {
-                  "asset": "INTC",
-                  "weight": 0.009999999999999978
+                  "weight": 0.010000000000001159
                 },
                 {
                   "asset": "XOM",
-                  "weight": 0.009999999999999978
+                  "weight": 0.01000000000000083
+                },
+                {
+                  "asset": "TSM",
+                  "weight": 0.010000000000000767
+                },
+                {
+                  "asset": "LLY",
+                  "weight": 0.01000000000000072
+                },
+                {
+                  "asset": "HSBC",
+                  "weight": 0.010000000000000656
+                },
+                {
+                  "asset": "CAT",
+                  "weight": 0.010000000000000647
+                },
+                {
+                  "asset": "META",
+                  "weight": 0.010000000000000623
                 },
                 {
                   "asset": "WELL",
-                  "weight": 0.009999999999999978
+                  "weight": 0.010000000000000567
+                },
+                {
+                  "asset": "ASML",
+                  "weight": 0.01000000000000054
                 },
                 {
                   "asset": "ABBV",
-                  "weight": 0.009999999999999978
+                  "weight": 0.010000000000000503
+                },
+                {
+                  "asset": "INTC",
+                  "weight": 0.010000000000000401
+                },
+                {
+                  "asset": "VRTX",
+                  "weight": 0.010000000000000377
                 }
               ],
               "optimization_status": "Optimization terminated successfully"
@@ -2583,8 +2583,8 @@
       }
     },
     "assets_with_valid_returns": 144,
-    "start": "2021-10-16",
-    "end": "2026-10-15",
+    "start": "2021-10-17",
+    "end": "2026-10-16",
     "min_risk": {
       "objective": "min_risk",
       "portfolio_size": 15,
@@ -2607,15 +2607,15 @@
         "EMB",
         "TLT"
       ],
-      "observations": 1253,
-      "expected_return_annual": 0.020038525619627323,
-      "volatility_annual": 0.03641966112077169,
-      "sharpe": -0.548096104304161,
+      "observations": 1254,
+      "expected_return_annual": 0.0209512704446995,
+      "volatility_annual": 0.03646970188404787,
+      "sharpe": -0.5223165688566421,
       "benchmark_ticker": "SPY",
       "benchmark_status": "ok",
-      "beta": 0.1066654766870469,
-      "alpha_annual": -0.030341416284248322,
-      "benchmark_return_annual": 0.13731304097885455,
+      "beta": 0.10673961350418036,
+      "alpha_annual": -0.029465229566608016,
+      "benchmark_return_annual": 0.13758794949074427,
       "constraints": {
         "long_only": true,
         "exact_assets": 15,
@@ -2623,7 +2623,7 @@
         "max_weight_per_asset": 0.35
       },
       "weight_distribution_by_asset_type": {
-        "renta_fija": 1.0000000000000002
+        "renta_fija": 0.9999999999999998
       },
       "weights": [
         {
@@ -2636,34 +2636,38 @@
         },
         {
           "asset": "BNDX",
-          "weight": 0.1799999999999997
-        },
-        {
-          "asset": "SPIP",
-          "weight": 0.010000000000000293
-        },
-        {
-          "asset": "TIP",
-          "weight": 0.010000000000000167
-        },
-        {
-          "asset": "GOVT",
-          "weight": 0.01000000000000011
+          "weight": 0.18000000000000016
         },
         {
           "asset": "IEF",
-          "weight": 0.01000000000000007
+          "weight": 0.010000000000000066
         },
         {
-          "asset": "BND",
+          "asset": "SPIP",
+          "weight": 0.010000000000000044
+        },
+        {
+          "asset": "EMB",
+          "weight": 0.010000000000000042
+        },
+        {
+          "asset": "TLT",
           "weight": 0.010000000000000035
         },
         {
-          "asset": "LQD",
-          "weight": 0.010000000000000002
+          "asset": "BND",
+          "weight": 0.01000000000000001
+        },
+        {
+          "asset": "GOVT",
+          "weight": 0.009999999999999997
         },
         {
           "asset": "AGG",
+          "weight": 0.009999999999999997
+        },
+        {
+          "asset": "TIP",
           "weight": 0.009999999999999997
         },
         {
@@ -2679,11 +2683,7 @@
           "weight": 0.009999999999999997
         },
         {
-          "asset": "EMB",
-          "weight": 0.009999999999999997
-        },
-        {
-          "asset": "TLT",
+          "asset": "LQD",
           "weight": 0.009999999999999997
         }
       ],
@@ -2696,30 +2696,30 @@
       "selection_mode": "exact",
       "assets_used": [
         "HSBC",
-        "NVDA",
         "LLY",
         "GE",
+        "NVDA",
         "AVGO",
         "ABBV",
-        "CAT",
         "WELL",
+        "CAT",
         "XOM",
-        "TSM",
         "WMT",
         "GILD",
+        "TSM",
         "PM",
         "AMD",
         "PGR"
       ],
-      "observations": 1253,
-      "expected_return_annual": 0.32073639924343583,
-      "volatility_annual": 0.14507441946213265,
-      "sharpe": 1.9351199217909931,
+      "observations": 1254,
+      "expected_return_annual": 0.3220612945157832,
+      "volatility_annual": 0.1447316350086973,
+      "sharpe": 1.9488572384249887,
       "benchmark_ticker": "SPY",
       "benchmark_status": "ok",
-      "beta": 0.6752262993916712,
-      "alpha_annual": 0.21502807470073382,
-      "benchmark_return_annual": 0.13731304097885455,
+      "beta": 0.6721561868601127,
+      "alpha_annual": 0.21646695050258724,
+      "benchmark_return_annual": 0.13758794949074427,
       "constraints": {
         "long_only": true,
         "exact_assets": 15,
@@ -2727,68 +2727,68 @@
         "max_weight_per_asset": 0.35
       },
       "weight_distribution_by_asset_type": {
-        "renta_variable": 0.9999999999999999
+        "renta_variable": 1.0000000000000004
       },
       "weights": [
         {
           "asset": "XOM",
-          "weight": 0.14212767047179078
+          "weight": 0.13775352546683714
         },
         {
           "asset": "LLY",
-          "weight": 0.12498111702413643
+          "weight": 0.1291534534602663
         },
         {
           "asset": "HSBC",
-          "weight": 0.11684368485012317
+          "weight": 0.11803658129968127
         },
         {
           "asset": "ABBV",
-          "weight": 0.10749626839230594
+          "weight": 0.10541640779508583
         },
         {
           "asset": "PM",
-          "weight": 0.08300863996275105
+          "weight": 0.07580555941597994
         },
         {
           "asset": "WMT",
-          "weight": 0.0688233188583773
-        },
-        {
-          "asset": "AVGO",
-          "weight": 0.06776313646958934
+          "weight": 0.07391380399938906
         },
         {
           "asset": "WELL",
-          "weight": 0.06762556642417732
+          "weight": 0.06764812791827976
         },
         {
-          "asset": "NVDA",
-          "weight": 0.06179858219833826
+          "asset": "AVGO",
+          "weight": 0.06435814913916477
         },
         {
           "asset": "PGR",
-          "weight": 0.05995849411466215
+          "weight": 0.06087938777171664
+        },
+        {
+          "asset": "NVDA",
+          "weight": 0.05856558257405965
         },
         {
           "asset": "GILD",
-          "weight": 0.04963409530530791
+          "weight": 0.05180494618416954
         },
         {
           "asset": "GE",
-          "weight": 0.019939425928440314
-        },
-        {
-          "asset": "CAT",
-          "weight": 0.010000000000000049
-        },
-        {
-          "asset": "TSM",
-          "weight": 0.010000000000000037
+          "weight": 0.026664474975370143
         },
         {
           "asset": "AMD",
-          "weight": 0.010000000000000007
+          "weight": 0.010000000000000113
+        },
+        {
+          "asset": "CAT",
+          "weight": 0.010000000000000012
+        },
+        {
+          "asset": "TSM",
+          "weight": 0.01000000000000001
         }
       ],
       "optimization_status": "Optimization terminated successfully"
@@ -2807,23 +2807,23 @@
         "TSM",
         "CAT",
         "HSBC",
-        "INTC",
         "XOM",
-        "META",
+        "INTC",
         "WELL",
+        "META",
         "ABBV",
         "ASML",
         "VRTX"
       ],
-      "observations": 1253,
-      "expected_return_annual": 0.5083971547732717,
-      "volatility_annual": 0.39732678738736177,
-      "sharpe": 1.178871321144079,
+      "observations": 1254,
+      "expected_return_annual": 0.5032979681888756,
+      "volatility_annual": 0.3972622855871321,
+      "sharpe": 1.1662269110296901,
       "benchmark_ticker": "SPY",
       "benchmark_status": "ok",
-      "beta": 1.8327483521818184,
-      "alpha_annual": 0.2900468392734744,
-      "benchmark_return_annual": 0.13731304097885455,
+      "beta": 1.8325925798534743,
+      "alpha_annual": 0.2844590160690219,
+      "benchmark_return_annual": 0.13758794949074427,
       "constraints": {
         "long_only": true,
         "exact_assets": 15,
@@ -2831,68 +2831,68 @@
         "max_weight_per_asset": 0.35
       },
       "weight_distribution_by_asset_type": {
-        "renta_variable": 1.0000000000000002
+        "renta_variable": 0.9999999999999994
       },
       "weights": [
         {
           "asset": "NVDA",
-          "weight": 0.3499999999999992
+          "weight": 0.3499999999999985
         },
         {
           "asset": "AVGO",
-          "weight": 0.34999999999999903
+          "weight": 0.34999999999999754
         },
         {
           "asset": "AMD",
-          "weight": 0.18000000000000121
-        },
-        {
-          "asset": "VRTX",
-          "weight": 0.010000000000000533
+          "weight": 0.17999999999999652
         },
         {
           "asset": "GE",
-          "weight": 0.010000000000000057
-        },
-        {
-          "asset": "ASML",
-          "weight": 0.009999999999999995
-        },
-        {
-          "asset": "META",
-          "weight": 0.009999999999999985
-        },
-        {
-          "asset": "LLY",
-          "weight": 0.009999999999999978
-        },
-        {
-          "asset": "TSM",
-          "weight": 0.009999999999999978
-        },
-        {
-          "asset": "CAT",
-          "weight": 0.009999999999999978
-        },
-        {
-          "asset": "HSBC",
-          "weight": 0.009999999999999978
-        },
-        {
-          "asset": "INTC",
-          "weight": 0.009999999999999978
+          "weight": 0.010000000000001159
         },
         {
           "asset": "XOM",
-          "weight": 0.009999999999999978
+          "weight": 0.01000000000000083
+        },
+        {
+          "asset": "TSM",
+          "weight": 0.010000000000000767
+        },
+        {
+          "asset": "LLY",
+          "weight": 0.01000000000000072
+        },
+        {
+          "asset": "HSBC",
+          "weight": 0.010000000000000656
+        },
+        {
+          "asset": "CAT",
+          "weight": 0.010000000000000647
+        },
+        {
+          "asset": "META",
+          "weight": 0.010000000000000623
         },
         {
           "asset": "WELL",
-          "weight": 0.009999999999999978
+          "weight": 0.010000000000000567
+        },
+        {
+          "asset": "ASML",
+          "weight": 0.01000000000000054
         },
         {
           "asset": "ABBV",
-          "weight": 0.009999999999999978
+          "weight": 0.010000000000000503
+        },
+        {
+          "asset": "INTC",
+          "weight": 0.010000000000000401
+        },
+        {
+          "asset": "VRTX",
+          "weight": 0.010000000000000377
         }
       ],
       "optimization_status": "Optimization terminated successfully"
